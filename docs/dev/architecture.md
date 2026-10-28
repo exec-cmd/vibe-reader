@@ -36,6 +36,7 @@ WebKitGTK 2.54, release profile (`lto`, `opt-level = "s"`, `strip`).
 | `vibe-reader-gui` binary | 3.6 MB | |
 | `vibe-reader` binary (empty CLI) | 0.5 MB | |
 | Start to first frame (`--measure`, 5 runs) | 216–220 ms | 700 ms |
+| `vibe-reader-gui` with the full UI, fonts and KaTeX (phase 2) | 9.8 MB, start 270–380 ms | 700 ms |
 | Resident memory, GUI + WebKit web and network processes | ≈ 200 + 230 + 65 MB RSS, shared libraries counted in each | measured only |
 
 CSS multi-column layout with `column-fill: auto` and a fixed height paginates

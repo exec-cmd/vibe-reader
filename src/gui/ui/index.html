@@ -1,16 +1,70 @@
 <!doctype html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <title>vibe-reader</title>
+  <link rel="stylesheet" href="fonts/fonts.css">
+  <link rel="stylesheet" href="vendor/katex/katex.min.css">
   <link rel="stylesheet" href="theme.css">
+  <link rel="stylesheet" href="app.css">
+  <!-- Optional: <config>/ui/user.css overrides anything above. -->
+  <link rel="stylesheet" href="user.css">
 </head>
 <body>
-  <main class="pages" id="pages">
-    <h1>Прототип: страницы на CSS columns</h1>
-    <p id="probe"></p>
-  </main>
-  <footer class="status" id="status"></footer>
+  <section class="view home" id="home" data-mode="shelf" hidden>
+    <header class="home-bar">
+      <div class="brand">vibe-reader</div>
+      <input class="search" id="search" type="search" autocomplete="off" data-i18n-placeholder="search">
+      <span class="spacer"></span>
+      <div class="seg" id="grouping" role="group">
+        <button class="btn quiet" data-group="shelf" data-i18n="byShelf"></button>
+        <button class="btn quiet" data-group="author" data-i18n="byAuthor"></button>
+      </div>
+      <button class="btn" id="open-files" data-i18n="openFiles"></button>
+      <button class="btn quiet" id="expand" data-i18n-title="libraryKey"><span data-i18n="library"></span> <span class="kbd">F</span></button>
+    </header>
+    <div class="home-body" id="shelves"></div>
+    <div class="card" id="card"></div>
+  </section>
+
+  <section class="view reader" id="reader" data-layout="pages" hidden>
+    <div class="progress"><i id="progress"></i></div>
+    <header class="reader-bar">
+      <button class="btn quiet" id="back" data-i18n-title="backKey">←</button>
+      <button class="btn quiet" id="toggle-toc" data-i18n="contents"></button>
+      <div class="title" id="reader-title"></div>
+      <button class="btn quiet" id="toggle-notes" data-i18n="notes"></button>
+      <button class="btn quiet" id="toggle-settings" data-i18n="settings"></button>
+    </header>
+    <div class="lite-bar" id="lite-bar" hidden>
+      <span class="title" id="lite-title"></span>
+      <button class="btn" id="lite-add" data-i18n="addToLibrary"></button>
+    </div>
+    <div class="viewport" id="viewport">
+      <div class="frame" id="frame"><article class="page" id="page"></article></div>
+    </div>
+    <footer class="reader-foot"><span id="foot-chapter"></span><span id="foot-page"></span></footer>
+    <aside class="panel left toc" id="toc"></aside>
+    <aside class="panel right" id="notes"></aside>
+    <aside class="panel right" id="settings"></aside>
+    <div class="selbar" id="selbar" hidden>
+      <button class="btn quiet" data-act="highlight" data-i18n="highlight"></button>
+      <button class="btn quiet" data-act="note" data-i18n="note"></button>
+      <button class="btn quiet" data-act="copy" data-i18n="copy"></button>
+    </div>
+    <div class="notepop" id="notepop" hidden></div>
+  </section>
+
+  <div class="palette" id="palette" hidden>
+    <div class="palette-box">
+      <input id="palette-input" autocomplete="off" data-i18n-placeholder="paletteHint">
+      <ul id="palette-list" role="listbox"></ul>
+    </div>
+  </div>
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="vendor/highlight/highlight.min.js"></script>
+  <script src="vendor/katex/katex.min.js"></script>
   <script type="module" src="app.js"></script>
 </body>
 </html>

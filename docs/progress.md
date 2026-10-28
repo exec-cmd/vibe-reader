@@ -21,11 +21,11 @@ Temporary checklist for building the first version. It is removed together with 
 
 ## Phase 2. GUI reader and lite mode
 
-- [ ] UI modules: app, library, reader, panels, palette, i18n
-- [ ] Tauri commands, sessions, notes
-- [ ] Fonts and vendored libraries
-- [ ] Lite mode, Markdown live reload
-- [ ] Screenshots and startup check, docs (getting-started, reading, keyboard, ui)
+- [x] UI modules: app, library, reader, panels, palette, i18n
+- [x] Tauri commands, sessions, notes
+- [x] Fonts and vendored libraries
+- [x] Lite mode, Markdown live reload
+- [x] Screenshots and startup check, docs (getting-started, reading, keyboard, ui)
 
 ## Phase 3. Atmosphere and live IPC
 

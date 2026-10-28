@@ -17,13 +17,20 @@ const CSP: &str = "default-src 'self' vr:; script-src 'self' vr:; style-src 'sel
 type Reply = Response<Cow<'static, [u8]>>;
 
 pub fn serve(app: &AppHandle, overrides: &Path, path: &str) -> Reply {
-    let rel = match path.trim_start_matches('/') {
-        "" => "index.html",
-        rel => rel,
-    };
-    if rel.split('/').any(|part| part == ".." || part.is_empty()) {
+    let Some(rel) = clean(path) else {
         return status(StatusCode::BAD_REQUEST);
+    };
+    if let Some(name) = rel.strip_prefix("res/") {
+        return book_resource(app, name);
     }
+    if let Some(name) = rel.strip_prefix("art/") {
+        let file = crate::app_state(app).paths.art().join(name);
+        return match (name.contains('/'), fs::read(&file)) {
+            (false, Ok(bytes)) => reply(bytes, mime(name)),
+            _ => status(StatusCode::NOT_FOUND),
+        };
+    }
+    let rel = rel.as_str();
     if let Ok(bytes) = fs::read(overrides.join(rel)) {
         return reply(bytes, mime(rel));
     }
@@ -31,6 +38,50 @@ pub fn serve(app: &AppHandle, overrides: &Path, path: &str) -> Reply {
         Some(asset) => reply(asset.bytes, &asset.mime_type),
         None => status(StatusCode::NOT_FOUND),
     }
+}
+
+/// Request path to a relative file path, or `None` when it tries to leave the served folders.
+/// Checked after decoding, so `%2e%2e` cannot climb out either.
+fn clean(path: &str) -> Option<String> {
+    let rel = percent_decode(path.trim_start_matches('/'));
+    if rel.is_empty() {
+        return Some("index.html".into());
+    }
+    let bad = rel
+        .split('/')
+        .any(|part| part == ".." || part == "." || part.is_empty())
+        || rel.contains('\\');
+    (!bad).then_some(rel)
+}
+
+/// A file from inside the open book: an image or a stylesheet referenced by a chapter.
+fn book_resource(app: &AppHandle, name: &str) -> Reply {
+    let state = crate::app_state(app);
+    let Some(path) = state.open.lock().unwrap().as_ref().map(|o| o.path.clone()) else {
+        return status(StatusCode::NOT_FOUND);
+    };
+    match vibe_reader_core::format::resource(&path, name) {
+        Ok(Some(bytes)) => reply(bytes, mime(name)),
+        _ => status(StatusCode::NOT_FOUND),
+    }
+}
+
+fn percent_decode(s: &str) -> String {
+    let bytes = s.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%'
+            && let Some(b) = s.get(i + 1..i + 3).and_then(|h| u8::from_str_radix(h, 16).ok())
+        {
+            out.push(b);
+            i += 3;
+        } else {
+            out.push(bytes[i]);
+            i += 1;
+        }
+    }
+    String::from_utf8_lossy(&out).into_owned()
 }
 
 fn reply(bytes: Vec<u8>, mime: &str) -> Reply {
@@ -70,7 +121,8 @@ pub fn mime(path: &str) -> &'static str {
     }
 }
 
-/// Emits `ui-changed` with the changed relative paths when override files change.
+/// Emits `ui-changed` with the changed relative paths when override files change,
+/// and `book-changed` when the open book file is rewritten (Markdown edited in place).
 // shortcut: polls mtimes once a second; switch to inotify if polling shows up in profiles.
 pub fn watch(app: AppHandle, dir: PathBuf) {
     thread::spawn(move || {
@@ -88,8 +140,30 @@ pub fn watch(app: AppHandle, dir: PathBuf) {
                 let _ = app.emit("ui-changed", changed);
             }
             seen = now;
+            if reload_book(&app) {
+                let _ = app.emit("book-changed", ());
+            }
         }
     });
+}
+
+/// Re-parses the open book when its file changed on disk.
+fn reload_book(app: &AppHandle) -> bool {
+    let state = crate::app_state(app);
+    let mut guard = state.open.lock().unwrap();
+    let Some(open) = guard.as_mut() else { return false };
+    let stamp = crate::state::stamp(&open.path);
+    if stamp.is_none() || stamp == open.stamp {
+        return false;
+    }
+    open.stamp = stamp;
+    match vibe_reader_core::format::open(&open.path) {
+        Ok(doc) => {
+            open.doc = doc;
+            true
+        }
+        Err(_) => false,
+    }
 }
 
 fn snapshot(dir: &Path) -> HashMap<String, SystemTime> {
@@ -111,4 +185,18 @@ fn snapshot(dir: &Path) -> HashMap<String, SystemTime> {
         }
     }
     files
+}
+
+#[cfg(test)]
+mod tests {
+    use super::clean;
+
+    #[test]
+    fn rejects_traversal() {
+        assert_eq!(clean("/").as_deref(), Some("index.html"));
+        assert_eq!(clean("/res/OEBPS/a%20b.png").as_deref(), Some("res/OEBPS/a b.png"));
+        assert_eq!(clean("/../etc/passwd"), None);
+        assert_eq!(clean("/%2e%2e/%2e%2e/etc/passwd"), None);
+        assert_eq!(clean("/a//b"), None);
+    }
 }

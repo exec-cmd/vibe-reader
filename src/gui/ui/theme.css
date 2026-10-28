@@ -1,24 +1,65 @@
+/* Design tokens. Override any of them in <config>/ui/user.css; the window reloads it live.
+   Atmosphere profiles set the same tokens on the reader. */
+
 :root {
-  --bg: #f4ecdc;
+  /* Paper and ink */
+  --paper: #f4ede0;
+  --paper-2: #ebe2d1;
   --ink: #2b2420;
-  --muted: #7a6c5d;
-  --font-body: Georgia, "Times New Roman", serif;
-  --gap: 4rem;
+  --muted: #85745f;
+  --rule: #d8ccb6;
+  --accent: #9a4a2e;
+  --selection: rgba(154, 74, 46, 0.18);
+  --shadow: 0 1px 2px rgba(43, 36, 32, 0.08), 0 8px 28px rgba(43, 36, 32, 0.12);
+  --agent: #3f6a73;
+
+  /* Type */
+  --font-ui: "Onest", system-ui, sans-serif;
+  --font-body: "Literata", Georgia, serif;
+  --font-display: "Cormorant Garamond", "Literata", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --text-size: 19px;
+  --measure: 34em;
+  --leading: 1.6;
+  --align: justify;
+  --hyphens: auto;
+
+  /* Motion */
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --fast: 160ms;
+  --slow: 420ms;
+
+  /* Code */
+  --code-bg: #ece3d2;
+  --code-keyword: #8a3b52;
+  --code-string: #4b6b2f;
+  --code-number: #9a5a1e;
+  --code-comment: #8f8170;
+  --code-title: #2f5a7a;
+
+  color-scheme: light;
 }
 
-html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); }
-
-.pages {
-  box-sizing: border-box;
-  height: calc(100vh - 2rem);
-  padding: 3rem 4rem;
-  column-width: 30em;
-  column-gap: var(--gap);
-  column-fill: auto;
-  overflow-x: auto;
-  font: 19px/1.7 var(--font-body);
-  hyphens: auto;
-  text-align: justify;
+:root[data-mode="dark"] {
+  --paper: #1b1917;
+  --paper-2: #24211e;
+  --ink: #e2d9ca;
+  --muted: #958a7a;
+  --rule: #3a342d;
+  --accent: #d48b5e;
+  --selection: rgba(212, 139, 94, 0.25);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 30px rgba(0, 0, 0, 0.45);
+  --agent: #7fb2bc;
+  --code-bg: #24211e;
+  --code-keyword: #d68aa0;
+  --code-string: #a8c58a;
+  --code-number: #e0a46a;
+  --code-comment: #8a8070;
+  --code-title: #8fb8d8;
+  color-scheme: dark;
 }
 
-.status { height: 2rem; padding: 0 1rem; color: var(--muted); font: 12px/2rem system-ui, sans-serif; }
+@media (prefers-reduced-motion: reduce) {
+  :root { --fast: 0ms; --slow: 0ms; }
+}
+:root[data-motion="off"] { --fast: 0ms; --slow: 0ms; }

@@ -5,7 +5,7 @@
 
 use anyhow::{Result, bail};
 use rusqlite::{OptionalExtension, params};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use super::{Library, now};
 use crate::{Locator, Span};
@@ -13,7 +13,7 @@ use crate::{Locator, Span};
 /// The author name of the person reading; every other author is an agent.
 pub const USER: &str = "user";
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AnnotationKind {
     Note,
