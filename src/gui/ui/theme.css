@@ -1,0 +1,24 @@
+:root {
+  --bg: #f4ecdc;
+  --ink: #2b2420;
+  --muted: #7a6c5d;
+  --font-body: Georgia, "Times New Roman", serif;
+  --gap: 4rem;
+}
+
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); }
+
+.pages {
+  box-sizing: border-box;
+  height: calc(100vh - 2rem);
+  padding: 3rem 4rem;
+  column-width: 30em;
+  column-gap: var(--gap);
+  column-fill: auto;
+  overflow-x: auto;
+  font: 19px/1.7 var(--font-body);
+  hyphens: auto;
+  text-align: justify;
+}
+
+.status { height: 2rem; padding: 0 1rem; color: var(--muted); font: 12px/2rem system-ui, sans-serif; }

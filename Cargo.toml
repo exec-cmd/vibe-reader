@@ -1,0 +1,25 @@
+[workspace]
+members = ["src/core", "src/cli", "src/gui"]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.90"
+license = "MIT OR Apache-2.0"
+authors = ["cmd.exe"]
+repository = "https://github.com/exec-cmd/vibe-reader"
+
+[workspace.dependencies]
+vibe-reader-core = { path = "src/core", version = "0.1.0" }
+anyhow = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tempfile = "3"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+opt-level = "s"
+panic = "abort"

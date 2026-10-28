@@ -1,0 +1,642 @@
+<title>vibe-reader, макет</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:ital,wght@0,400;0,600;1,400&family=Spectral:ital,wght@0,400;0,600;1,400&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Playfair+Display:wght@700;900&family=Onest:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one app window on a quiet stage; the window morphs between shelf, library, reading and lite.
+   Atmosphere = tokens + background layer + particles + chapter heading + illustration, chosen per preset. */
+:root{
+  --page-bg:#EDEEEA; --page-surface:#F8F8F5; --page-ink:#1B1F1D; --page-muted:#5E655F; --page-rule:#D3D6CE; --page-accent:#1F5D50;
+  --f-ui:"Onest",system-ui,sans-serif; --f-mono:"JetBrains Mono",ui-monospace,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --page-bg:#121513; --page-surface:#1A1E1B; --page-ink:#E4E8E2; --page-muted:#8E968F; --page-rule:#2B312C; --page-accent:#6FC2AE; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --page-bg:#121513; --page-surface:#1A1E1B; --page-ink:#E4E8E2; --page-muted:#8E968F; --page-rule:#2B312C; --page-accent:#6FC2AE; color-scheme:dark;}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--page-bg);color:var(--page-ink);font:14px/1.5 var(--f-ui);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 56px}
+.wrap{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+h1{margin:0;font-size:26px;font-weight:600;letter-spacing:-.01em;text-wrap:balance}
+.sub{margin:4px 0 0;color:var(--page-muted)}
+.sub b{font-weight:600;color:var(--page-ink)}
+.controls{display:flex;flex-wrap:wrap;gap:14px 28px;align-items:center}
+.group{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.glabel{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--page-muted);margin-right:4px}
+.pill{font:500 13px/1 var(--f-ui);padding:8px 12px;border:1px solid var(--page-rule);background:transparent;color:var(--page-ink);border-radius:4px;cursor:pointer}
+.pill:hover:not(:disabled){border-color:var(--page-muted)}
+.pill[aria-pressed="true"]{background:var(--page-ink);color:var(--page-bg);border-color:var(--page-ink)}
+.pill:disabled{opacity:.4;cursor:not-allowed}
+.pill:focus-visible,.spine:focus-visible,.bar button:focus-visible,details summary:focus-visible{outline:2px solid var(--page-accent);outline-offset:2px}
+.stage{background:var(--page-surface);border:1px solid var(--page-rule);padding:clamp(12px,3vw,36px);display:flex;justify-content:center;align-items:center;min-height:420px;overflow:hidden}
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px 32px;margin:0}
+.notes dt{font-weight:600;margin-bottom:2px}
+.notes dd{margin:0;color:var(--page-muted)}
+details.cfg{border:1px solid var(--page-rule);background:var(--page-surface)}
+details.cfg summary{cursor:pointer;padding:10px 14px;font-weight:600}
+details.cfg pre{margin:0;padding:0 14px 14px;overflow-x:auto;font:13px/1.6 var(--f-mono);color:var(--page-ink)}
+details.cfg p{margin:0;padding:0 14px 8px;color:var(--page-muted)}
+
+/* ---------- app window ---------- */
+.win{
+  --bg:#E4D8C0;--ink:#2A2118;--muted:#756850;--rule:#C7B896;--accent:#9A5A1B;
+  --spine-s:34%;--spine-l:60%;--spine-ink:#231a10;--fill-d:-14%;--grain:.10;--vig:.10;--fx:176,120,40;
+  --f-body:"Literata",Georgia,serif;--f-display:"Literata",Georgia,serif;--dw:600;
+  --w:1040px;--h:640px;
+  position:relative;overflow:hidden;width:var(--w);height:var(--h);max-width:100%;
+  background:var(--bg);color:var(--ink);font-family:var(--f-ui);border:1px solid var(--rule);border-radius:8px;
+  transition:width .5s ease,height .5s ease,background-color .6s,color .6s,border-color .6s;
+}
+.win[data-view="shelf"]{--w:640px;--h:430px}
+.win[data-view="lite"]{--w:780px;--h:560px}
+.win::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(ellipse at 50% 38%,transparent 52%,rgba(0,0,0,var(--vig)) 100%)}
+.win::after{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;opacity:var(--grain);mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 .9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
+
+/* tokens per preset (and mode where the preset has both) */
+.win[data-preset="study"][data-mode="light"]{--bg:#E4D8C0;--ink:#2A2118;--muted:#756850;--rule:#C7B896;--accent:#9A5A1B;--spine-s:34%;--spine-l:60%;--spine-ink:#231a10;--fill-d:-14%;--fx:176,120,40}
+.win[data-preset="study"][data-mode="dark"]{--bg:#17120D;--ink:#E8DAB8;--muted:#A08F6C;--rule:#3A2F20;--accent:#E8A64A;--spine-s:30%;--spine-l:28%;--spine-ink:#F1E6C9;--fill-d:12%;--grain:.07;--vig:.45;--fx:255,214,140}
+.win[data-preset="terminal"]{--f-body:"JetBrains Mono",ui-monospace,monospace;--f-display:"JetBrains Mono",ui-monospace,monospace;--dw:600}
+.win[data-preset="terminal"][data-mode="light"]{--bg:#EEF0E6;--ink:#1A241A;--muted:#5C6A5C;--rule:#C5CCB8;--accent:#9A5B00;--spine-s:14%;--spine-l:62%;--spine-ink:#142014;--fill-d:-14%;--grain:.04;--vig:0;--fx:154,91,0}
+.win[data-preset="terminal"][data-mode="dark"]{--bg:#0C0F0D;--ink:#CBE0CF;--muted:#6F8575;--rule:#1F2B23;--accent:#FFB454;--spine-s:14%;--spine-l:24%;--spine-ink:#D8EBDC;--fill-d:12%;--grain:.04;--vig:.3;--fx:255,180,84}
+.win[data-preset="noir"]{--f-display:"Playfair Display",Georgia,serif;--dw:900}
+.win[data-preset="noir"][data-mode="light"]{--bg:#E7E3DB;--ink:#151515;--muted:#66625A;--rule:#BDB8AD;--accent:#B3261E;--spine-s:4%;--spine-l:60%;--spine-ink:#111;--fill-d:-16%;--grain:.14;--fx:60,60,60}
+.win[data-preset="noir"][data-mode="dark"]{--bg:#0F0F10;--ink:#E6E2DA;--muted:#8A867E;--rule:#2A2A2B;--accent:#E0443A;--spine-s:4%;--spine-l:26%;--spine-ink:#EEEAE2;--fill-d:12%;--grain:.14;--vig:.55;--fx:230,226,218}
+.win[data-preset="soft"]{--f-display:"Cormorant Garamond",Georgia,serif;--dw:600}
+.win[data-preset="soft"][data-mode="light"]{--bg:#F0E6EA;--ink:#3A2B35;--muted:#8A7480;--rule:#DCCBD3;--accent:#B05A86;--spine-s:40%;--spine-l:74%;--spine-ink:#3a2b35;--fill-d:-14%;--grain:.05;--vig:.04;--fx:176,90,134}
+.win[data-preset="soft"][data-mode="dark"]{--bg:#221A25;--ink:#EBDDE6;--muted:#A58FA0;--rule:#3C2E40;--accent:#E39AC1;--spine-s:28%;--spine-l:32%;--spine-ink:#F3E8EF;--fill-d:12%;--grain:.05;--vig:.3;--fx:227,154,193}
+.win[data-preset="rain"]{--f-body:"Spectral",Georgia,serif;--f-display:"Spectral",Georgia,serif;--dw:400;
+  --bg:#14191E;--ink:#CAD3DA;--muted:#7B8A96;--rule:#263038;--accent:#8FB0C4;--spine-s:16%;--spine-l:28%;--spine-ink:#DFE7EC;--fill-d:12%;--grain:.08;--vig:.5;--fx:170,200,225}
+.win[data-preset="storm"]{--f-body:"Spectral",Georgia,serif;--f-display:"Playfair Display",Georgia,serif;--dw:700;
+  --bg:#0E0F18;--ink:#D4D6E6;--muted:#7F82A0;--rule:#22243A;--accent:#C9C2FF;--spine-s:18%;--spine-l:25%;--spine-ink:#E6E8F4;--fill-d:12%;--grain:.08;--vig:.6;--fx:190,200,255}
+.win[data-preset="mountain"]{--f-display:"Cormorant Garamond",Georgia,serif;--dw:600}
+.win[data-preset="mountain"][data-mode="light"]{--bg:#E9E8E4;--ink:#141414;--muted:#6A6A66;--rule:#C4C3BE;--accent:#3E5A6B;--spine-s:5%;--spine-l:60%;--spine-ink:#111;--fill-d:-16%;--grain:.08;--vig:.06;--fx:90,100,110}
+.win[data-preset="mountain"][data-mode="dark"]{--bg:#0D0F11;--ink:#E3E5E6;--muted:#868C90;--rule:#25292C;--accent:#8FB3CC;--spine-s:6%;--spine-l:26%;--spine-ink:#EEF0F1;--fill-d:12%;--grain:.08;--vig:.5;--fx:220,230,240}
+
+/* background layers (kind chosen by [background].kind) */
+.bg{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.bg .mtn{display:none;position:absolute;left:0;right:0;bottom:0;width:100%;height:48%}
+#fx{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.flash{position:absolute;inset:0;z-index:0;pointer-events:none;background:var(--accent);opacity:0}
+.flash.on{animation:flash .9s ease-out}
+@keyframes flash{0%{opacity:0}8%{opacity:.16}16%{opacity:.03}26%{opacity:.12}100%{opacity:0}}
+.win[data-bg="lamp-and-shelves"] .bg{background:
+  radial-gradient(60% 55% at 14% 6%,color-mix(in srgb,var(--accent) 24%,transparent),transparent 72%),
+  linear-gradient(to top,color-mix(in srgb,var(--ink) 9%,transparent),transparent 34%)}
+.win[data-bg="lamp-and-shelves"] .bg::after{content:"";position:absolute;left:0;right:0;bottom:0;height:14%;opacity:.75;
+  background:repeating-linear-gradient(90deg,color-mix(in srgb,var(--ink) 16%,transparent) 0 11px,color-mix(in srgb,var(--ink) 6%,transparent) 11px 15px,color-mix(in srgb,var(--ink) 20%,transparent) 15px 28px,transparent 28px 31px)}
+.win[data-bg="grid-scanlines"] .bg{background:
+  repeating-linear-gradient(0deg,color-mix(in srgb,var(--ink) 5%,transparent) 0 1px,transparent 1px 3px),
+  linear-gradient(color-mix(in srgb,var(--accent) 8%,transparent) 1px,transparent 1px) 0 0/100% 28px,
+  linear-gradient(90deg,color-mix(in srgb,var(--accent) 8%,transparent) 1px,transparent 1px) 0 0/28px 100%}
+.win[data-bg="blinds"] .bg{background:repeating-linear-gradient(105deg,transparent 0 44px,color-mix(in srgb,var(--ink) 11%,transparent) 44px 80px);
+  -webkit-mask-image:linear-gradient(to bottom right,#000 15%,transparent 85%);mask-image:linear-gradient(to bottom right,#000 15%,transparent 85%)}
+.win[data-bg="pastel-blobs"] .bg{background:
+  radial-gradient(42% 52% at 14% 20%,color-mix(in srgb,var(--accent) 30%,transparent),transparent 70%),
+  radial-gradient(46% 56% at 88% 78%,color-mix(in srgb,var(--rule) 90%,transparent),transparent 72%),
+  radial-gradient(30% 36% at 70% 8%,color-mix(in srgb,var(--accent) 14%,transparent),transparent 70%)}
+.win[data-bg="fog-gradient"] .bg{background:
+  linear-gradient(to bottom,transparent 35%,color-mix(in srgb,var(--accent) 12%,transparent) 100%),
+  radial-gradient(75% 38% at 50% 100%,color-mix(in srgb,var(--ink) 12%,transparent),transparent)}
+.win[data-bg="storm-clouds"] .bg{background:
+  radial-gradient(60% 46% at 28% 0%,color-mix(in srgb,var(--accent) 22%,transparent),transparent 72%),
+  radial-gradient(52% 40% at 82% 6%,color-mix(in srgb,var(--ink) 12%,transparent),transparent 72%),
+  radial-gradient(70% 30% at 50% 100%,color-mix(in srgb,var(--accent) 10%,transparent),transparent)}
+.win[data-bg="ridges"] .bg{background:linear-gradient(to bottom,color-mix(in srgb,var(--accent) 14%,transparent),transparent 55%)}
+.win[data-bg="ridges"] .bg .mtn{display:block}
+
+.titlebar{position:absolute;inset:0 0 auto 0;height:34px;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 16px;
+  font-size:12px;color:var(--muted);border-bottom:1px solid var(--rule);transition:border-color .6s,color .6s}
+.titlebar b{font-weight:600;color:var(--ink);letter-spacing:.02em}
+.titlebar span:last-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+section.v{position:absolute;inset:34px 0 0 0;z-index:1;display:flex;flex-direction:column}
+.v,.notepop,.bar{transition:color .6s}
+
+/* search + heads */
+.head{display:flex;flex-wrap:wrap;gap:10px 12px;align-items:center;padding:14px 20px 0}
+.seg{display:flex;gap:0}.seg .btn+.btn{margin-left:-1px}.seg .btn[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
+.shelflabel{margin:14px 24px 0;font:500 11px var(--f-ui);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.search{flex:1;min-width:0;background:transparent;border:0;border-bottom:1px solid var(--rule);color:var(--ink);font:400 15px var(--f-ui);padding:8px 2px}
+.search::placeholder{color:var(--muted)}
+.search:focus-visible{outline:none;border-bottom-color:var(--accent)}
+.btn{font:500 13px var(--f-ui);background:transparent;color:var(--ink);border:1px solid var(--rule);padding:7px 11px;border-radius:3px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+kbd{font:500 11px var(--f-mono);padding:1px 5px;border:1px solid var(--rule);border-radius:3px;color:var(--muted)}
+
+/* spines */
+.shelfrow{display:flex;align-items:flex-end;gap:3px;padding:20px 4px 0;overflow-x:auto;border-bottom:7px solid var(--rule);margin:0 20px;scrollbar-width:thin}
+.spine{--k:1;appearance:none;border:0;flex:none;cursor:pointer;position:relative;
+  width:calc(var(--sw)*1px);height:calc(var(--sh)*var(--k)*1px);
+  writing-mode:vertical-rl;text-align:start;padding:12px 0 30px;margin:0;
+  font:600 13px/1 var(--f-ui);letter-spacing:.02em;color:var(--spine-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  border-radius:2px 2px 0 0;
+  background:linear-gradient(to top,hsl(var(--h) calc(var(--spine-s) + 14%) calc(var(--spine-l) + var(--fill-d))) 0 var(--p),hsl(var(--h) var(--spine-s) var(--spine-l)) var(--p) 100%);
+  transition:transform .25s ease,opacity .25s ease}
+.win[data-preset="terminal"] .spine{font-family:var(--f-body);font-size:12px;border-radius:0}
+.spine:hover,.spine:focus-visible{transform:translateY(-12px)}
+.spine.dim{opacity:.2}
+.spine .fmt{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);writing-mode:horizontal-tb;font:600 10px var(--f-mono);letter-spacing:.04em;opacity:.8}
+.strip{display:flex;gap:16px;align-items:center;padding:16px 24px;min-height:112px;margin-top:auto}
+.cover{flex:none;width:58px;height:84px;padding:7px 6px;display:flex;align-items:flex-end;
+  background:linear-gradient(160deg,hsl(var(--h) var(--spine-s) calc(var(--spine-l) + 6%)),hsl(var(--h) var(--spine-s) calc(var(--spine-l) - 8%)));
+  color:var(--spine-ink);font:var(--dw) 9px/1.15 var(--f-display);overflow:hidden;border-radius:1px 3px 3px 1px;box-shadow:inset 3px 0 0 rgba(0,0,0,.18)}
+.strip h3{margin:0;font:var(--dw) 20px/1.15 var(--f-display);text-wrap:balance}
+.strip p{margin:3px 0 0;color:var(--muted);font-size:13px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{font:500 11px var(--f-mono);padding:2px 7px;border:1px solid var(--rule);color:var(--muted);border-radius:2px}
+
+/* library */
+.lib{flex:1;overflow:auto;padding:18px 0 4px;display:flex;flex-direction:column;gap:26px}
+.lib h2{margin:0 24px;font:500 11px var(--f-ui);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.compact .spine{--k:.78}
+
+/* reading */
+.v-read{overflow:hidden}
+.prog{height:2px;background:var(--rule);flex:none}
+.prog i{display:block;height:100%;width:var(--pp,30%);background:var(--accent);transition:background-color .6s}
+.rscroll{flex:1;overflow:auto;padding:30px 24px 90px}
+.col{max-width:35em;margin:0 auto;font:400 19px/1.72 var(--f-body);text-wrap:pretty}
+.col.tech{max-width:42em;font-size:17px}
+.eyebrow{font:500 11px var(--f-ui);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.col h2{margin:0 0 14px;font:var(--dw) 40px/1.05 var(--f-display);letter-spacing:-.01em;text-wrap:balance}
+.tech h2{font-size:30px}
+.art{margin:0 0 24px}
+.art svg{display:block;width:100%;height:auto;max-height:120px}
+.art pre.ascii{margin:0;padding:0;border:0;background:none;color:var(--accent);font:13px/1.25 var(--f-mono)}
+.art figcaption{font:400 11px var(--f-mono);color:var(--muted);margin-top:6px}
+.col p{margin:0 0 1em}
+.prose p:first-of-type::first-letter{float:left;font:var(--dw) 3.1em/.85 var(--f-display);padding:6px 8px 0 0;color:var(--accent)}
+.col ul{padding-left:1.1em;margin:0 0 1em}
+.col li{margin-bottom:.35em}
+.pageno{text-align:center;color:var(--muted);font:400 12px var(--f-ui);margin-top:30px}
+pre{margin:1em 0;padding:14px 16px;border:1px solid var(--rule);overflow-x:auto;font:400 14px/1.6 var(--f-mono);background:color-mix(in srgb,var(--ink) 5%,transparent)}
+pre .k{color:var(--accent);font-weight:600}pre .s{color:var(--muted);font-style:italic}pre .c{color:var(--muted)}
+mark{background:none;color:inherit;cursor:pointer;padding:0}
+mark.user{border-bottom:1.5px solid var(--accent);background:linear-gradient(transparent 58%,color-mix(in srgb,var(--accent) 26%,transparent) 58%)}
+mark.agent{border-bottom:2px dotted var(--accent)}
+mark.agent::after{content:"◆";font-size:.5em;vertical-align:super;color:var(--accent);margin-left:3px}
+mark:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* chapter heading variants (chosen by [chapter].heading) */
+.win[data-head="centered-rule"] .eyebrow,.win[data-head="centered-rule"] .col h2{text-align:center}
+.win[data-head="centered-rule"] .col h2::after{content:"";display:block;width:56px;height:1px;background:var(--accent);margin:16px auto 0}
+.win[data-head="md-prefix"] .col h2{font-size:28px;letter-spacing:0}
+.win[data-head="md-prefix"] .col h2::before{content:"## ";color:var(--accent)}
+.win[data-head="md-prefix"] .eyebrow{text-transform:none;letter-spacing:0;font-family:var(--f-mono)}
+.win[data-head="md-prefix"] .eyebrow::before{content:"// ";color:var(--accent)}
+.win[data-head="md-prefix"] .prose p:first-of-type::first-letter{float:none;font:inherit;padding:0;color:inherit}
+.win[data-head="caps-rule"] .col h2{text-transform:uppercase;letter-spacing:.02em;border-top:3px solid var(--accent);padding-top:12px;font-size:36px}
+.win[data-head="centered-italic"] .eyebrow,.win[data-head="centered-italic"] .col h2{text-align:center}
+.win[data-head="centered-italic"] .col h2{font-style:italic;font-weight:500}
+.win[data-head="left-light"] .col h2{font-weight:400;font-size:38px}
+.win[data-head="left-light"] .eyebrow{letter-spacing:.06em}
+.win[data-head="caps-wide"] .eyebrow,.win[data-head="caps-wide"] .col h2{text-align:center}
+.win[data-head="caps-wide"] .col h2{text-transform:uppercase;letter-spacing:.1em;font-size:30px}
+.win[data-head="caps-center"] .eyebrow,.win[data-head="caps-center"] .col h2{text-align:center}
+.win[data-head="caps-center"] .col h2{text-transform:uppercase;letter-spacing:.2em;font-weight:500;font-size:26px;border-block:1px solid var(--rule);padding:12px 0}
+.win[data-head="caps-center"] .prose p:first-of-type::first-letter{float:none;font:inherit;padding:0;color:inherit}
+
+.bar{position:absolute;left:0;right:0;bottom:0;z-index:3;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;padding:9px 16px;
+  background:linear-gradient(to top,var(--bg) 62%,transparent);font-size:12px;color:var(--muted)}
+.bar button{appearance:none;border:0;background:none;color:var(--muted);font:500 12px var(--f-ui);cursor:pointer;padding:4px 2px;display:inline-flex;gap:6px;align-items:center}
+.bar button:hover{color:var(--ink)}
+.bar button:focus-visible{outline:2px solid var(--accent)}
+.agentline{margin-left:auto;display:flex;gap:8px;align-items:center;font:400 11px var(--f-mono);min-width:0}
+.agentline i{width:7px;height:7px;border-radius:50%;background:var(--accent);flex:none}
+.agentline span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.panel{position:absolute;top:36px;bottom:46px;width:min(268px,82%);z-index:4;background:var(--bg);border:1px solid var(--rule);padding:16px 18px;overflow:auto;
+  visibility:hidden;transition:transform .3s ease,visibility 0s .3s,background-color .6s,color .6s,border-color .6s}
+.panel.l{left:0;transform:translateX(-104%);border-left:0}
+.panel.r{right:0;transform:translateX(104%);border-right:0}
+.panel.open{transform:none;visibility:visible;transition-delay:0s}
+.panel h4{margin:0 0 10px;font:500 11px var(--f-ui);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.panel ol,.panel ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.panel li{padding:6px 0;font-size:13px;border-bottom:1px solid var(--rule)}
+.panel li.now{color:var(--accent);font-weight:600}
+.panel .nt{display:block;width:100%;text-align:left;font:400 13px/1.4 var(--f-ui);background:none;border:0;color:var(--ink);cursor:pointer;padding:0}
+.panel .by{font:500 11px var(--f-mono);color:var(--muted);display:block;margin-bottom:2px}
+.notepop{position:absolute;z-index:5;left:50%;bottom:56px;transform:translateX(-50%);width:min(430px,calc(100% - 32px));
+  background:var(--bg);border:1px solid var(--accent);padding:12px 14px;font-size:13px;line-height:1.5}
+.notepop .by{font:500 11px var(--f-mono);color:var(--accent);display:block;margin-bottom:4px}
+.notepop p{margin:0}
+
+.pal{position:absolute;inset:0;z-index:7;background:rgba(0,0,0,.38);display:flex;justify-content:center;align-items:flex-start;padding:60px 16px 0}
+.palbox{width:min(480px,100%);background:var(--bg);border:1px solid var(--rule);padding:6px}
+.palbox input{width:100%;background:transparent;border:0;border-bottom:1px solid var(--rule);color:var(--ink);font:400 15px var(--f-ui);padding:10px}
+.palbox input:focus-visible{outline:none;border-bottom-color:var(--accent)}
+.palbox ul{list-style:none;margin:0;padding:4px 0;max-height:220px;overflow:auto}
+.palbox li button{appearance:none;width:100%;text-align:left;background:none;border:0;color:var(--ink);font:400 14px var(--f-ui);padding:8px 10px;cursor:pointer;display:flex;justify-content:space-between;gap:12px}
+.palbox li button:hover,.palbox li button:focus-visible{background:color-mix(in srgb,var(--accent) 16%,transparent);outline:none}
+.palbox li span{color:var(--muted);font-size:12px}
+
+/* lite: plain, uses page tokens, no atmosphere */
+.v-lite{position:absolute;inset:0;z-index:8;background:var(--page-surface);color:var(--page-ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;display:flex;flex-direction:column}
+.v-lite .lbar{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:8px 16px;border-bottom:1px solid var(--page-rule);font-size:13px}
+.v-lite .lbar span{color:var(--page-muted)}
+.v-lite .lbtn{font:500 13px system-ui,sans-serif;border:1px solid var(--page-rule);background:transparent;color:var(--page-ink);padding:5px 10px;border-radius:3px;cursor:pointer}
+.v-lite .lbtn:focus-visible{outline:2px solid var(--page-accent)}
+.v-lite article{flex:1;overflow:auto;padding:24px;line-height:1.6;font-size:15px}
+.v-lite article>*{max-width:44em}
+.v-lite h1{font-size:24px;margin:0 0 12px}.v-lite h3{margin:20px 0 6px;font-size:16px}
+.v-lite code{font:13px var(--f-mono)}
+.v-lite pre{background:var(--page-bg);border-color:var(--page-rule);font-size:13px}
+
+@media (max-width:640px){
+  .win{--w:100%!important}
+  .win[data-view="shelf"]{--h:470px}
+  .col h2{font-size:30px}.col{font-size:17px}
+  .agentline{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>vibe-reader, макет интерфейса</h1>
+    <p class="sub">Черновик. Текст и книги взяты как образцы. Пресет атмосферы задаёт <b>цвет, шрифты, фон, частицы, иллюстрацию и заголовок главы</b>; ниже окна виден его профиль в TOML.</p>
+  </header>
+
+  <div class="controls">
+    <div class="group" id="views" role="group" aria-label="Состояние окна">
+      <span class="glabel">Окно</span>
+      <button class="pill" data-v="shelf" aria-pressed="true">Мини-полка</button>
+      <button class="pill" data-v="library" aria-pressed="false">Библиотека</button>
+      <button class="pill" data-v="prose" aria-pressed="false">Чтение: проза</button>
+      <button class="pill" data-v="tech" aria-pressed="false">Чтение: техлит</button>
+      <button class="pill" data-v="lite" aria-pressed="false">Лайт-режим</button>
+    </div>
+    <div class="group" id="presets" role="group" aria-label="Пресет атмосферы">
+      <span class="glabel">Атмосфера</span>
+    </div>
+    <div class="group" id="modes" role="group" aria-label="Вариант пресета">
+      <button class="pill" data-m="light" aria-pressed="true">Светлый</button>
+      <button class="pill" data-m="dark" aria-pressed="false">Тёмный</button>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="win" id="win" data-view="shelf" data-preset="study" data-mode="light" data-bg="lamp-and-shelves" data-head="centered-rule">
+      <div class="bg" id="bg">
+        <svg class="mtn" viewBox="0 0 800 220" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M0 150 L90 96 L150 128 L260 56 L340 118 L430 70 L540 132 L650 84 L800 140 V220 H0Z" style="fill:var(--ink);opacity:.07"/>
+          <path d="M0 176 L110 124 L190 158 L300 98 L400 160 L520 112 L640 168 L800 120 V220 H0Z" style="fill:var(--ink);opacity:.14"/>
+          <path d="M0 204 L130 170 L240 196 L360 150 L480 198 L600 164 L720 196 L800 176 V220 H0Z" style="fill:var(--ink);opacity:.26"/>
+        </svg>
+      </div>
+      <canvas id="fx" aria-hidden="true"></canvas>
+      <div class="flash" id="flash"></div>
+      <div class="titlebar"><b>vibe-reader</b><span id="hint"></span></div>
+
+      <section class="v v-shelf compact" id="v-shelf">
+        <div class="head">
+          <input class="search" id="q1" type="search" placeholder="Поиск по полке" aria-label="Поиск по библиотеке">
+          <button class="btn" data-go="library">Развернуть <kbd>F</kbd></button>
+        </div>
+        <div class="shelflabel">Недавние</div>
+        <div class="shelfrow" id="row-shelf"></div>
+        <div class="strip" id="strip-shelf"></div>
+      </section>
+
+      <section class="v v-library" id="v-library" hidden>
+        <div class="head">
+          <input class="search" id="q2" type="search" placeholder="Поиск по названию, автору, заметкам" aria-label="Поиск по библиотеке">
+          <div class="seg" role="group" aria-label="Группировка"><button class="btn" data-group="shelf" aria-pressed="true">Полки</button><button class="btn" data-group="author" aria-pressed="false">Авторы</button></div>
+          <button class="btn" data-pal>Палитра <kbd>Ctrl K</kbd></button>
+          <button class="btn" data-go="shelf">Свернуть <kbd>F</kbd></button>
+        </div>
+        <div class="lib" id="lib"></div>
+        <div class="strip" id="strip-lib"></div>
+      </section>
+
+      <section class="v v-read" id="v-read" hidden>
+        <div class="prog"><i id="pbar"></i></div>
+        <div class="rscroll"><article class="col" id="col"></article></div>
+        <aside class="panel l" id="p-toc" aria-label="Оглавление"><h4>Оглавление</h4><ol id="toc"></ol></aside>
+        <aside class="panel r" id="p-notes" aria-label="Заметки"><h4>Заметки</h4><ul id="nlist"></ul></aside>
+        <div class="notepop" id="notepop" hidden role="status"></div>
+        <div class="bar">
+          <button data-go="shelf">← Полка <kbd>Esc</kbd></button>
+          <button id="b-toc">Оглавление <kbd>T</kbd></button>
+          <button id="b-notes">Заметки <kbd>N</kbd></button>
+          <button id="b-agent">▶ Команда агента</button>
+          <div class="agentline" aria-live="polite"><i></i><span id="alog">$ vibe-reader context --json</span></div>
+        </div>
+      </section>
+
+      <div class="pal" id="pal" hidden>
+        <div class="palbox" role="dialog" aria-label="Командная палитра">
+          <input id="pq" type="text" placeholder="Открыть книгу…" aria-label="Командная палитра">
+          <ul id="plist"></ul>
+        </div>
+      </div>
+
+      <section class="v-lite" id="v-lite" hidden>
+        <div class="lbar"><div><b>architecture.md</b> <span>· лайт-режим, без библиотеки и атмосферы</span></div><button class="lbtn" id="ladd">Добавить в библиотеку</button></div>
+        <article>
+          <h1>Архитектура vibe-reader</h1>
+          <p>Ядро на Rust. GUI на Tauri, CLI использует то же ядро.</p>
+          <h3>Режимы CLI</h3>
+          <ul><li><code>offline</code>: напрямую с библиотекой</li><li><code>live</code>: через локальный IPC, если GUI запущен</li></ul>
+          <pre><code>$ vibe-reader open architecture.md
+$ vibe-reader context --json</code></pre>
+        </article>
+      </section>
+    </div>
+  </div>
+
+  <details class="cfg" open>
+    <summary>Профиль пресета «<span id="cfg-name"></span>» (TOML)</summary>
+    <p>Агент выбирает пресет по имени и не пишет CSS. Автор пресета может положить рядом CSS-файл.</p>
+    <pre id="cfg"></pre>
+  </details>
+
+  <dl class="notes">
+    <div><dt>Что меняет пресет</dt><dd>Цвета и шрифты, фоновый слой (лампа и полки, сетка, жалюзи, туман, облака, хребты), частицы, иллюстрацию главы и оформление заголовка.</dd></div>
+    <div><dt>Режимы</dt><dd>Дождь и гроза существуют только в тёмном варианте. Пресет сам объявляет, какие режимы поддерживает.</dd></div>
+    <div><dt>Частицы</dt><dd>Рисуются одним лёгким canvas, останавливаются при смене окна на лайт-режим, при скрытой вкладке и при prefers-reduced-motion. Вспышка грозы редкая и слабая.</dd></div>
+    <div><dt>Библиотека</dt><dd>Группируется по вашим полкам или по авторам, статусов «читаю» и «закончил» в виде групп нет. Мини-полка показывает недавние книги.</dd></div>
+    <div><dt>Live-команда агента</dt><dd>Кнопка «Команда агента» в режиме чтения показывает, как смена пресета приходит по IPC.</dd></div>
+  </dl>
+</div>
+
+<script>
+(function(){
+  var P={
+    study:{name:'Кабинет',modes:['light','dark'],display:'Literata',body:'Literata',bg:'lamp-and-shelves',fx:{kind:'dust',count:36,speed:0.2},head:'centered-rule',art:'hills'},
+    terminal:{name:'Терминал',modes:['light','dark'],display:'JetBrains Mono',body:'JetBrains Mono',bg:'grid-scanlines',fx:{kind:'none',count:0,speed:0},head:'md-prefix',art:'ascii'},
+    noir:{name:'Нуар',modes:['light','dark'],display:'Playfair Display',body:'Literata',bg:'blinds',fx:{kind:'dust',count:30,speed:0.12},head:'caps-rule',art:'blinds'},
+    soft:{name:'Мягкий',modes:['light','dark'],display:'Cormorant Garamond',body:'Literata',bg:'pastel-blobs',fx:{kind:'bokeh',count:14,speed:0.1},head:'centered-italic',art:'orbs'},
+    rain:{name:'Дождь, мрачный',modes:['dark'],display:'Spectral',body:'Spectral',bg:'fog-gradient',fx:{kind:'rain',count:110,speed:1},head:'left-light',art:'rain'},
+    storm:{name:'Гроза',modes:['dark'],display:'Playfair Display',body:'Spectral',bg:'storm-clouds',fx:{kind:'storm',count:180,speed:1.6,lightning:true},head:'caps-wide',art:'bolt'},
+    mountain:{name:'Горный нуар',modes:['light','dark'],display:'Cormorant Garamond',body:'Literata',bg:'ridges',fx:{kind:'snow',count:60,speed:0.4},head:'caps-center',art:'ridge'}
+  };
+  var ORDER=['study','terminal','noir','soft','rain','storm','mountain'];
+  var BOOKS=[
+    {id:1,t:'Преступление и наказание',a:'Ф. Достоевский',k:'prose',f:'EPUB',h:12,p:.34,sf:'Классика',r:1,ps:'rain',sh:210,sw:46},
+    {id:2,t:'Дюна',a:'Ф. Герберт',k:'prose',f:'FB2',h:38,p:.62,sf:'Фантастика',r:1,ps:'mountain',sh:190,sw:36},
+    {id:3,t:'The Rust Programming Language',a:'S. Klabnik, C. Nichols',k:'tech',f:'EPUB',h:205,p:.48,sf:'Техническое',r:1,ps:'terminal',sh:225,sw:52},
+    {id:4,t:'Нейромант',a:'У. Гибсон',k:'prose',f:'FB2',h:275,p:.15,sf:'Фантастика',r:1,ps:'noir',sh:170,sw:34},
+    {id:5,t:'Designing Data-Intensive Applications',a:'M. Kleppmann',k:'tech',f:'PDF',h:170,p:.22,sf:'Техническое',r:1,ps:'soft',sh:240,sw:58},
+    {id:6,t:'Дракула',a:'Б. Стокер',k:'prose',f:'EPUB',h:335,p:0,sf:'Классика',r:0,ps:'storm',sh:200,sw:42},
+    {id:7,t:'Большой сон',a:'Р. Чандлер',k:'prose',f:'EPUB',h:20,p:0,sf:'Детективы',r:0,ps:'noir',sh:165,sw:32},
+    {id:8,t:'Мёртвые души',a:'Н. Гоголь',k:'prose',f:'TXT',h:95,p:0,sf:'Классика',r:0,ps:'study',sh:195,sw:44},
+    {id:9,t:'notes/architecture.md',a:'локальный файл',k:'tech',f:'MD',h:150,p:0,sf:'Техническое',r:0,ps:'terminal',sh:140,sw:34},
+    {id:10,t:'Маленький принц',a:'А. де Сент-Экзюпери',k:'prose',f:'EPUB',h:48,p:1,sf:'Классика',r:0,ps:'soft',sh:150,sw:30},
+    {id:11,t:'Война миров',a:'Г. Уэллс',k:'prose',f:'FB2',h:355,p:1,sf:'Фантастика',r:0,ps:'storm',sh:180,sw:36},
+    {id:12,t:'Старик и море',a:'Э. Хемингуэй',k:'prose',f:'EPUB',h:195,p:1,sf:'Классика',r:0,ps:'mountain',sh:160,sw:30},
+    {id:13,t:'Идиот',a:'Ф. Достоевский',k:'prose',f:'EPUB',h:12,p:.8,sf:'Классика',r:0,ps:'rain',sh:185,sw:38},
+    {id:14,t:'Мона Лиза овердрайв',a:'У. Гибсон',k:'prose',f:'FB2',h:275,p:0,sf:'Фантастика',r:0,ps:'noir',sh:175,sw:40},
+    {id:15,t:'Мессия Дюны',a:'Ф. Герберт',k:'prose',f:'FB2',h:38,p:0,sf:'Фантастика',r:0,ps:'mountain',sh:182,sw:36}
+  ];
+  var NOTES={
+    n1:{by:'вы',cls:'user',txt:'Он идёт «как бы в нерешимости» ещё до того, как станет ясно зачем. Запомнить.'},
+    n2:{by:'агент · claude-code',cls:'agent',txt:'Каморка похожа на шкаф. Тот же образ тесноты вернётся в гл. 3. Для атмосферы главы: приглушённая палитра, узкая колонка.'},
+    n3:{by:'агент · claude-code',cls:'agent',txt:'Ключевое правило главы. Если код не компилируется с «moved value», ищите второе использование после перемещения.'},
+    n4:{by:'вы',cls:'user',txt:'Сравнить с move-семантикой в C++.'}
+  };
+  var $=function(s,r){return (r||document).querySelector(s)};
+  var win=$('#win'),cur=BOOKS[0],view='shelf',curPreset='study',curMode='light',si=0;
+  var seq=['noir','storm','soft','rain','terminal','mountain','study'];
+  var hints={shelf:'F — развернуть · Ctrl K — палитра',library:'F — свернуть · Ctrl K — палитра',read:'T — оглавление · N — заметки · Esc — полка',lite:'без библиотеки · без анимаций'};
+  var reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- illustrations (one per preset, chosen by [chapter].illustration) ---------- */
+  function svg(inner){return '<svg viewBox="0 0 600 120" role="img" aria-label="Иллюстрация главы" preserveAspectRatio="xMidYMid slice">'+inner+'</svg>'}
+  var SKY='<rect width="600" height="120" style="fill:var(--rule);opacity:.5"/>';
+  function art(kind){
+    var i,s;
+    if(kind==='hills')return svg(SKY+'<circle cx="470" cy="46" r="22" style="fill:var(--accent)"/><path d="M0 84C90 52 170 96 270 72S450 54 600 82V120H0Z" style="fill:var(--ink);opacity:.38"/><path d="M0 100C110 76 200 112 310 92S500 80 600 98V120H0Z" style="fill:var(--ink);opacity:.82"/>');
+    if(kind==='blinds'){s=SKY+'<circle cx="470" cy="44" r="22" style="fill:var(--accent)"/><path d="M0 98L60 70L110 92L190 58L280 96L360 66L440 100L520 72L600 96V120H0Z" style="fill:var(--ink);opacity:.8"/>';
+      for(i=0;i<9;i++)s+='<rect x="0" y="'+(i*14+6)+'" width="600" height="5" style="fill:var(--bg);opacity:.9"/>';return svg(s)}
+    if(kind==='orbs')return svg(SKY+'<circle cx="120" cy="62" r="42" style="fill:var(--accent);opacity:.25"/><circle cx="300" cy="40" r="26" style="fill:var(--accent);opacity:.35"/><circle cx="480" cy="72" r="50" style="fill:var(--accent);opacity:.2"/><path d="M0 104C140 84 260 112 380 98S540 90 600 102V120H0Z" style="fill:var(--ink);opacity:.35"/>');
+    if(kind==='rain'){s=SKY+'<path d="M0 92L80 82L140 96L230 78L330 94L430 80L520 92L600 84V120H0Z" style="fill:var(--ink);opacity:.7"/>';
+      for(i=0;i<44;i++){var x=(i*53)%600,y=(i*37)%90;s+='<line x1="'+x+'" y1="'+y+'" x2="'+(x-7)+'" y2="'+(y+16)+'" style="stroke:var(--accent);stroke-width:1.2;opacity:.55"/>'}return svg(s)}
+    if(kind==='bolt')return svg('<rect width="600" height="120" style="fill:var(--rule);opacity:.7"/><ellipse cx="170" cy="14" rx="170" ry="30" style="fill:var(--ink);opacity:.5"/><ellipse cx="470" cy="10" rx="190" ry="34" style="fill:var(--ink);opacity:.6"/><polygon points="330,0 300,52 322,52 296,120 372,40 346,40 372,0" style="fill:var(--accent)"/><path d="M0 108L120 98L240 110L360 100L480 110L600 100V120H0Z" style="fill:var(--ink);opacity:.9"/>');
+    if(kind==='ridge')return svg(SKY+'<circle cx="480" cy="30" r="12" style="fill:var(--accent)"/><path d="M0 80L90 40L150 66L260 20L340 62L430 34L540 70L600 50V120H0Z" style="fill:var(--ink);opacity:.25"/><path d="M0 98L110 62L190 84L300 48L400 88L520 58L600 90V120H0Z" style="fill:var(--ink);opacity:.5"/><path d="M0 112L130 90L240 106L360 82L480 108L600 94V120H0Z" style="fill:var(--ink);opacity:.85"/>');
+    return '<pre class="ascii">┌──────────────────────────────────┐\n│ ch:4   ████████░░░░░░░░░   48%   │\n│ $ vibe-reader art add --ch 4     │\n└──────────────────────────────────┘</pre>';
+  }
+  function fillArt(){var el=$('#artslot');if(el)el.innerHTML=art(P[curPreset].art)+'<figcaption>иллюстрация главы · vibe-reader art add --locator ch:1</figcaption>'}
+
+  /* ---------- profile as TOML ---------- */
+  function toml(id){
+    var p=P[id],f=p.fx;
+    return '[preset]\nname = "'+p.name+'"\nmodes = ['+p.modes.map(function(m){return '"'+m+'"'}).join(', ')+']\n\n'+
+    '[type]\ndisplay = "'+p.display+'"\nbody = "'+p.body+'"\n\n'+
+    '[background]\nkind = "'+p.bg+'"\n\n'+
+    '[particles]\nkind = "'+f.kind+'"\n'+(f.count?'count = '+f.count+'\nspeed = '+f.speed+'\n':'')+(f.lightning?'lightning = true  # слабая вспышка, не чаще раза в 6 с\n':'')+'reduced_motion = "off"\n\n'+
+    '[chapter]\nheading = "'+p.head+'"\nillustration = "'+p.art+'"\n\n# presets/'+id+'.css: по желанию, для нестандартной вёрстки';
+  }
+
+  /* ---------- particles: one 2D canvas ---------- */
+  var cv=$('#fx'),ctx=cv.getContext('2d'),parts=[],raf=0,last=0,W=0,H=0,dpr=1,rgb='255,255,255',lightT=0;
+  function size(){
+    dpr=Math.min(window.devicePixelRatio||1,1.5);W=win.clientWidth;H=win.clientHeight;
+    cv.width=Math.max(1,W*dpr);cv.height=Math.max(1,H*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  function rnd(){return Math.random()}
+  function mk(kind,w,h){
+    var s=P[curPreset].fx.speed;
+    if(kind==='rain')return {x:rnd()*(w+40),y:rnd()*h,l:10+rnd()*10,v:(9+rnd()*5)*s};
+    if(kind==='storm')return {x:rnd()*(w+120),y:rnd()*h,l:14+rnd()*14,v:(14+rnd()*8)*s*.8};
+    if(kind==='snow')return {x:rnd()*w,y:rnd()*h,r:1+rnd()*1.8,v:(.4+rnd()*.8)*s*1.5,ph:rnd()*6.3};
+    if(kind==='bokeh')return {x:rnd()*w,y:rnd()*h,r:24+rnd()*44,vx:(rnd()-.5)*s*.6,vy:-s*(.2+rnd()*.4),a:.05+rnd()*.07};
+    return {x:rnd()*w,y:rnd()*h,r:.8+rnd()*1.8,vx:(rnd()-.5)*s,vy:-s*(.15+rnd()*.5),a:.2+rnd()*.35,ph:rnd()*6.3};
+  }
+  function resetFx(){
+    var f=P[curPreset].fx;parts=[];
+    for(var i=0;i<f.count;i++)parts.push(mk(f.kind,W,H));
+    rgb=getComputedStyle(win).getPropertyValue('--fx').trim()||'255,255,255';
+  }
+  function frame(t){
+    raf=requestAnimationFrame(frame);
+    if(t-last<33)return;var dt=Math.min((t-last)/16.7,3);last=t;
+    var kind=P[curPreset].fx.kind,k=view==='read'?.7:1,i,p;
+    ctx.clearRect(0,0,W,H);
+    for(i=0;i<parts.length;i++){p=parts[i];
+      if(kind==='rain'||kind==='storm'){
+        var dx=kind==='storm'?p.v*.32:p.v*.12;p.x-=dx*dt;p.y+=p.v*dt;
+        if(p.y>H+20){p.y=-20;p.x=rnd()*(W+120)}
+        ctx.strokeStyle='rgba('+rgb+','+(kind==='storm'?.34:.26)*k+')';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x+dx*1.4,p.y-p.l);ctx.stroke();
+      }else if(kind==='snow'){
+        p.y+=p.v*dt;p.x+=Math.sin(t/1200+p.ph)*.3*dt;if(p.y>H+4){p.y=-4;p.x=rnd()*W}
+        ctx.fillStyle='rgba('+rgb+','+.55*k+')';ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,6.283);ctx.fill();
+      }else if(kind==='bokeh'){
+        p.x+=p.vx*dt;p.y+=p.vy*dt;if(p.y<-p.r)p.y=H+p.r;if(p.x<-p.r)p.x=W+p.r;if(p.x>W+p.r)p.x=-p.r;
+        ctx.fillStyle='rgba('+rgb+','+p.a*k+')';ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,6.283);ctx.fill();
+      }else{
+        p.x+=p.vx*dt;p.y+=p.vy*dt;if(p.y<-4)p.y=H+4;if(p.x<-4)p.x=W+4;if(p.x>W+4)p.x=-4;
+        ctx.fillStyle='rgba('+rgb+','+p.a*(.6+.4*Math.sin(t/900+p.ph))*k+')';ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,6.283);ctx.fill();
+      }
+    }
+  }
+  function syncFx(){
+    cancelAnimationFrame(raf);raf=0;clearTimeout(lightT);ctx.clearRect(0,0,W,H);
+    if(reduce||document.hidden||view==='lite'||P[curPreset].fx.kind==='none')return;
+    raf=requestAnimationFrame(frame);
+    if(P[curPreset].fx.lightning)scheduleLightning();
+  }
+  function scheduleLightning(){
+    lightT=setTimeout(function(){
+      var f=$('#flash');f.classList.remove('on');void f.offsetWidth;f.classList.add('on');scheduleLightning();
+    },6000+rnd()*8000);
+  }
+  document.addEventListener('visibilitychange',syncFx);
+  if(window.ResizeObserver)new ResizeObserver(function(){size();resetFx();syncFx()}).observe(win);
+
+  /* ---------- preset / mode ---------- */
+  var presetBox=$('#presets');
+  ORDER.forEach(function(k){
+    var b=document.createElement('button');b.className='pill';b.textContent=P[k].name;b.dataset.p=k;b.setAttribute('aria-pressed',k===curPreset);presetBox.appendChild(b);
+  });
+  function setMode(m){
+    curMode=m;win.dataset.mode=m;
+    document.querySelectorAll('#modes .pill').forEach(function(b){b.setAttribute('aria-pressed',b.dataset.m===m)});
+    rgb=getComputedStyle(win).getPropertyValue('--fx').trim()||rgb;
+  }
+  function setPreset(id){
+    curPreset=id;var p=P[id];
+    win.dataset.preset=id;win.dataset.bg=p.bg;win.dataset.head=p.head;
+    presetBox.querySelectorAll('.pill').forEach(function(b){b.setAttribute('aria-pressed',b.dataset.p===id)});
+    document.querySelectorAll('#modes .pill').forEach(function(b){
+      var ok=p.modes.indexOf(b.dataset.m)>=0;b.disabled=!ok;b.title=ok?'':'Этот пресет существует только в тёмном варианте';
+    });
+    setMode(p.modes.indexOf(curMode)>=0?curMode:p.modes[0]);
+    $('#cfg-name').textContent=p.name;$('#cfg').textContent=toml(id);
+    fillArt();resetFx();syncFx();
+  }
+  presetBox.addEventListener('click',function(e){var b=e.target.closest('.pill');if(b)setPreset(b.dataset.p)});
+  $('#modes').addEventListener('click',function(e){var b=e.target.closest('.pill');if(b&&!b.disabled)setMode(b.dataset.m)});
+
+  /* ---------- views ---------- */
+  function setView(v){
+    view=v;win.dataset.view=v;
+    $('#v-shelf').hidden=v!=='shelf';$('#v-library').hidden=v!=='library';$('#v-read').hidden=v!=='read';$('#v-lite').hidden=v!=='lite';
+    $('#hint').textContent=hints[v];
+    var key=v==='read'?cur.k:v;
+    document.querySelectorAll('#views .pill').forEach(function(b){b.setAttribute('aria-pressed',b.dataset.v===key)});
+    $('#pal').hidden=true;syncFx();
+  }
+  $('#views').addEventListener('click',function(e){
+    var b=e.target.closest('.pill');if(!b)return;var v=b.dataset.v;
+    if(v==='prose')openBook(1);else if(v==='tech')openBook(3);else setView(v);
+  });
+  win.addEventListener('click',function(e){var g=e.target.closest('[data-go]');if(g)setView(g.dataset.go);if(e.target.closest('[data-pal]'))openPal()});
+
+  /* ---------- spines ---------- */
+  var shelfSp=[],libSp=[],groupBy='shelf';
+  function spine(b,strip,bucket){
+    var s=document.createElement('button');s.className='spine';s.type='button';
+    s.style.cssText='--h:'+b.h+';--p:'+Math.round(b.p*100)+'%;--sw:'+b.sw+';--sh:'+b.sh;
+    s.setAttribute('aria-label',b.t+', '+b.a+', '+Math.round(b.p*100)+'%');
+    s.dataset.q=(b.t+' '+b.a+' '+b.f).toLowerCase();
+    s.innerHTML='<span>'+b.t+'</span><span class="fmt">'+b.f+'</span>';
+    var show=function(){showStrip(strip,b)};
+    s.addEventListener('mouseenter',show);s.addEventListener('focus',show);
+    s.addEventListener('click',function(){openBook(b.id)});
+    bucket.push(s);return s;
+  }
+  function showStrip(el,b){
+    var pct=Math.round(b.p*100);
+    el.innerHTML='<div class="cover" style="--h:'+b.h+'">'+b.t+'</div><div><h3>'+b.t+'</h3><p>'+b.a+' · '+(b.p===1?'прочитано':pct+'% прочитано')+'</p><div class="chips"><span class="chip">'+b.f+'</span><span class="chip">полка: '+b.sf+'</span><span class="chip">атмосфера: '+P[b.ps].name+'</span><span class="chip">'+(b.k==='prose'?'страницы':'скролл')+'</span></div></div>';
+  }
+  var rs=$('#row-shelf');
+  BOOKS.filter(function(b){return b.r}).forEach(function(b){rs.appendChild(spine(b,$('#strip-shelf'),shelfSp))});
+  showStrip($('#strip-shelf'),BOOKS[0]);
+  var lib=$('#lib'),fq='';
+  function renderLib(){
+    lib.innerHTML='';libSp.length=0;
+    var groups={},names=[];
+    BOOKS.forEach(function(b){var g=groupBy==='shelf'?b.sf:b.a;if(!groups[g]){groups[g]=[];names.push(g)}groups[g].push(b)});
+    if(groupBy==='author')names.sort(function(a,b){return a.localeCompare(b,'ru')});
+    names.forEach(function(g){
+      var h=document.createElement('h2');h.textContent=g+' · '+groups[g].length;
+      var row=document.createElement('div');row.className='shelfrow';
+      groups[g].forEach(function(b){row.appendChild(spine(b,$('#strip-lib'),libSp))});
+      lib.appendChild(h);lib.appendChild(row);
+    });
+    filter(fq);
+  }
+  function filter(v){
+    fq=v;v=v.toLowerCase().trim();
+    shelfSp.concat(libSp).forEach(function(s){s.classList.toggle('dim',!!v&&s.dataset.q.indexOf(v)<0)});
+  }
+  renderLib();
+  showStrip($('#strip-lib'),BOOKS[2]);
+  document.querySelectorAll('[data-group]').forEach(function(b){b.addEventListener('click',function(){
+    groupBy=b.dataset.group;
+    document.querySelectorAll('[data-group]').forEach(function(x){x.setAttribute('aria-pressed',x===b)});
+    renderLib()})});
+  ['#q1','#q2'].forEach(function(id){$(id).addEventListener('input',function(e){
+    $('#q1').value=$('#q2').value=e.target.value;filter(e.target.value)})});
+
+  /* ---------- reading ---------- */
+  var PROSE='<p class="eyebrow">Часть первая · I</p><h2>Начало июля</h2><figure class="art" id="artslot"></figure>'+
+  '<div class="prose"><p>В начале июля, в чрезвычайно жаркое время, под вечер, один молодой человек вышел из своей каморки, которую нанимал от жильцов в С—м переулке, на улицу и медленно, <mark class="user" tabindex="0" data-n="n1">как бы в нерешимости</mark>, отправился к К—ну мосту.</p>'+
+  '<p>Он благополучно избегнул встречи с своею хозяйкой на лестнице. Каморка его приходилась под самою кровлей высокого пятиэтажного дома и походила <mark class="agent" tabindex="0" data-n="n2">более на шкаф, чем на квартиру</mark>. Квартирная же хозяйка его, у которой он нанимал эту каморку с обедом и прислугой, помещалась одною лестницей ниже, в отдельной квартире, и каждый раз, при выходе на улицу, ему непременно надо было проходить мимо хозяйкиной кухни, почти всегда настежь отворенной на лестницу.</p>'+
+  '<p>И каждый раз молодой человек, проходя мимо, чувствовал какое-то болезненное и трусливое ощущение, которого стыдился и от которого морщился.</p></div><p class="pageno">стр. 12 из 41</p>';
+  var TECH='<p class="eyebrow">Раздел 4.1 · образец</p><h2>Владение значением</h2><figure class="art" id="artslot"></figure>'+
+  '<p>У каждого значения есть <mark class="agent" tabindex="0" data-n="n3">ровно один владелец</mark>. Когда владелец выходит из области видимости, значение удаляется.</p><ul><li>Присваивание не копирует значение: оно <mark class="user" tabindex="0" data-n="n4">перемещается</mark>.</li><li>После перемещения старое имя использовать нельзя.</li><li>Копируются только типы с трейтом <code>Copy</code>.</li></ul>'+
+  '<pre><code><span class="k">fn</span> main() {\n    <span class="k">let</span> s1 = String::from(<span class="s">"hello"</span>);\n    <span class="k">let</span> s2 = s1;          <span class="c">// значение перемещено в s2</span>\n    println!(<span class="s">"{s1}"</span>);     <span class="c">// ошибка: borrow of moved value</span>\n}</code></pre><p class="pageno">48%</p>';
+  var TOC={prose:['Часть первая','I. Начало июля','II. Трактир','III. Сон'],tech:['4. Понимание владения','4.1 Владение значением','4.2 Ссылки и заимствование','4.3 Срезы']};
+  function openBook(id){
+    cur=BOOKS.filter(function(b){return b.id===id})[0];
+    var col=$('#col');col.className='col '+cur.k;col.innerHTML=cur.k==='prose'?PROSE:TECH;
+    setPreset(cur.ps);
+    $('#pbar').style.setProperty('--pp',Math.max(3,Math.round(cur.p*100))+'%');
+    $('#toc').innerHTML=TOC[cur.k].map(function(x,i){return '<li'+(i===1?' class="now"':'')+'>'+x+'</li>'}).join('');
+    var ids=cur.k==='prose'?['n1','n2']:['n3','n4'];
+    $('#nlist').innerHTML=ids.map(function(n){return '<li><span class="by">'+(NOTES[n].cls==='agent'?'◆ ':'')+NOTES[n].by+'</span><button class="nt" data-n="'+n+'">'+NOTES[n].txt+'</button></li>'}).join('');
+    $('#p-toc').classList.remove('open');$('#p-notes').classList.remove('open');$('#notepop').hidden=true;
+    setView('read');
+  }
+  function showNote(n){
+    var o=NOTES[n],p=$('#notepop');
+    p.innerHTML='<span class="by">'+(o.cls==='agent'?'◆ ':'')+o.by+'</span><p>'+o.txt+'</p>';p.hidden=false;
+  }
+  $('#v-read').addEventListener('click',function(e){
+    var m=e.target.closest('mark,.nt');
+    if(m){showNote(m.dataset.n);return}
+    if(!e.target.closest('#notepop'))$('#notepop').hidden=true;
+  });
+  $('#v-read').addEventListener('keydown',function(e){if((e.key==='Enter'||e.key===' ')&&e.target.matches('mark')){e.preventDefault();showNote(e.target.dataset.n)}});
+  function toggle(id){$(id).classList.toggle('open')}
+  $('#b-toc').addEventListener('click',function(){toggle('#p-toc')});
+  $('#b-notes').addEventListener('click',function(){toggle('#p-notes')});
+  $('#b-agent').addEventListener('click',function(){
+    var p=seq[si++%seq.length];setPreset(p);
+    $('#alog').textContent='$ vibe-reader atmosphere set --chapter 1 --preset '+p+'  → ok · live';
+  });
+
+  /* ---------- palette ---------- */
+  function openPal(){$('#pal').hidden=false;$('#pq').value='';renderPal('');$('#pq').focus()}
+  function renderPal(q){
+    q=q.toLowerCase();
+    $('#plist').innerHTML=BOOKS.filter(function(b){return !q||(b.t+' '+b.a).toLowerCase().indexOf(q)>=0}).map(function(b){
+      return '<li><button type="button" data-id="'+b.id+'">'+b.t+'<span>'+b.f+' · '+P[b.ps].name+'</span></button></li>'}).join('');
+  }
+  $('#pq').addEventListener('input',function(e){renderPal(e.target.value)});
+  $('#pq').addEventListener('keydown',function(e){if(e.key==='Enter'){var b=$('#plist button');if(b)openBook(+b.dataset.id)}});
+  $('#plist').addEventListener('click',function(e){var b=e.target.closest('button');if(b)openBook(+b.dataset.id)});
+  $('#pal').addEventListener('click',function(e){if(e.target===$('#pal'))$('#pal').hidden=true});
+
+  $('#ladd').addEventListener('click',function(e){e.target.textContent='Добавлено в библиотеку';e.target.disabled=true});
+
+  document.addEventListener('keydown',function(e){
+    var typing=/INPUT|TEXTAREA/.test(document.activeElement.tagName);
+    if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'&&view!=='lite'){e.preventDefault();openPal();return}
+    if(e.key==='Escape'){if(!$('#pal').hidden){$('#pal').hidden=true;return}if(view==='read')setView('shelf');return}
+    if(typing)return;
+    var k=e.key.toLowerCase();
+    if(view==='read'){if(k==='t')toggle('#p-toc');if(k==='n')toggle('#p-notes')}
+    else if(k==='f'&&(view==='shelf'||view==='library'))setView(view==='shelf'?'library':'shelf');
+  });
+
+  size();setPreset('study');setView('shelf');
+})();
+</script>
