@@ -4,11 +4,10 @@
 .bg, #fx, .fx-overlay { position: absolute; inset: 0; pointer-events: none; }
 .bg { z-index: 0; background-size: cover; background-position: center; }
 #fx { z-index: 1; width: 100%; height: 100%; }
-.reader .viewport { z-index: 2; }
-.fx-overlay { z-index: 3; }
-.reader-bar, .reader-foot { z-index: 4; }
-.reader[data-preset]:not([data-preset=""]) .frame { background: var(--scrim, transparent); box-shadow: 0 0 60px 30px var(--scrim, transparent); }
-.reader[data-layout="scroll"][data-preset]:not([data-preset=""]) .page { background: var(--scrim, transparent); box-shadow: 0 0 60px 30px var(--scrim, transparent); }
+.reader .reader-body { position: relative; z-index: 2; }
+.fx-overlay { z-index: 1; }
+.reader-bar { position: relative; z-index: 4; }
+
 
 /* Backgrounds, drawn with gradients so they need no image files. */
 .reader[data-bg="lamp"] .bg {

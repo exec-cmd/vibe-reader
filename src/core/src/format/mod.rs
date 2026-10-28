@@ -111,14 +111,14 @@ impl Kind {
     }
 }
 
-#[derive(Debug, Clone, Default, Serialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Meta {
     pub title: String,
     pub authors: Vec<String>,
     pub language: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TocEntry {
     pub title: String,
     /// Zero-based chapter index.
@@ -132,7 +132,7 @@ pub struct TocEntry {
     pub offset: usize,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Chapter {
     pub title: String,
     /// Path of the chapter file inside the book, used to resolve links between chapters.
@@ -141,7 +141,7 @@ pub struct Chapter {
     pub text: String,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Document {
     pub format: Format,
     pub kind: Kind,
@@ -167,7 +167,11 @@ impl Document {
     /// Fills empty titles and the table of contents for formats without one.
     fn finish(mut self, path: &Path) -> Self {
         if self.meta.title.trim().is_empty() {
-            self.meta.title = stem(path);
+            let (title, authors) = title_from_file(&stem(path));
+            self.meta.title = title;
+            if self.meta.authors.is_empty() {
+                self.meta.authors = authors;
+            }
         }
         for (i, chapter) in self.chapters.iter_mut().enumerate() {
             if chapter.title.trim().is_empty() {
@@ -218,6 +222,45 @@ fn looks_technical(chapters: &[Chapter]) -> bool {
     chapters.iter().map(|c| c.html.matches("<pre").count()).sum::<usize>() >= 5
 }
 
+/// Title and authors from a file name like `Title (Author One, Author Two) (site.org, other.net)`.
+/// Trailing groups that name download sites are dropped; a last group of names becomes the authors.
+pub fn title_from_file(stem: &str) -> (String, Vec<String>) {
+    let mut rest = stem.trim().replace(" (auth.)", "").replace("(auth.)", "");
+    let group = regex::Regex::new(r"\s*\(([^()]*)\)\s*$").expect("valid regex");
+    let site = regex::Regex::new(r"\w\.(?:[a-z]{2,6})\b").expect("valid regex");
+    let mut authors = Vec::new();
+    while let Some(c) = group.captures(&rest) {
+        let inner = c[1].trim().to_owned();
+        let start = c.get(0).expect("whole match").start();
+        let numeric = inner.chars().all(|c| c.is_ascii_digit());
+        if site.is_match(&inner) || inner.is_empty() || numeric || inner.contains("etc.") && inner.len() < 12 {
+            rest.truncate(start);
+            continue;
+        }
+        let names = inner.chars().any(char::is_alphabetic) && !inner.chars().any(|c| c.is_ascii_digit());
+        if names && authors.is_empty() && start > 0 {
+            authors = inner
+                .split([',', ';'])
+                .map(|a| {
+                    a.trim()
+                        .trim_end_matches("(auth.)")
+                        .trim()
+                        .trim_end_matches("etc.")
+                        .trim()
+                        .to_owned()
+                })
+                .filter(|a| !a.is_empty())
+                .collect();
+            rest.truncate(start);
+        }
+        break;
+    }
+    // "ТеорияВероятностей" and "Linear_Algebra" read as words.
+    let camel = regex::Regex::new(r"(\p{Ll})(\p{Lu})").expect("valid regex");
+    let title = camel.replace_all(&rest.replace('_', " "), "$1 $2").trim().to_owned();
+    (if title.is_empty() { stem.to_owned() } else { title }, authors)
+}
+
 pub fn stem(path: &Path) -> String {
     path.file_stem()
         .map(|s| s.to_string_lossy().into_owned())
@@ -265,6 +308,17 @@ pub fn resource(path: &Path, name: &str) -> Result<Option<Vec<u8>>> {
     }
 }
 
+/// The book's own cover image and its MIME type, for EPUB and FB2. PDF covers are drawn by the window.
+pub fn cover(path: &Path) -> Result<Option<(Vec<u8>, String)>> {
+    match Format::detect(path) {
+        #[cfg(feature = "epub")]
+        Some(Format::Epub) => epub::cover(path),
+        #[cfg(feature = "fb2")]
+        Some(Format::Fb2) => fb2::cover(path),
+        _ => Ok(None),
+    }
+}
+
 /// Decodes text that is UTF-8 (with or without BOM) or, failing that, Windows-1251.
 // shortcut: the fallback guesses Windows-1251, the common legacy encoding of Russian books; add detection if other encodings show up.
 pub fn decode(bytes: &[u8]) -> String {
@@ -284,6 +338,44 @@ mod tests {
         let (bytes, _, _) = encoding_rs::WINDOWS_1251.encode("Привет");
         assert_eq!(decode(&bytes), "Привет");
         assert_eq!(decode("\u{feff}Да".as_bytes()), "Да");
+    }
+
+    #[test]
+    fn titles_from_file_names() {
+        assert_eq!(
+            title_from_file("Naive Set Theory (Paul R. Halmos) (z-library.sk, 1lib.sk, z-lib.sk)"),
+            ("Naive Set Theory".to_owned(), vec!["Paul R. Halmos".to_owned()])
+        );
+        assert_eq!(
+            title_from_file("Метод координат (Гельфанд Израиль Моисеевич etc.) (z-library.sk, 1lib.sk, z-lib.sk)"),
+            (
+                "Метод координат".to_owned(),
+                vec!["Гельфанд Израиль Моисеевич".to_owned()]
+            )
+        );
+        assert_eq!(
+            title_from_file("Rust в действии ( etc.) (z-library.sk, 1lib.sk, z-lib.sk)").0,
+            "Rust в действии"
+        );
+        assert_eq!(title_from_file("Матан"), ("Матан".to_owned(), vec![]));
+        assert_eq!(
+            title_from_file("ЗадачиПоЛинейнойАлгебре").0,
+            "Задачи По Линейной Алгебре"
+        );
+        assert_eq!(
+            title_from_file(
+                "Complex Numbers from A to ... Z, 2nd Edition (Titu Andreescu, Dorin Andrica (auth.)) (z-library.sk, 1lib.sk, z-lib.sk)"
+            ),
+            (
+                "Complex Numbers from A to ... Z, 2nd Edition".to_owned(),
+                vec!["Titu Andreescu".to_owned(), "Dorin Andrica".to_owned()]
+            )
+        );
+        assert_eq!(
+            title_from_file("Грокаем алгоритмы. 2-е изд. (Адитья Бхаргава) (z-library.sk, 1lib.sk, z-lib.sk)(1)").1,
+            ["Адитья Бхаргава"]
+        );
+        assert_eq!(title_from_file("Go идиомы, 2-е изд (Джон Боднер)").1, ["Джон Боднер"]);
     }
 
     #[test]

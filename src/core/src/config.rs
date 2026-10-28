@@ -22,7 +22,54 @@ pub const FONTS: &[&str] = &[
 pub struct Config {
     pub reader: Reader,
     pub typography: Typography,
+    pub library: LibraryView,
+    pub pdf: Pdf,
     pub agent: Agent,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct LibraryView {
+    /// Grouping of the shelf view: `shelf`, `author`, `format`, `status` or `none`.
+    pub group: String,
+    /// `recent`, `title`, `author`, `progress` or `added`.
+    pub sort: String,
+    /// Open the library in the compact window.
+    pub start_mini: bool,
+    /// Keep a copy of imported files in the library folder.
+    pub copy_on_import: bool,
+}
+
+impl Default for LibraryView {
+    fn default() -> Self {
+        Self {
+            group: "shelf".into(),
+            sort: "recent".into(),
+            start_mini: false,
+            copy_on_import: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Pdf {
+    /// `spread` (two pages), `single` or `scroll`.
+    pub layout: String,
+    /// `page` fits the whole page, `width` fits the width.
+    pub fit: String,
+    /// Darken pages in dark mode.
+    pub invert_dark: bool,
+}
+
+impl Default for Pdf {
+    fn default() -> Self {
+        Self {
+            layout: "spread".into(),
+            fit: "page".into(),
+            invert_dark: true,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -37,6 +84,10 @@ pub struct Reader {
     pub vim: bool,
     /// Turn off particles and transitions regardless of the system setting.
     pub reduce_motion: bool,
+    /// Layout of reflowable books: `spread` (two pages when wide), `pages` or `scroll`.
+    pub layout: String,
+    /// Particles and light effects of atmospheres.
+    pub particles: bool,
 }
 
 impl Default for Reader {
@@ -47,6 +98,8 @@ impl Default for Reader {
             mode: "auto".into(),
             vim: false,
             reduce_motion: false,
+            layout: "spread".into(),
+            particles: true,
         }
     }
 }

@@ -23,6 +23,25 @@ pub fn serve(app: &AppHandle, overrides: &Path, path: &str) -> Reply {
     if rel == "book" {
         return open_file(app);
     }
+    // Library files by id, for drawing PDF covers; only books in the library are reachable.
+    if let Some(id) = rel.strip_prefix("file/").and_then(|id| id.parse::<i64>().ok()) {
+        let path = crate::app_state(app).lib.lock().unwrap().book(id).map(|b| b.path);
+        return match path.ok().and_then(|p| fs::read(&p).ok().map(|bytes| (bytes, p))) {
+            Some((bytes, p)) => reply(bytes, mime(&p.to_string_lossy())),
+            None => status(StatusCode::NOT_FOUND),
+        };
+    }
+    if let Some(id) = rel.strip_prefix("cover/").and_then(|id| id.parse::<i64>().ok()) {
+        return match crate::state::cover_bytes(&crate::app_state(app), id) {
+            Some(bytes) => {
+                let mime = vibe_reader_core::image::image_type(&bytes)
+                    .map(vibe_reader_core::image::mime)
+                    .unwrap_or("image/jpeg");
+                reply(bytes, mime)
+            }
+            None => status(StatusCode::NOT_FOUND),
+        };
+    }
     if let Some(name) = rel.strip_prefix("res/") {
         return book_resource(app, name);
     }

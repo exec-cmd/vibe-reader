@@ -319,6 +319,26 @@ fn image(tag: &quick_xml::events::BytesStart, html: &mut String) {
     }
 }
 
+/// The image named in `<coverpage>`.
+pub fn cover(path: &Path) -> Result<Option<(Vec<u8>, String)>> {
+    let xml = source(path)?;
+    let Some(at) = xml.find("<coverpage>") else {
+        return Ok(None);
+    };
+    let Some(id) = Regex::new(r##"href="#([^"]+)""##)?
+        .captures(&xml[at..])
+        .map(|c| c[1].to_owned())
+    else {
+        return Ok(None);
+    };
+    let mime = if id.ends_with(".png") {
+        "image/png"
+    } else {
+        "image/jpeg"
+    };
+    Ok(resource(path, &id)?.map(|bytes| (bytes, mime.to_owned())))
+}
+
 /// Decodes the `<binary>` with this id.
 pub fn resource(path: &Path, name: &str) -> Result<Option<Vec<u8>>> {
     let xml = source(path)?;
@@ -365,7 +385,7 @@ mod tests {
     const BOOK: &str = r##"<?xml version="1.0" encoding="utf-8"?>
 <FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink">
 <description><title-info><author><first-name>Фёдор</first-name><last-name>Достоевский</last-name></author>
-<book-title>Преступление и наказание</book-title><lang>ru</lang></title-info></description>
+<book-title>Преступление и наказание</book-title><lang>ru</lang><coverpage><image l:href="#pic.png"/></coverpage></title-info></description>
 <body><title><p>Преступление и наказание</p></title>
 <section><title><p>Часть первая</p><p>I</p></title>
 <epigraph><p>Эпиграф</p></epigraph>

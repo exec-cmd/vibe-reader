@@ -92,6 +92,17 @@ fn main() -> anyhow::Result<()> {
             state::report_state,
             state::atmosphere,
             state::refresh_open,
+            state::update_book,
+            state::remove_book,
+            state::reset_position,
+            state::create_shelf,
+            state::rename_shelf,
+            state::delete_shelf,
+            state::presets,
+            state::book_preset,
+            state::set_book_preset,
+            state::set_cover,
+            state::search_book,
         ])
         .setup(move |app| {
             assets::watch(app.handle().clone(), paths.ui_overrides());

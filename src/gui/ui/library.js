@@ -1,155 +1,584 @@
-// Home screen: the mini shelf with recent books and the full library grouped by shelves or authors.
+// Library: sidebar with sections and shelves, shelves of spines, details of the selected book,
+// book menus and dialogs, and the mini window.
 
-import { $, call, commands, escapeHtml, fail, state } from "./core.js";
+import { $, call, commands, escapeHtml, fail, saveConfig, state } from "./core.js";
 import { t } from "./i18n.js";
+import { pdfCover } from "./pdfcover.js";
+import { ask, confirmAction, dialog, icon, menu, paintIcons, select, toast } from "./ui.js";
 
 /** @typedef {import("./core.js").Book} Book */
 
 /** @type {Book[]} */
 let books = [];
-/** Book id to cover art file. @type {Record<string, string>} */
-let covers = {};
-let grouping = "shelf";
+/** @type {{id: number, name: string, books: number}[]} */
+let shelves = [];
+/** @type {{id: string, name: string, description: string, modes: string[], spine: string | null}[]} */
+let presets = [];
 let query = "";
-/** @type {Book | null} */
-let active = null;
+/** `all`, `reading`, `unread`, `finished`, `dropped`, `shelf:<name>` or `author:<name>`. */
+let filter = "all";
+/** @type {number | null} */
+let selected = null;
+let allAuthors = false;
+
 /** Set by app.js: opens a book in the reader. @type {(id: number) => void} */
 export let onOpen = () => {};
 export const setOnOpen = (/** @type {(id: number) => void} */ fn) => (onOpen = fn);
+export const allBooks = () => books;
 
 const home = () => $("#home");
 
 export async function refresh() {
-  ({ books, covers } = await call("library"));
+  ({ books, shelves } = await call("library"));
+  if (!presets.length) presets = await call("presets").catch(() => []);
   render();
 }
 
-export function setMode(/** @type {"shelf" | "library"} */ mode) {
-  home().dataset.mode = mode;
-  $("#expand").setAttribute("aria-pressed", String(mode === "library"));
-}
-
-export const toggleMode = () => setMode(home().dataset.mode === "shelf" ? "library" : "shelf");
+// ---------- helpers ----------
 
 const percent = (/** @type {number} */ p) => `${Math.round(p * 100)}%`;
 
-/** Spine size follows the book: height by length, width by chapter count. */
+function surname(/** @type {string} */ name) {
+  const parts = name.trim().split(/\s+/);
+  // "Гельфанд И.М." keeps the first word; "Charles Petzold" keeps the last.
+  return parts.length > 1 && /\./.test(parts.slice(1).join("")) ? parts[0] : parts.at(-1) ?? "";
+}
+
+/** Gilt on dark cloth, dark ink on light cloth. */
+function stampFor(/** @type {string} */ hex) {
+  const h = hex.replace("#", "");
+  const full = h.length === 3 ? [...h].map((c) => c + c).join("") : h;
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16) / 255);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.55 ? "#2a241c" : "#dcbd6c";
+}
+
+function matches(/** @type {Book} */ b) {
+  const q = query.trim().toLowerCase();
+  if (q && !b.title.toLowerCase().includes(q) && !b.authors.some((a) => a.toLowerCase().includes(q))) return false;
+  if (filter === "all") return true;
+  if (["reading", "unread", "finished", "dropped"].includes(filter)) return b.status === filter;
+  if (filter.startsWith("shelf:")) return b.shelves.includes(filter.slice(6));
+  if (filter.startsWith("author:")) return b.authors.includes(filter.slice(7));
+  return true;
+}
+
+const SORTS = {
+  recent: (a, b) => (b.opened_at ?? 0) - (a.opened_at ?? 0) || b.added_at - a.added_at,
+  title: (a, b) => a.title.localeCompare(b.title),
+  author: (a, b) => (a.authors[0] ?? "￿").localeCompare(b.authors[0] ?? "￿") || a.title.localeCompare(b.title),
+  progress: (a, b) => b.progress - a.progress,
+  added: (a, b) => b.added_at - a.added_at,
+};
+
+function visible() {
+  return books.filter(matches).sort(SORTS[state.config.library.sort] ?? SORTS.recent);
+}
+
+// ---------- render ----------
+
+function render() {
+  renderSidebar();
+  renderStacks();
+  renderDetails();
+}
+
+function sideItem(/** @type {string} */ key, /** @type {string} */ iconName, /** @type {string} */ label, /** @type {number} */ count) {
+  const b = document.createElement("button");
+  b.className = "side-item";
+  b.dataset.filter = key;
+  b.setAttribute("aria-current", String(filter === key));
+  b.innerHTML = `${icon(/** @type {any} */ (iconName), 17)}<span class="name"></span><span class="count">${count}</span>`;
+  b.querySelector(".name").textContent = label;
+  b.addEventListener("click", () => {
+    filter = key;
+    render();
+  });
+  return b;
+}
+
+function renderSidebar() {
+  const side = $("#sidebar");
+  side.replaceChildren();
+  const count = (/** @type {(b: Book) => boolean} */ f) => books.filter(f).length;
+  side.insertAdjacentHTML("beforeend", `<div class="side-head">${t("library")}</div>`);
+  side.append(
+    sideItem("all", "books", t("allBooks"), books.length),
+    sideItem("reading", "bookOpen", t("reading"), count((b) => b.status === "reading")),
+    sideItem("unread", "circle", t("unread"), count((b) => b.status === "unread")),
+    sideItem("finished", "done", t("finished"), count((b) => b.status === "finished")),
+    sideItem("dropped", "drop", t("dropped"), count((b) => b.status === "dropped")),
+  );
+
+  const head = document.createElement("div");
+  head.className = "side-head";
+  head.innerHTML = `<span>${t("shelves")}</span><button class="icon-btn" title="${escapeHtml(t("newShelf"))}">${icon("plus", 16)}</button>`;
+  head.querySelector("button").addEventListener("click", () => newShelf());
+  side.append(head);
+  for (const shelf of shelves) {
+    const item = sideItem(`shelf:${shelf.name}`, "shelf", shelf.name, shelf.books);
+    item.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      menu({ x: e.clientX, y: e.clientY }, shelfMenu(shelf.name));
+    });
+    // Spines can be dropped onto a shelf.
+    item.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      item.classList.add("drop-target");
+    });
+    item.addEventListener("dragleave", () => item.classList.remove("drop-target"));
+    item.addEventListener("drop", async (e) => {
+      e.preventDefault();
+      item.classList.remove("drop-target");
+      const id = Number(e.dataTransfer.getData("text/x-book"));
+      if (id) await shelve(id, shelf.name, true);
+    });
+    side.append(item);
+  }
+  if (!shelves.length) {
+    const hint = document.createElement("button");
+    hint.className = "side-more";
+    hint.textContent = t("createFirstShelf");
+    hint.addEventListener("click", () => newShelf());
+    side.append(hint);
+  }
+
+  /** @type {Map<string, number>} */
+  const authors = new Map();
+  for (const b of books) for (const a of b.authors) authors.set(a, (authors.get(a) ?? 0) + 1);
+  if (authors.size) {
+    side.insertAdjacentHTML("beforeend", `<div class="side-head">${t("authors")}</div>`);
+    const list = [...authors].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+    for (const [name, n] of allAuthors ? list : list.slice(0, 10)) side.append(sideItem(`author:${name}`, "user", name, n));
+    if (list.length > 10) {
+      const more = document.createElement("button");
+      more.className = "side-more";
+      more.textContent = allAuthors ? t("showLess") : t("showAllAuthors", { n: list.length });
+      more.addEventListener("click", () => {
+        allAuthors = !allAuthors;
+        renderSidebar();
+      });
+      side.append(more);
+    }
+  }
+}
+
 function spine(/** @type {Book} */ book) {
   const el = document.createElement("button");
   el.className = `spine ${book.status}`;
   el.dataset.id = String(book.id);
-  const h = Math.round(150 + Math.min(110, Math.log10(Math.max(book.words, 1000)) * 40 - 110));
-  const w = Math.round(26 + Math.min(26, Math.sqrt(book.words / 4000)));
-  el.style.cssText = `--spine:${book.color};--h:${h}px;--w:${w}px;--fill:${book.progress}`;
-  el.innerHTML = `<span class="t">${escapeHtml(book.title)}</span>`;
-  el.title = [book.title, book.authors.join(", ")].filter(Boolean).join(" — ");
-  el.addEventListener("mouseenter", () => select(book));
-  el.addEventListener("focus", () => select(book));
-  el.addEventListener("click", () => onOpen(book.id));
+  el.draggable = true;
+  // Height follows the length of the book, thickness its size.
+  const size = Math.max(book.words, 2000);
+  const h = Math.round(176 + Math.min(84, Math.log2(size / 2000) * 12));
+  const w = Math.round(30 + Math.min(30, Math.sqrt(size / 3500)));
+  el.style.cssText = `--cloth:${book.color};--stamp:${stampFor(book.color)};--h:${h}px;--w:${w}px`;
+  const author = book.authors[0] ? surname(book.authors[0]) : "";
+  el.innerHTML = `<span class="t"></span><span class="a"></span>${book.status === "reading" && book.progress < 1 ? `<span class="ribbon"></span>` : ""}`;
+  el.querySelector(".t").textContent = book.title;
+  el.querySelector(".a").textContent = author;
+  el.title = [book.title, book.authors.join(", "), percent(book.progress)].filter(Boolean).join("\n");
+  el.setAttribute("aria-selected", String(book.id === selected));
+  el.addEventListener("click", () => selectBook(book.id));
+  el.addEventListener("dblclick", () => onOpen(book.id));
+  el.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    selectBook(book.id);
+    menu({ x: e.clientX, y: e.clientY }, bookMenu(book));
+  });
+  el.addEventListener("dragstart", (e) => {
+    e.dataTransfer.setData("text/x-book", String(book.id));
+    el.classList.add("dragging");
+  });
+  el.addEventListener("dragend", () => el.classList.remove("dragging"));
   return el;
 }
 
-function group(/** @type {string} */ title, /** @type {Book[]} */ list, cls = "") {
+function stack(/** @type {string} */ title, /** @type {Book[]} */ list, cls = "") {
   const section = document.createElement("section");
-  section.className = `group ${cls}`;
-  section.innerHTML = `<h3 class="group-title">${escapeHtml(title)}</h3><div class="shelf"></div>`;
-  const shelf = /** @type {HTMLElement} */ (section.lastElementChild);
-  for (const book of list) shelf.append(spine(book));
+  section.className = `stack ${cls}`;
+  section.innerHTML = `<div class="stack-head"><h3></h3><span class="count">${list.length}</span></div><div class="rows"></div>`;
+  section.querySelector("h3").textContent = title;
+  /** @type {any} */ (section).spines = list.map(spine);
   return section;
 }
 
-function visible() {
-  const q = query.trim().toLowerCase();
-  if (!q) return books;
-  return books.filter((b) => b.title.toLowerCase().includes(q) || b.authors.some((a) => a.toLowerCase().includes(q)));
+/** Splits each stack into rows that fit the width, so every row stands on its own board. */
+function shelveRows() {
+  const root = $("#shelves");
+  const width = root.clientWidth - 2 * parseFloat(getComputedStyle(root).paddingLeft) - 28;
+  const mini = document.body.dataset.mini === "1";
+  for (const section of root.querySelectorAll(".stack")) {
+    const spines = /** @type {any} */ (section).spines;
+    if (!spines) continue;
+    const rows = section.querySelector(".rows");
+    rows.replaceChildren();
+    let row = null;
+    let used = 0;
+    for (const el of spines) {
+      const w = parseFloat(el.style.getPropertyValue("--w")) + 2;
+      if (!row || (!mini && used + w > width)) {
+        row = document.createElement("div");
+        row.className = "shelf";
+        rows.append(row);
+        used = 0;
+      }
+      row.append(el);
+      used += w;
+    }
+  }
 }
 
-function render() {
+function groupKeys(/** @type {Book} */ b) {
+  switch (state.config.library.group) {
+    case "shelf": return b.shelves.length ? b.shelves : [t("noShelf")];
+    case "author": return b.authors.length ? b.authors : [t("noAuthor")];
+    case "format": return [b.format.toUpperCase()];
+    case "status": return [t(b.status)];
+    default: return [""];
+  }
+}
+
+function renderStacks() {
   const root = $("#shelves");
   root.replaceChildren();
   const list = visible();
   if (!books.length) {
-    root.innerHTML = `<div class="empty"><h2>${t("emptyTitle")}</h2><p>${escapeHtml(t("emptyText"))}</p></div>`;
-    $("#card").replaceChildren();
+    root.innerHTML = `<div class="empty">${icon("books", 40)}<h2>${t("emptyTitle")}</h2><p>${escapeHtml(t("emptyText"))}</p>
+      <button class="btn primary" id="empty-add">${icon("import", 16)}${t("addBooks")}</button></div>`;
+    $("#empty-add").addEventListener("click", () => /** @type {any} */ (window).vibe.pickFiles());
     return;
   }
-  root.append(group(t("recent"), list.slice(0, 16), "recent"));
+  // Mini mode shows one shelf: recently opened books and where to continue.
+  const recent = [...books].sort(SORTS.recent).slice(0, 24);
+  const last = recent.find((b) => b.opened_at);
+  const cont = document.createElement("div");
+  cont.className = "continue";
+  if (last) {
+    cont.innerHTML = `<span>${t("continueReading")}</span><b></b><span>${percent(last.progress)}</span>`;
+    cont.querySelector("b").textContent = last.title;
+    cont.style.cursor = "pointer";
+    cont.addEventListener("click", () => onOpen(last.id));
+  }
+  root.append(cont, stack(t("recent"), recent, "recent"));
+
+  if (!list.length) {
+    shelveRows();
+    root.insertAdjacentHTML("beforeend", `<div class="empty"><p>${escapeHtml(t("nothingFound"))}</p></div>`);
+    return;
+  }
   /** @type {Map<string, Book[]>} */
   const groups = new Map();
-  for (const book of list) {
-    const keys = grouping === "shelf" ? book.shelves : book.authors;
-    for (const key of keys.length ? keys : [""]) {
+  for (const b of list) {
+    for (const key of groupKeys(b)) {
       if (!groups.has(key)) groups.set(key, []);
-      groups.get(key).push(book);
+      groups.get(key).push(b);
     }
   }
-  const empty = grouping === "shelf" ? t("noShelf") : t("noAuthor");
-  const names = [...groups.keys()].sort((a, b) => (a === "" ? 1 : b === "" ? -1 : a.localeCompare(b)));
-  for (const name of names) root.append(group(name || empty, groups.get(name)));
-  for (const btn of $("#grouping").children) btn.setAttribute("aria-pressed", String(btn.dataset.group === grouping));
-  select(active && list.includes(active) ? active : list[0] ?? null);
+  const tail = [t("noShelf"), t("noAuthor")];
+  const names = [...groups.keys()].sort((a, b) => (tail.includes(a) ? 1 : tail.includes(b) ? -1 : a.localeCompare(b)));
+  const heading = filterTitle();
+  for (const name of names) root.append(stack(name || heading, groups.get(name)));
+  shelveRows();
 }
 
-function select(/** @type {Book | null} */ book) {
-  active = book;
+function filterTitle() {
+  if (filter.startsWith("shelf:")) return filter.slice(6);
+  if (filter.startsWith("author:")) return filter.slice(7);
+  return filter === "all" ? t("allBooks") : t(filter);
+}
+
+// ---------- details ----------
+
+function coverHtml(/** @type {Book} */ book) {
+  return `<div class="cover" style="--cloth:${book.color};--stamp:${stampFor(book.color)}"><span>${escapeHtml(book.title)}</span><small>${escapeHtml(book.authors[0] ?? "")}</small></div>`;
+}
+
+function renderDetails() {
   const card = $("#card");
-  for (const el of document.querySelectorAll(".spine.active")) el.classList.remove("active");
-  if (!book) return card.replaceChildren();
-  for (const el of document.querySelectorAll(`.spine[data-id="${book.id}"]`)) el.classList.add("active");
-  const started = book.progress > 0;
-  card.style.setProperty("--spine", book.color);
-  card.innerHTML = `
-    ${covers[book.id]
-      ? `<div class="cover art"><img alt="" src="/art/${encodeURIComponent(covers[book.id])}"></div>`
-      : `<div class="cover"><span>${escapeHtml(book.title)}</span><small>${escapeHtml(book.authors[0] ?? book.format)}</small></div>`}
-    <div>
-      <h2>${escapeHtml(book.title)}</h2>
-      <div class="meta">${escapeHtml(book.authors.join(", "))}</div>
-      <div class="chips">
-        <span class="chip">${book.format.toUpperCase()}</span>
-        <span class="chip">${t(book.status)}</span>
-        <span class="chip">${t("progressOf", { percent: percent(book.progress) })}</span>
-        <span class="chip">${t("words", { n: book.words.toLocaleString() })}</span>
-        ${book.shelves.map((s) => `<span class="chip">${escapeHtml(s)}</span>`).join("")}
-      </div>
-      <div class="actions">
-        <button class="btn" data-act="open">${t(started ? "continue" : "read")}</button>
-        ${book.status === "finished" || book.status === "dropped"
-          ? `<button class="btn quiet" data-act="reading">${t("markReading")}</button>`
-          : `<button class="btn quiet" data-act="finished">${t("markFinished")}</button><button class="btn quiet" data-act="dropped">${t("markDropped")}</button>`}
-      </div>
-    </div>`;
-  card.querySelector('[data-act="open"]').addEventListener("click", () => onOpen(book.id));
-  for (const btn of card.querySelectorAll("[data-act]:not([data-act=open])")) {
-    btn.addEventListener("click", () =>
-      call("set_status", { id: book.id, status: btn.dataset.act }).then(refresh).catch(fail),
-    );
+  const book = books.find((b) => b.id === selected) ?? null;
+  if (!book) {
+    card.innerHTML = `<p class="details-empty">${t("selectBook")}</p>`;
+    return;
   }
+  const date = (/** @type {number | null} */ s) => (s ? new Date(s * 1000).toLocaleDateString() : "—");
+  const pages = book.format === "pdf" ? t("pagesN", { n: book.chapter_chars.length }) : t("chaptersN", { n: book.chapter_chars.length });
+  card.innerHTML = `
+    <div class="cover-slot">${coverHtml(book)}</div>
+    <h2></h2>
+    <div class="by"></div>
+    <div class="meter"><span class="bar"><i style="width:${percent(book.progress)}"></i></span><span>${percent(book.progress)}</span></div>
+    <div class="actions">
+      <button class="btn primary" data-act="open">${icon("bookOpen", 16)}${t(book.progress > 0 ? "continue" : "read")}</button>
+      <button class="btn" data-act="edit" title="${escapeHtml(t("editDetails"))}">${icon("edit", 16)}</button>
+      <button class="btn" data-act="more" title="${escapeHtml(t("more"))}">${icon("more", 16)}</button>
+    </div>
+    <dl class="facts">
+      <dt>${t("status")}</dt><dd><button class="select-btn boxed" data-act="status"><span class="select-value"></span>${icon("chevronDown", 14)}</button></dd>
+      <dt>${t("atmosphere")}</dt><dd><button class="select-btn boxed" data-act="look"><span class="select-value">…</span>${icon("chevronDown", 14)}</button></dd>
+      <dt>${t("shelves")}</dt><dd><div class="chips" data-act="chips"></div></dd>
+      <dt>${t("format")}</dt><dd>${book.format.toUpperCase()}, ${pages}</dd>
+      <dt>${t("length")}</dt><dd>${t("words", { n: book.words.toLocaleString() })}</dd>
+      <dt>${t("added")}</dt><dd>${date(book.added_at)}</dd>
+      <dt>${t("opened")}</dt><dd>${date(book.opened_at)}</dd>
+    </dl>
+    <div class="path"></div>`;
+  card.querySelector("h2").textContent = book.title;
+  card.querySelector(".by").textContent = book.authors.join(", ") || t("noAuthor");
+  card.querySelector(".path").textContent = book.path;
+  card.querySelector('[data-act="open"]').addEventListener("click", () => onOpen(book.id));
+  card.querySelector('[data-act="edit"]').addEventListener("click", () => editBook(book));
+  const more = /** @type {HTMLElement} */ (card.querySelector('[data-act="more"]'));
+  more.addEventListener("click", () => menu(more, bookMenu(book), { align: "end" }));
+
+  const statuses = ["unread", "reading", "finished", "dropped"].map((s) => ({ value: s, label: t(s) }));
+  select(/** @type {HTMLElement} */ (card.querySelector('[data-act="status"]')), statuses, book.status, (s) => setStatus(book, s));
+
+  const lookBtn = /** @type {HTMLElement} */ (card.querySelector('[data-act="look"]'));
+  call("book_preset", { id: book.id }).then((current) => {
+    const options = [{ value: "", label: t("defaultPreset") }, ...presets.map((p) => ({ value: p.id, label: p.name }))];
+    select(lookBtn, options, current ?? "", (id) => setPreset(book, id || null));
+  }).catch(fail);
+
+  const chips = card.querySelector('[data-act="chips"]');
+  for (const name of book.shelves) {
+    const chip = document.createElement("span");
+    chip.className = "chip";
+    chip.innerHTML = `<span></span><button title="${escapeHtml(t("removeFromShelf"))}">${icon("close", 12)}</button>`;
+    chip.firstElementChild.textContent = name;
+    chip.querySelector("button").addEventListener("click", () => shelve(book.id, name, false));
+    chips.append(chip);
+  }
+  const add = document.createElement("button");
+  add.className = "chip add";
+  add.textContent = t("addToShelf");
+  add.addEventListener("click", () => menu(add, shelvesMenu(book)));
+  chips.append(add);
+
+  loadCover(book, /** @type {HTMLElement} */ (card.querySelector(".cover-slot")));
+}
+
+/** Shows the cover image when there is one; PDFs get their first page drawn once. */
+function loadCover(/** @type {Book} */ book, /** @type {HTMLElement} */ slot) {
+  const img = new Image();
+  img.alt = "";
+  img.onload = () => {
+    if (selected !== book.id) return;
+    slot.innerHTML = `<div class="cover image"></div>`;
+    slot.firstElementChild.append(img);
+  };
+  img.onerror = async () => {
+    if (book.format !== "pdf" || img.dataset.tried) return;
+    img.dataset.tried = "1";
+    if (await pdfCover(book.id)) img.src = `/cover/${book.id}?${Date.now()}`;
+  };
+  img.src = `/cover/${book.id}?v=${book.opened_at ?? 0}`;
+}
+
+export function selectBook(/** @type {number | null} */ id) {
+  selected = id;
+  for (const el of document.querySelectorAll(".spine")) el.setAttribute("aria-selected", String(Number(el.dataset.id) === id));
+  renderDetails();
+}
+
+// ---------- actions ----------
+
+async function setStatus(/** @type {Book} */ book, /** @type {string} */ status) {
+  await call("set_status", { id: book.id, status }).catch(fail);
+  await refresh();
+}
+
+async function setPreset(/** @type {Book} */ book, /** @type {string | null} */ preset) {
+  await call("set_book_preset", { id: book.id, preset }).catch(fail);
+  await refresh();
+}
+
+async function shelve(/** @type {number} */ id, /** @type {string} */ shelf, /** @type {boolean} */ on) {
+  await call("shelve", { shelf, id, on }).catch(fail);
+  await refresh();
+}
+
+async function newShelf(/** @type {number | null} */ forBook = null) {
+  const name = await ask(t("newShelf"), t("shelfName"));
+  if (!name) return;
+  try {
+    await call("create_shelf", { name });
+    if (forBook) await call("shelve", { shelf: name, id: forBook, on: true });
+    filter = forBook ? filter : `shelf:${name}`;
+    await refresh();
+  } catch (e) {
+    fail(e);
+  }
+}
+
+function shelfMenu(/** @type {string} */ name) {
+  return [
+    { label: t("rename"), icon: "edit", run: async () => {
+      const to = await ask(t("renameShelf"), t("shelfName"), name);
+      if (!to || to === name) return;
+      await call("rename_shelf", { from: name, to }).catch(fail);
+      if (filter === `shelf:${name}`) filter = `shelf:${to}`;
+      await refresh();
+    } },
+    { separator: true },
+    { label: t("deleteShelf"), icon: "trash", danger: true, run: async () => {
+      if (!(await confirmAction(t("deleteShelf"), t("deleteShelfText", { name }), t("delete")))) return;
+      await call("delete_shelf", { name }).catch(fail);
+      if (filter === `shelf:${name}`) filter = "all";
+      await refresh();
+    } },
+  ];
+}
+
+function shelvesMenu(/** @type {Book} */ book) {
+  return [
+    ...shelves.map((s) => ({ label: s.name, checked: book.shelves.includes(s.name), run: () => shelve(book.id, s.name, !book.shelves.includes(s.name)) })),
+    ...(shelves.length ? [{ separator: true }] : []),
+    { label: t("newShelf"), icon: "plus", run: () => newShelf(book.id) },
+  ];
+}
+
+/** Everything that can be done with a book; shared by the context menu and the details panel. */
+function bookMenu(/** @type {Book} */ book) {
+  return [
+    { label: t(book.progress > 0 ? "continue" : "read"), icon: "bookOpen", hint: "Enter", run: () => onOpen(book.id) },
+    { label: t("editDetails"), icon: "edit", hint: "F2", run: () => editBook(book) },
+    { separator: true },
+    { label: t("shelves"), icon: "shelf", items: shelvesMenu(book) },
+    { label: t("status"), icon: "circle", items: ["unread", "reading", "finished", "dropped"].map((s) => ({ label: t(s), checked: book.status === s, run: () => setStatus(book, s) })) },
+    { label: t("atmosphere"), icon: "sparkle", items: [{ label: t("defaultPreset"), run: () => setPreset(book, null) }, ...presets.map((p) => ({ label: p.name, run: () => setPreset(book, p.id) }))] },
+    { label: t("changeCover"), icon: "image", run: () => chooseCover(book) },
+    { label: t("resetProgress"), icon: "rotate", disabled: !book.position, run: async () => {
+      if (!(await confirmAction(t("resetProgress"), t("resetProgressText"), t("reset"), false))) return;
+      await call("reset_position", { id: book.id }).catch(fail);
+      await refresh();
+    } },
+    { label: t("copyPath"), icon: "copy", run: () => navigator.clipboard.writeText(book.path).then(() => toast(t("copied"))) },
+    { separator: true },
+    { label: t("removeBook"), icon: "trash", hint: "Del", danger: true, run: () => removeBook(book) },
+  ];
+}
+
+async function chooseCover(/** @type {Book} */ book) {
+  const path = await window.__TAURI__.dialog.open({ filters: [{ name: t("images"), extensions: ["png", "jpg", "jpeg", "webp", "gif", "svg"] }] });
+  if (!path) return;
+  await call("set_cover", { id: book.id, path, bytes: null }).catch(fail);
+  renderDetails();
+}
+
+async function removeBook(/** @type {Book} */ book) {
+  const ok = await confirmAction(t("removeBook"), t("removeBookText", { title: book.title }), t("remove"));
+  if (!ok) return;
+  await call("remove_book", { id: book.id }).catch(fail);
+  if (selected === book.id) selected = null;
+  toast(t("removed", { title: book.title }));
+  await refresh();
+}
+
+async function editBook(/** @type {Book} */ book) {
+  const body = document.createElement("div");
+  body.innerHTML = `
+    <label class="field"><span>${t("title")}</span><input class="input" name="title"></label>
+    <label class="field"><span>${t("authorsComma")}</span><input class="input" name="authors"></label>
+    <div class="field"><span>${t("cover")}</span><div class="row-actions">
+      <button class="btn" data-act="cover">${icon("image", 16)}${t("changeCover")}</button></div></div>`;
+  /** @type {HTMLInputElement} */ (body.querySelector('[name="title"]')).value = book.title;
+  /** @type {HTMLInputElement} */ (body.querySelector('[name="authors"]')).value = book.authors.join(", ");
+  body.querySelector('[data-act="cover"]').addEventListener("click", () => chooseCover(book));
+  const { action } = await dialog({ title: t("editDetails"), body, actions: [{ id: "save", label: t("save"), primary: true }] });
+  if (action !== "save") return;
+  const title = /** @type {HTMLInputElement} */ (body.querySelector('[name="title"]')).value;
+  const authors = /** @type {HTMLInputElement} */ (body.querySelector('[name="authors"]')).value.split(",");
+  try {
+    await call("update_book", { id: book.id, title, authors });
+    await refresh();
+  } catch (e) {
+    fail(e);
+  }
+}
+
+// ---------- mini window ----------
+
+const win = () => window.__TAURI__.window.getCurrentWindow();
+
+export async function setMini(/** @type {boolean} */ on) {
+  const was = document.body.dataset.mini === "1";
+  if (was === on) return;
+  document.body.dataset.mini = on ? "1" : "0";
+  shelveRows();
+  $("#mini-toggle").innerHTML = icon(on ? "expand" : "shrink");
+  $("#mini-toggle").title = t(on ? "fullLibrary" : "miniMode");
+  try {
+    const w = win();
+    const { LogicalSize } = window.__TAURI__.dpi;
+    if (on) {
+      const size = await w.innerSize();
+      const scale = devicePixelRatio || 1;
+      localStorage.setItem("vr-size", JSON.stringify([size.width / scale, size.height / scale]));
+      await w.setMinSize(new LogicalSize(420, 300));
+      await w.setSize(new LogicalSize(760, 340));
+    } else {
+      const [width, height] = JSON.parse(localStorage.getItem("vr-size") || "[1180, 800]");
+      await w.setMinSize(new LogicalSize(640, 420));
+      await w.setSize(new LogicalSize(Math.max(width, 900), Math.max(height, 600)));
+    }
+  } catch (e) {
+    console.warn("window resize", e);
+  }
+}
+
+export const toggleMini = () => setMini(document.body.dataset.mini !== "1");
+
+// ---------- keyboard ----------
+
+/** Arrow keys walk the spines, Enter opens, Delete removes, F2 edits. */
+export function onKey(/** @type {KeyboardEvent} */ e) {
+  const spines = [...document.querySelectorAll(document.body.dataset.mini === "1" ? ".recent .spine" : ".stack:not(.recent) .spine")];
+  const ids = spines.map((s) => Number(/** @type {HTMLElement} */ (s).dataset.id));
+  const at = ids.indexOf(selected ?? -1);
+  const book = books.find((b) => b.id === selected);
+  const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+  if (step && ids.length) {
+    const next = ids[Math.max(0, Math.min(ids.length - 1, at < 0 ? 0 : at + step))];
+    selectBook(next);
+    /** @type {HTMLElement} */ (spines[ids.indexOf(next)]).focus();
+    return true;
+  }
+  if (!book) return false;
+  if (e.key === "Enter") onOpen(book.id);
+  else if (e.key === "Delete") removeBook(book);
+  else if (e.key === "F2") editBook(book);
+  else return false;
+  return true;
 }
 
 export function init() {
   const search = /** @type {HTMLInputElement} */ ($("#search"));
   search.addEventListener("input", () => {
     query = search.value;
-    render();
+    renderStacks();
   });
   search.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && visible()[0]) onOpen(visible()[0].id);
-    if (e.key === "Escape") search.blur();
+    if (e.key === "Escape") {
+      search.value = query = "";
+      search.blur();
+      renderStacks();
+    }
   });
-  for (const btn of $("#grouping").children) {
-    btn.addEventListener("click", () => {
-      grouping = btn.dataset.group;
-      setMode("library");
-      render();
-    });
-  }
-  $("#expand").addEventListener("click", toggleMode);
-  commands.set("library", { label: () => t("cmdLibrary"), run: () => app().goHome(), when: () => !state.lite });
+  const lib = state.config.library;
+  const groupOptions = ["shelf", "author", "format", "status", "none"].map((g) => ({ value: g, label: t(`group_${g}`) }));
+  const sortOptions = ["recent", "title", "author", "progress", "added"].map((s) => ({ value: s, label: t(`sort_${s}`) }));
+  const bindSelects = () => {
+    select($("#group-by"), groupOptions, lib.group, (v) => ((lib.group = v), saveConfig(), bindSelects(), renderStacks()));
+    select($("#sort-by"), sortOptions, lib.sort, (v) => ((lib.sort = v), saveConfig(), bindSelects(), renderStacks()));
+  };
+  bindSelects();
+  $("#mini-toggle").addEventListener("click", toggleMini);
+  $("#toggle-sidebar").addEventListener("click", () => {
+    const off = home().dataset.sidebar === "off";
+    home().dataset.sidebar = off ? "on" : "off";
+  });
+  new ResizeObserver(() => shelveRows()).observe($("#shelves"));
+  paintIcons(home());
+  commands.set("mini", { label: () => t("miniMode"), run: toggleMini, when: () => state.view === "home", key: "M" });
 }
-
-/** Lazy access to app.js to avoid an import cycle at load time. */
-const app = () => /** @type {any} */ (window).vibe;
-
-/** Books for the palette. */
-export const allBooks = () => books;

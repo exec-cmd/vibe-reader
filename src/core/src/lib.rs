@@ -4,6 +4,7 @@ pub mod atmosphere;
 pub mod config;
 pub mod excerpt;
 pub mod format;
+pub mod image;
 pub mod ipc;
 pub mod locator;
 pub mod paths;

@@ -19,9 +19,9 @@ use crate::{Locator, Paths};
 
 const MIGRATIONS: &[&str] = &[include_str!("../../migrations/001_init.sql")];
 
-/// Spine colors for books without an atmosphere; picked by a hash of the title.
+/// Bookcloth colors for spines of books without an atmosphere; picked by a hash of the title.
 const SPINE_COLORS: &[&str] = &[
-    "#7a3e30", "#2e4052", "#b08040", "#4f6146", "#6b3f5e", "#8c5a3c", "#3c5a6b", "#9a4a3a", "#5a5240", "#384a3a",
+    "#2e5b4f", "#6e2f2f", "#26395a", "#8a6a2c", "#4a5560", "#5a3a52", "#2f6266", "#3b3b38", "#55623a", "#7a4428",
 ];
 
 pub fn now() -> i64 {
@@ -157,11 +157,25 @@ impl Library {
 
     /// Adds a book by path, or returns the existing entry for the same file. `copy` stores a copy in the data folder.
     pub fn add(&self, file: &Path, copy: bool) -> Result<(Book, bool)> {
+        if let Some(book) = self.find_file(file)? {
+            return Ok((book, false));
+        }
+        let doc = format::open(file)?;
+        self.add_parsed(file, doc, copy)
+    }
+
+    /// The library entry for a file, if it is already there.
+    pub fn find_file(&self, file: &Path) -> Result<Option<Book>> {
+        let file = fs::canonicalize(file).with_context(|| format!("no such file: {}", file.display()))?;
+        self.book_by_path(&file)
+    }
+
+    /// Adds a file parsed beforehand with [`format::open`], so callers can parse without holding a lock.
+    pub fn add_parsed(&self, file: &Path, doc: Document, copy: bool) -> Result<(Book, bool)> {
         let mut file = fs::canonicalize(file).with_context(|| format!("no such file: {}", file.display()))?;
         if let Some(book) = self.book_by_path(&file)? {
             return Ok((book, false));
         }
-        let doc = format::open(&file)?;
         if copy {
             let target = self.unique_copy_path(&file)?;
             fs::copy(&file, &target)?;
@@ -194,7 +208,14 @@ impl Library {
                 now(),
             ],
         )?;
-        Ok((self.book(self.conn.last_insert_rowid())?, true))
+        let book = self.book(self.conn.last_insert_rowid())?;
+        write_cache(
+            &self.paths.data.join("cache").join(format!("{}.json", book.id)),
+            size,
+            mtime,
+            &doc,
+        );
+        Ok((book, true))
     }
 
     fn unique_copy_path(&self, file: &Path) -> Result<PathBuf> {
@@ -214,6 +235,7 @@ impl Library {
     pub fn remove(&self, id: i64) -> Result<Book> {
         let book = self.book(id)?;
         self.conn.execute("DELETE FROM books WHERE id = ?1", [id])?;
+        let _ = fs::remove_file(self.paths.data.join("cache").join(format!("{id}.json")));
         if book.copied {
             let _ = fs::remove_file(&book.path);
         }
@@ -280,28 +302,27 @@ impl Library {
         rows.map(|r| Ok(r?)).collect()
     }
 
-    /// Parses the book file, refreshing stored counts when the file changed since it was added.
+    /// The parsed book, from the cache when the file is unchanged. A changed file is parsed
+    /// again and its stored counts are refreshed.
     pub fn document(&self, book: &Book) -> Result<Document> {
-        let doc = format::open(&book.path)?;
         let (size, mtime) = file_stamp(&book.path)?;
-        let stored: (i64, i64) = self.conn.query_row(
-            "SELECT file_size, file_mtime FROM books WHERE id = ?1",
-            [book.id],
-            |r| Ok((r.get(0)?, r.get(1)?)),
-        )?;
-        if stored != (size, mtime) {
-            self.conn.execute(
-                "UPDATE books SET chars = ?2, words = ?3, chapter_chars = ?4, file_size = ?5, file_mtime = ?6 WHERE id = ?1",
-                params![
-                    book.id,
-                    doc.chapter_chars().iter().sum::<usize>(),
-                    doc.words(),
-                    serde_json::to_string(&doc.chapter_chars())?,
-                    size,
-                    mtime
-                ],
-            )?;
+        let cache = self.paths.data.join("cache").join(format!("{}.json", book.id));
+        if let Some(doc) = read_cache(&cache, size, mtime) {
+            return Ok(doc);
         }
+        let doc = format::open(&book.path)?;
+        self.conn.execute(
+            "UPDATE books SET chars = ?2, words = ?3, chapter_chars = ?4, file_size = ?5, file_mtime = ?6 WHERE id = ?1",
+            params![
+                book.id,
+                doc.chapter_chars().iter().sum::<usize>(),
+                doc.words(),
+                serde_json::to_string(&doc.chapter_chars())?,
+                size,
+                mtime
+            ],
+        )?;
+        write_cache(&cache, size, mtime, &doc);
         Ok(doc)
     }
 
@@ -310,6 +331,25 @@ impl Library {
             "UPDATE books SET status = ?2 WHERE id = ?1",
             params![id, status.as_str()],
         )?;
+        Ok(())
+    }
+
+    /// Corrects the title and authors shown in the library.
+    pub fn update_meta(&self, id: i64, title: &str, authors: &[String]) -> Result<()> {
+        let title = title.trim();
+        if title.is_empty() {
+            bail!("title is empty");
+        }
+        self.conn.execute(
+            "UPDATE books SET title = ?2, authors = ?3 WHERE id = ?1",
+            params![id, title, serde_json::to_string(authors)?],
+        )?;
+        Ok(())
+    }
+
+    /// Forgets the reader's position; the book starts from the beginning.
+    pub fn reset_position(&self, id: i64) -> Result<()> {
+        self.conn.execute("DELETE FROM positions WHERE book_id = ?1", [id])?;
         Ok(())
     }
 
@@ -460,6 +500,40 @@ fn book_from_row(r: &Row) -> rusqlite::Result<Book> {
     Ok(book)
 }
 
+/// Bumped when the parsed form of books changes, so old caches are ignored.
+const CACHE_VERSION: u32 = 1;
+
+#[derive(Serialize, serde::Deserialize)]
+struct Cached<D> {
+    version: u32,
+    size: i64,
+    mtime: i64,
+    doc: D,
+}
+
+fn read_cache(file: &Path, size: i64, mtime: i64) -> Option<Document> {
+    let cached: Cached<Document> = serde_json::from_slice(&fs::read(file).ok()?).ok()?;
+    (cached.version == CACHE_VERSION && cached.size == size && cached.mtime == mtime).then_some(cached.doc)
+}
+
+/// Best effort: a cache that cannot be written only costs time on the next open.
+fn write_cache(file: &Path, size: i64, mtime: i64, doc: &Document) {
+    let Some(dir) = file.parent() else { return };
+    let _ = fs::create_dir_all(dir);
+    let cached = Cached {
+        version: CACHE_VERSION,
+        size,
+        mtime,
+        doc,
+    };
+    if let Ok(bytes) = serde_json::to_vec(&cached) {
+        let tmp = file.with_extension("tmp");
+        if fs::write(&tmp, bytes).is_ok() {
+            let _ = fs::rename(tmp, file);
+        }
+    }
+}
+
 fn file_stamp(path: &Path) -> Result<(i64, i64)> {
     let meta = fs::metadata(path).with_context(|| format!("cannot read {}", path.display()))?;
     let mtime = meta
@@ -511,6 +585,10 @@ pub(crate) mod tests {
         assert_eq!(library.shelf_books("Русская классика").unwrap().len(), 1);
         library.delete_shelf("Русская классика").unwrap();
         assert!(library.book(book.id).unwrap().shelves.is_empty());
+
+        library.update_meta(book.id, "Новое имя", &["Автор".into()]).unwrap();
+        assert_eq!(library.book(book.id).unwrap().authors, ["Автор"]);
+        assert!(library.update_meta(book.id, " ", &[]).is_err());
 
         library.touch(book.id).unwrap();
         assert_eq!(library.current().unwrap().unwrap().status, Status::Reading);

@@ -47,6 +47,11 @@ impl Paths {
         self.data.join("art")
     }
 
+    /// Cover thumbnails cached or chosen for the library.
+    pub fn covers(&self) -> PathBuf {
+        self.data.join("covers")
+    }
+
     pub fn config_file(&self) -> PathBuf {
         self.config.join("config.toml")
     }

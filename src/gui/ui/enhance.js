@@ -3,7 +3,7 @@
 // data-wrap so offsets.js keeps counting the book's own text.
 
 import { t } from "./i18n.js";
-import { toast } from "./core.js";
+import { toast } from "./ui.js";
 
 /** @param {HTMLElement} root */
 export function enhance(root) {
@@ -52,7 +52,7 @@ export function enhance(root) {
 
 function zoom(/** @type {string} */ src) {
   const layer = document.createElement("div");
-  layer.className = "zoom";
+  layer.className = "zoom-layer";
   layer.innerHTML = `<img alt="">`;
   /** @type {HTMLImageElement} */ (layer.firstElementChild).src = src;
   const close = () => {

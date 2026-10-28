@@ -1,14 +1,20 @@
 /* Design tokens. Override any of them in <config>/ui/user.css; the window reloads it live.
-   Atmosphere profiles set the same tokens on the reader. */
+   Atmosphere profiles set the palette tokens on the reader.
+
+   Identity: a bindery. Cool paper and graphite for the interface, bookcloth and gilt for the
+   spines, which are the one loud thing on screen. */
 
 :root {
-  /* Paper and ink */
-  --paper: #f4ede0;
-  --paper-2: #ebe2d1;
-  --ink: #2b2420;
-  --muted: #85745f;
-  --rule: #d8ccb6;
-  --accent: #9a4a2e;
+  /* Palette */
+  --paper: #ecefe9;      /* window background */
+  --paper-2: #e1e5de;    /* sidebars, panels */
+  --surface: #f6f7f3;    /* cards, menus, the reading page */
+  --ink: #1b2420;
+  --muted: #66716b;
+  --rule: #cdd3cb;
+  --accent: #2e5b4f;     /* bookcloth green: primary actions, focus, links */
+  --gilt: #b38b3c;       /* stamping on spines, progress */
+  --danger: #a3392f;
 
   /* Type */
   --font-ui: "Onest", system-ui, sans-serif;
@@ -21,45 +27,56 @@
   --align: justify;
   --hyphens: auto;
 
+  /* Shape */
+  --radius-s: 4px;
+  --radius-m: 7px;
+  --radius-l: 11px;
+
   /* Motion */
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
-  --fast: 160ms;
-  --slow: 420ms;
-
+  --fast: 140ms;
+  --slow: 360ms;
 }
 
 :root[data-mode="dark"] {
-  --paper: #1b1917;
-  --paper-2: #24211e;
-  --ink: #e2d9ca;
-  --muted: #958a7a;
-  --rule: #3a342d;
-  --accent: #d48b5e;
+  --paper: #141917;
+  --paper-2: #1a201d;
+  --surface: #1f2622;
+  --ink: #dde3dd;
+  --muted: #8b968f;
+  --rule: #2e3833;
+  --accent: #7fb8a4;
+  --gilt: #cfa75a;
+  --danger: #e07a6e;
 }
 
 /* Tokens that follow light or dark but not the palette; the reader can differ from the shelf
    when an atmosphere forces a mode. */
 :root, [data-mode="light"] {
-  --selection: color-mix(in srgb, var(--accent) 20%, transparent);
-  --shadow: 0 1px 2px rgba(43, 36, 32, 0.08), 0 8px 28px rgba(43, 36, 32, 0.12);
-  --agent: #3f6a73;
-  --code-bg: color-mix(in srgb, var(--ink) 6%, var(--paper));
+  --selection: color-mix(in srgb, var(--accent) 22%, transparent);
+  --hover: color-mix(in srgb, var(--ink) 6%, transparent);
+  --shadow-s: 0 1px 2px rgba(20, 30, 25, 0.1);
+  --shadow: 0 2px 6px rgba(20, 30, 25, 0.08), 0 12px 32px rgba(20, 30, 25, 0.14);
+  --agent: #3f6a8a;
+  --code-bg: color-mix(in srgb, var(--ink) 6%, var(--surface));
   --code-keyword: #8a3b52;
   --code-string: #4b6b2f;
   --code-number: #9a5a1e;
-  --code-comment: #8f8170;
+  --code-comment: #7c8580;
   --code-title: #2f5a7a;
   color-scheme: light;
 }
 
 :root[data-mode="dark"], [data-mode="dark"] {
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 30px rgba(0, 0, 0, 0.45);
-  --agent: #7fb2bc;
-  --code-bg: color-mix(in srgb, var(--ink) 7%, var(--paper));
+  --hover: color-mix(in srgb, var(--ink) 8%, transparent);
+  --shadow-s: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.35), 0 14px 36px rgba(0, 0, 0, 0.5);
+  --agent: #8fb6d6;
+  --code-bg: color-mix(in srgb, var(--ink) 7%, var(--surface));
   --code-keyword: #d68aa0;
   --code-string: #a8c58a;
   --code-number: #e0a46a;
-  --code-comment: #8a8070;
+  --code-comment: #84908a;
   --code-title: #8fb8d8;
   color-scheme: dark;
 }

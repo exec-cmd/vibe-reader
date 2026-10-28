@@ -8,8 +8,12 @@ import * as particles from "./particles.js";
  *   background: {kind?: string, image?: string, dim?: number}, particles: object, chapter: {heading?: string, illustration?: string},
  *   effects: {grain?: number, vignette?: number, glow?: number}, css: string | null }} Look */
 
-const TOKENS = { paper: "--paper", paper_2: "--paper-2", ink: "--ink", muted: "--muted", rule: "--rule", accent: "--accent" };
+// The profile's paper is the sheet the text sits on; paper_2 is the desk around it.
+const TOKENS = { paper: "--page", paper_2: "--desk", ink: "--ink", muted: "--muted", rule: "--rule", accent: "--accent" };
 let applied = "";
+
+/** Forgets the applied look so the next apply() redraws everything. */
+export const reset = () => (applied = "");
 
 const rgb = (/** @type {string} */ hex) => {
   const h = hex.replace("#", "");
@@ -24,7 +28,7 @@ export function apply(look) {
   applied = key;
   const reader = $("#reader");
   const style = reader.style;
-  for (const token of [...Object.values(TOKENS), "--font-display", "--font-body", "--scrim", "--grain", "--vignette", "--glow"]) {
+  for (const token of [...Object.values(TOKENS), "--font-display", "--font-body", "--grain", "--vignette", "--glow"]) {
     style.removeProperty(token);
   }
   $("#preset-css").textContent = "";
@@ -43,9 +47,6 @@ export function apply(look) {
   if (look.type.display) style.setProperty("--font-display", `"${look.type.display}", serif`);
   // The reader's own font choice wins over the atmosphere.
   if (look.type.body && state.config.typography.font === "auto") style.setProperty("--font-body", `"${look.type.body}", Georgia, serif`);
-  const paper = rgb(look.palette.paper ?? "#f4ede0");
-  // The text column keeps most of the paper so particles and backgrounds stay around it.
-  style.setProperty("--scrim", `rgba(${paper},${(0.72 + 0.28 * (look.background.dim ?? 0)).toFixed(2)})`);
   style.setProperty("--grain", String(look.effects.grain ?? 0));
   style.setProperty("--vignette", String(look.effects.vignette ?? 0));
   style.setProperty("--glow", String(look.effects.glow ?? 0));
@@ -55,7 +56,8 @@ export function apply(look) {
     bg.style.backgroundImage = `url("/art/${encodeURIComponent(look.background.image)}")`;
   }
   $("#preset-css").textContent = look.css ?? "";
-  particles.start(look.particles, rgb(look.palette.ink ?? "#ffffff"));
+  if (state.config.reader.particles) particles.start(look.particles, rgb(look.palette.ink ?? "#ffffff"));
+  else particles.stop();
 }
 
 /** Built-in chapter drawings, colored by the palette. */

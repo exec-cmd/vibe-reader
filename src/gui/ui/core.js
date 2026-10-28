@@ -19,33 +19,20 @@ export const $ = (/** @type {string} */ sel, root = document) => /** @type {HTML
 export const state = {
   /** @type {Config} */ config: /** @type {any} */ (null),
   lite: false,
-  /** @type {"home" | "reader"} */ view: "home",
+  /** @type {"home" | "reader" | "settings"} */ view: "home",
+  version: "",
+  /** @type {{config: string, data: string, ui: string, presets: string}} */ paths: /** @type {any} */ ({}),
 };
+
+const VIEWS = { home: "home", reader: "reader", settings: "settings-view" };
 
 /** Commands for the palette: id -> {label, run, when}. */
 /** @type {Map<string, {label: () => string, run: () => void, when?: () => boolean, key?: string}>} */
 export const commands = new Map();
 
-export function show(/** @type {"home" | "reader"} */ view) {
+export function show(/** @type {"home" | "reader" | "settings"} */ view) {
   state.view = view;
-  for (const id of ["home", "reader"]) {
-    const el = $(`#${id}`);
-    const active = id === view;
-    if (active && el.hidden) {
-      el.dataset.enter = "";
-      setTimeout(() => delete el.dataset.enter, 500);
-    }
-    el.hidden = !active;
-  }
-}
-
-let toastTimer = 0;
-export function toast(/** @type {string} */ text) {
-  const el = $("#toast");
-  el.textContent = text;
-  el.hidden = false;
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => (el.hidden = true), 2400);
+  for (const [name, id] of Object.entries(VIEWS)) $(`#${id}`).hidden = name !== view;
 }
 
 /** @template {(...args: any[]) => void} F @param {F} fn @param {number} ms */
@@ -92,7 +79,7 @@ export const saveConfig = debounce(() => call("save_config", { config: state.con
 
 export function fail(/** @type {unknown} */ e) {
   console.error(e);
-  import("./i18n.js").then(({ t }) => toast(t("error", { message: String(e) })));
+  Promise.all([import("./i18n.js"), import("./ui.js")]).then(([{ t }, { toast }]) => toast(t("error", { message: String(e) })));
 }
 
 /** True when animations should be skipped. */

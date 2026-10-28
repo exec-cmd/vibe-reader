@@ -87,9 +87,10 @@ class Walker {
   }
 }
 
-/** Elements with data-o, in document order. @param {Element} root */
+/** Elements with data-o, in document order, the root included (a PDF text layer is one block). @param {Element} root */
 function stamped(root) {
-  return /** @type {HTMLElement[]} */ ([...root.querySelectorAll("[data-o]")]);
+  const own = root.matches("[data-o]") ? [root] : [];
+  return /** @type {HTMLElement[]} */ ([...own, ...root.querySelectorAll("[data-o]")]);
 }
 
 /** Runs a walker from `block` through the rest of the chapter in document order. */
@@ -182,4 +183,24 @@ export function rangeOf(root, start, end) {
   range.setStart(a.node, a.offset);
   range.setEnd(b.node, b.offset);
   return range;
+}
+
+/**
+ * Normalized text of a sequence of text pieces and line breaks, by the same rules as the DOM walk.
+ * Used for PDF pages, whose text layer is built from these pieces.
+ * @param {(string | {br: true})[]} pieces
+ */
+export function normalize(pieces) {
+  let out = "";
+  const walker = new Walker(0);
+  walker.emit = (ch) => {
+    walker.len += 1;
+    walker.last = ch;
+    out += ch;
+  };
+  for (const p of pieces) {
+    if (typeof p === "string") walker.text(null, p, false);
+    else walker.need = true;
+  }
+  return out;
 }

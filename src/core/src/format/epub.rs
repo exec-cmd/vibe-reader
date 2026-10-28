@@ -26,6 +26,8 @@ struct Package {
     manifest: HashMap<String, Item>,
     spine: Vec<String>,
     ncx: Option<String>,
+    /// Manifest id named by `<meta name="cover" content="...">` (EPUB 2).
+    cover_id: Option<String>,
 }
 
 /// One table-of-contents link before it is mapped to a chapter.
@@ -98,6 +100,22 @@ pub fn open(path: &Path) -> Result<Document> {
     })
 }
 
+/// The cover image: the `cover-image` manifest item (EPUB 3) or the one named by `<meta name="cover">`.
+pub fn cover(path: &Path) -> Result<Option<(Vec<u8>, String)>> {
+    let mut zip = ZipArchive::new(File::open(path)?)?;
+    let container = read(&mut zip, "META-INF/container.xml")?;
+    let opf_path = rootfile(&container).context("container.xml has no rootfile")?;
+    let package = parse_opf(&read(&mut zip, &opf_path)?, dir(&opf_path))?;
+    let item = package
+        .manifest
+        .values()
+        .find(|i| i.properties.split_whitespace().any(|p| p == "cover-image"))
+        .or_else(|| package.cover_id.as_ref().and_then(|id| package.manifest.get(id)))
+        .filter(|i| i.media.starts_with("image/"));
+    let Some(item) = item else { return Ok(None) };
+    Ok(resource(path, &item.href)?.map(|bytes| (bytes, item.media.clone())))
+}
+
 pub fn resource(path: &Path, name: &str) -> Result<Option<Vec<u8>>> {
     let mut zip = ZipArchive::new(File::open(path)?)?;
     let Ok(mut file) = zip.by_name(name) else {
@@ -151,6 +169,7 @@ fn parse_opf(opf: &str, base: &str) -> Result<Package> {
                 }
                 "itemref" => package.spine.extend(attr(&e, "idref")),
                 "spine" => package.ncx = attr(&e, "toc"),
+                "meta" if attr(&e, "name").as_deref() == Some("cover") => package.cover_id = attr(&e, "content"),
                 name @ ("title" | "creator" | "language") => {
                     field = Some(name.to_owned());
                     value.clear();
@@ -322,7 +341,7 @@ pub(crate) mod tests {
             ),
             (
                 "OEBPS/content.opf",
-                r#"<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>Преступление &amp; наказание</dc:title><dc:creator>Ф. Достоевский</dc:creator><dc:language>ru</dc:language></metadata><manifest><item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/><item id="c1" href="text/ch%201.xhtml" media-type="application/xhtml+xml"/><item id="c2" href="text/ch2.xhtml" media-type="application/xhtml+xml"/><item id="img" href="img/a.png" media-type="image/png"/></manifest><spine><itemref idref="c1"/><itemref idref="c2"/></spine></package>"#,
+                r#"<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>Преступление &amp; наказание</dc:title><dc:creator>Ф. Достоевский</dc:creator><dc:language>ru</dc:language></metadata><manifest><item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/><item id="c1" href="text/ch%201.xhtml" media-type="application/xhtml+xml"/><item id="c2" href="text/ch2.xhtml" media-type="application/xhtml+xml"/><item id="img" href="img/a.png" media-type="image/png" properties="cover-image"/></manifest><spine><itemref idref="c1"/><itemref idref="c2"/></spine></package>"#,
             ),
             (
                 "OEBPS/nav.xhtml",
@@ -370,5 +389,9 @@ pub(crate) mod tests {
             b"PNG"
         );
         assert!(crate::format::resource(&file, "../../etc/passwd").unwrap().is_none());
+        assert_eq!(
+            super::cover(&file).unwrap().unwrap(),
+            (b"PNG".to_vec(), "image/png".to_owned())
+        );
     }
 }

@@ -150,8 +150,13 @@ fn opened(lib: &Library, open: &Open) -> Res<Opened> {
     })
 }
 
+// Opening and importing parse files, which takes seconds for large PDFs; async commands keep the window responsive.
 #[tauri::command]
-pub fn open_book(app: State<App>, id: i64) -> Res<Opened> {
+pub async fn open_book(app: State<'_, App>, id: i64) -> Res<Opened> {
+    open_book_sync(&app, id)
+}
+
+fn open_book_sync(app: &App, id: i64) -> Res<Opened> {
     let lib = app.lib.lock().unwrap();
     let book = lib.book(id).map_err(err)?;
     let doc = lib.document(&book).map_err(err)?;
@@ -171,10 +176,10 @@ pub fn open_book(app: State<App>, id: i64) -> Res<Opened> {
 
 /// Opens a file: in the library window it is added first, in lite mode it is only viewed.
 #[tauri::command]
-pub fn open_path(app: State<App>, path: PathBuf) -> Res<Opened> {
+pub async fn open_path(app: State<'_, App>, path: PathBuf) -> Res<Opened> {
     if !app.lite {
         let id = app.lib.lock().unwrap().add(&path, false).map_err(err)?.0.id;
-        return open_book(app, id);
+        return open_book_sync(&app, id);
     }
     let lib = app.lib.lock().unwrap();
     let path = std::fs::canonicalize(&path).map_err(err)?;
@@ -253,12 +258,22 @@ fn current_book(app: &App) -> Res<Book> {
 }
 
 #[tauri::command]
-pub fn annotate(app: State<App>, kind: AnnotationKind, start: Locator, end: Locator, body: String) -> Res<Annotation> {
+pub fn annotate(
+    app: State<App>,
+    kind: AnnotationKind,
+    start: Locator,
+    end: Locator,
+    body: String,
+    quote: Option<String>,
+) -> Res<Annotation> {
     let book = current_book(&app)?;
     let open = app.open.lock().unwrap();
     let doc = &open.as_ref().ok_or("no book is open")?.doc;
     let chapter = doc.chapters.get(start.chapter).ok_or("no such chapter")?;
-    let quote: String = if start.chapter == end.chapter && end > start {
+    // PDF pages are counted from pdf.js text in the window, so the window sends the quote.
+    let quote: String = if let Some(quote) = quote {
+        quote.chars().take(2000).collect()
+    } else if start.chapter == end.chapter && end > start {
         chapter
             .text
             .chars()
@@ -295,7 +310,7 @@ pub fn annotations(app: State<App>) -> Res<Vec<Annotation>> {
 
 /// Adds the file open in lite mode to the library.
 #[tauri::command]
-pub fn import_open(app: State<App>) -> Res<Book> {
+pub async fn import_open(app: State<'_, App>) -> Res<Book> {
     let path = app
         .open
         .lock()
@@ -310,15 +325,45 @@ pub fn import_open(app: State<App>) -> Res<Book> {
     Ok(book)
 }
 
+/// Imports files one by one and reports `import-progress` so the window can show it.
 #[tauri::command]
-pub fn add_files(app: State<App>, paths: Vec<PathBuf>) -> Res<Vec<Book>> {
-    let lib = app.lib.lock().unwrap();
+pub async fn add_files(app: State<'_, App>, window: tauri::Window, paths: Vec<PathBuf>) -> Res<Vec<Book>> {
+    use tauri::Emitter;
+    let copy = Config::load(&app.paths)
+        .map(|c| c.library.copy_on_import)
+        .unwrap_or(false);
+    let files: Vec<PathBuf> = paths
+        .into_iter()
+        .filter(|p| vibe_reader_core::Format::detect(p).is_some())
+        .collect();
     let mut added = Vec::new();
-    for path in paths {
-        if vibe_reader_core::Format::detect(&path).is_some() {
-            added.push(lib.add(&path, false).map_err(err)?.0);
+    let mut failed = Vec::new();
+    for (i, path) in files.iter().enumerate() {
+        let name = path
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        let _ = window.emit(
+            "import-progress",
+            serde_json::json!({ "done": i, "total": files.len(), "name": name }),
+        );
+        // Parse without the library lock so the window keeps answering during long imports.
+        let existing = app.lib.lock().unwrap().find_file(path).ok().flatten();
+        let result = match existing {
+            Some(book) => Ok((book, false)),
+            None => {
+                vibe_reader_core::format::open(path).and_then(|doc| app.lib.lock().unwrap().add_parsed(path, doc, copy))
+            }
+        };
+        match result {
+            Ok((book, _)) => added.push(book),
+            Err(e) => failed.push(format!("{name}: {}", err(e))),
         }
     }
+    let _ = window.emit(
+        "import-progress",
+        serde_json::json!({ "done": files.len(), "total": files.len(), "failed": failed }),
+    );
     Ok(added)
 }
 
@@ -362,12 +407,8 @@ pub fn atmosphere(app: State<App>, at: Locator, dark: bool) -> Res<Option<vibe_r
     let config = Config::load(&app.paths).map_err(err)?;
     let presets = atmosphere::presets(&app.paths).map_err(err)?;
     let layers = atmosphere::layers_at(&lib.atmospheres(book.id).map_err(err)?, at);
-    let wanted = match config.reader.mode.as_str() {
-        "light" => Mode::Light,
-        "dark" => Mode::Dark,
-        _ if dark => Mode::Dark,
-        _ => Mode::Light,
-    };
+    // The window knows the mode in effect (the setting, or the system for "auto").
+    let wanted = if dark { Mode::Dark } else { Mode::Light };
     // A broken stored profile must not leave the reader without a look: fall back to the default preset.
     atmosphere::resolve(&presets, &config.reader.preset, &layers, Some(wanted))
         .or_else(|_| atmosphere::resolve(&presets, "study", &[], Some(wanted)))
@@ -420,4 +461,165 @@ pub fn handle_ipc(handle: &tauri::AppHandle, message: serde_json::Value) -> serd
         },
         _ => json!({ "error": "unknown command" }),
     }
+}
+
+// ---------- library management ----------
+
+#[tauri::command]
+pub fn update_book(app: State<App>, id: i64, title: String, authors: Vec<String>) -> Res<Book> {
+    let lib = app.lib.lock().unwrap();
+    let authors: Vec<String> = authors
+        .into_iter()
+        .map(|a| a.trim().to_owned())
+        .filter(|a| !a.is_empty())
+        .collect();
+    lib.update_meta(id, &title, &authors).map_err(err)?;
+    lib.book(id).map_err(err)
+}
+
+/// Removes a book from the library. The window confirms first; the file stays unless it was a copy.
+#[tauri::command]
+pub fn remove_book(app: State<App>, id: i64) -> Res<()> {
+    let book = app.lib.lock().unwrap().remove(id).map_err(err)?;
+    let _ = std::fs::remove_file(cover_file(&app.paths, book.id));
+    Ok(())
+}
+
+#[tauri::command]
+pub fn reset_position(app: State<App>, id: i64) -> Res<()> {
+    app.lib.lock().unwrap().reset_position(id).map_err(err)
+}
+
+#[tauri::command]
+pub fn create_shelf(app: State<App>, name: String) -> Res<()> {
+    app.lib.lock().unwrap().create_shelf(&name).map_err(err)
+}
+
+#[tauri::command]
+pub fn rename_shelf(app: State<App>, from: String, to: String) -> Res<()> {
+    app.lib.lock().unwrap().rename_shelf(&from, &to).map_err(err)
+}
+
+#[tauri::command]
+pub fn delete_shelf(app: State<App>, name: String) -> Res<()> {
+    app.lib.lock().unwrap().delete_shelf(&name).map_err(err)
+}
+
+#[derive(Serialize)]
+pub struct PresetInfo {
+    id: String,
+    name: String,
+    description: String,
+    modes: Vec<vibe_reader_core::atmosphere::Mode>,
+    spine: Option<String>,
+}
+
+#[tauri::command]
+pub fn presets(app: State<App>) -> Res<Vec<PresetInfo>> {
+    use vibe_reader_core::atmosphere::Mode;
+    let list = vibe_reader_core::atmosphere::presets(&app.paths).map_err(err)?;
+    Ok(list
+        .into_iter()
+        .map(|p| {
+            let meta = p.profile.preset.clone().unwrap_or_default();
+            let spine = p
+                .profile
+                .palette
+                .as_ref()
+                .and_then(|pal| pal.get(&Mode::Dark).or(pal.get(&Mode::Light)))
+                .and_then(|c| c.spine.clone());
+            PresetInfo {
+                id: p.id,
+                name: meta.name,
+                description: meta.description,
+                modes: meta.modes,
+                spine,
+            }
+        })
+        .collect())
+}
+
+/// The book-wide atmosphere preset chosen by the reader, or none to use the default.
+#[tauri::command]
+pub fn book_preset(app: State<App>, id: i64) -> Res<Option<String>> {
+    let lib = app.lib.lock().unwrap();
+    let book = lib
+        .atmospheres(id)
+        .map_err(err)?
+        .into_iter()
+        .find(|a| a.scope == vibe_reader_core::store::Scope::Book);
+    Ok(book.and_then(|a| a.profile.get("base").and_then(|b| b.as_str()).map(str::to_owned)))
+}
+
+#[tauri::command]
+pub fn set_book_preset(app: State<App>, id: i64, preset: Option<String>) -> Res<()> {
+    use vibe_reader_core::store::Scope;
+    let lib = app.lib.lock().unwrap();
+    let current = lib
+        .atmospheres(id)
+        .map_err(err)?
+        .into_iter()
+        .find(|a| a.scope == Scope::Book);
+    match preset {
+        Some(preset) => {
+            let presets = vibe_reader_core::atmosphere::presets(&app.paths).map_err(err)?;
+            let layer = serde_json::json!({ "base": preset });
+            let resolved = vibe_reader_core::atmosphere::resolve(&presets, "study", std::slice::from_ref(&layer), None)
+                .map_err(err)?;
+            lib.set_atmosphere(id, Scope::Book, None, &layer, USER).map_err(err)?;
+            if let Some(spine) = resolved.palette.spine {
+                lib.set_color(id, &spine).map_err(err)?;
+            }
+        }
+        None => {
+            if let Some(current) = current {
+                lib.clear_atmosphere(current.id, USER).map_err(err)?;
+            }
+        }
+    }
+    Ok(())
+}
+
+pub fn cover_file(paths: &Paths, id: i64) -> PathBuf {
+    paths.covers().join(format!("{id}.img"))
+}
+
+/// Stores a cover: an image file the reader picked, or a thumbnail the window drew from a PDF.
+#[tauri::command]
+pub fn set_cover(app: State<App>, id: i64, path: Option<PathBuf>, bytes: Option<Vec<u8>>) -> Res<()> {
+    let bytes = match (path, bytes) {
+        (Some(path), _) => {
+            let size = std::fs::metadata(&path).map_err(err)?.len();
+            if size > vibe_reader_core::image::MAX_IMAGE {
+                return Err("images are limited to 10 MB".into());
+            }
+            std::fs::read(path).map_err(err)?
+        }
+        (None, Some(bytes)) => bytes,
+        (None, None) => return Err("no image".into()),
+    };
+    vibe_reader_core::image::image_type(&bytes).map_err(err)?;
+    std::fs::create_dir_all(app.paths.covers()).map_err(err)?;
+    std::fs::write(cover_file(&app.paths, id), bytes).map_err(err)
+}
+
+/// Bytes of a book cover: cached or chosen first, then the book's own cover image.
+pub fn cover_bytes(app: &App, id: i64) -> Option<Vec<u8>> {
+    let file = cover_file(&app.paths, id);
+    if let Ok(bytes) = std::fs::read(&file) {
+        return Some(bytes);
+    }
+    let path = app.lib.lock().unwrap().book(id).ok()?.path;
+    let (bytes, _) = vibe_reader_core::format::cover(&path).ok()??;
+    let _ = std::fs::create_dir_all(app.paths.covers());
+    let _ = std::fs::write(&file, &bytes);
+    Some(bytes)
+}
+
+/// Full-text search in the open book (the reader may search everywhere, unlike agents).
+#[tauri::command]
+pub async fn search_book(app: State<'_, App>, query: String) -> Res<Vec<vibe_reader_core::excerpt::Hit>> {
+    let open = app.open.lock().unwrap();
+    let doc = &open.as_ref().ok_or("no book is open")?.doc;
+    vibe_reader_core::excerpt::search(doc, &query, false, None, 500).map_err(err)
 }

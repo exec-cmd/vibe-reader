@@ -6,26 +6,33 @@
   <link rel="stylesheet" href="fonts/fonts.css">
   <link rel="stylesheet" href="vendor/katex/katex.min.css">
   <link rel="stylesheet" href="theme.css">
-  <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="base.css">
+  <link rel="stylesheet" href="library.css">
+  <link rel="stylesheet" href="reader.css">
+  <link rel="stylesheet" href="settings.css">
   <link rel="stylesheet" href="atmosphere.css">
   <!-- Optional: <config>/ui/user.css overrides anything above. -->
   <link rel="stylesheet" href="user.css">
 </head>
 <body>
-  <section class="view home" id="home" data-mode="shelf" hidden>
-    <header class="home-bar">
-      <div class="brand">vibe-reader</div>
-      <input class="search" id="search" type="search" autocomplete="off" data-i18n-placeholder="search">
-      <span class="spacer"></span>
-      <div class="seg" id="grouping" role="group">
-        <button class="btn quiet" data-group="shelf" data-i18n="byShelf"></button>
-        <button class="btn quiet" data-group="author" data-i18n="byAuthor"></button>
-      </div>
-      <button class="btn" id="open-files" data-i18n="openFiles"></button>
-      <button class="btn quiet" id="expand" data-i18n-title="libraryKey"><span data-i18n="library"></span> <span class="kbd">F</span></button>
+  <!-- Library: sidebar, shelves of spines, book details. In mini mode only the toolbar and one shelf remain. -->
+  <section class="view library" id="home" hidden>
+    <header class="toolbar">
+      <button class="icon-btn" id="toggle-sidebar" data-icon="menu" data-i18n-title="toggleSidebar" data-hide-mini></button>
+      <span class="brand">vibe-reader</span>
+      <label class="search-box"><span data-icon="search" data-size="16"></span><input id="search" type="search" autocomplete="off" data-i18n-placeholder="search"></label>
+      <span class="grow"></span>
+      <button class="select-btn" id="group-by" data-hide-mini><span class="select-caption" data-i18n="groupBy"></span><span class="select-value"></span><span data-icon="chevronDown" data-size="14"></span></button>
+      <button class="select-btn" id="sort-by" data-hide-mini><span class="select-caption" data-i18n="sortBy"></span><span class="select-value"></span><span data-icon="chevronDown" data-size="14"></span></button>
+      <button class="btn primary" id="open-files" data-icon="import" data-hide-mini><span data-i18n="addBooks"></span></button>
+      <button class="icon-btn" id="mini-toggle" data-icon="shrink" data-i18n-title="miniMode"></button>
+      <button class="icon-btn" id="open-settings" data-icon="gear" data-i18n-title="settings" data-hide-mini></button>
     </header>
-    <div class="home-body" id="shelves"></div>
-    <div class="card" id="card"></div>
+    <div class="library-body">
+      <nav class="sidebar" id="sidebar" aria-label="Library"></nav>
+      <main class="stacks" id="shelves" tabindex="-1"></main>
+      <aside class="details" id="card" aria-live="polite"></aside>
+    </div>
   </section>
 
   <section class="view reader" id="reader" data-layout="pages" data-bg="" hidden>
@@ -34,32 +41,57 @@
     <canvas id="fx"></canvas>
     <div class="fx-overlay"></div>
     <div class="splash" id="splash"></div>
-    <div class="progress"><i id="progress"></i></div>
-    <header class="reader-bar">
-      <button class="btn quiet" id="back" data-i18n-title="backKey">←</button>
-      <button class="btn quiet" id="toggle-toc" data-i18n="contents"></button>
-      <div class="title" id="reader-title"></div>
-      <button class="btn quiet" id="toggle-notes" data-i18n="notes"></button>
-      <button class="btn quiet" id="toggle-settings" data-i18n="settings"></button>
+    <header class="toolbar reader-bar" id="reader-bar">
+      <button class="icon-btn" id="back" data-icon="back" data-i18n-title="backKey"></button>
+      <button class="icon-btn" id="toggle-side" data-icon="toc" data-i18n-title="sidePanel"></button>
+      <div class="reader-title"><span id="reader-title"></span><small id="reader-sub"></small></div>
+      <div class="pager">
+        <button class="icon-btn" id="prev-page" data-icon="chevronLeft" data-i18n-title="prevPage"></button>
+        <input class="page-input" id="page-input" inputmode="numeric" autocomplete="off" aria-label="Page">
+        <span class="page-total" id="page-total"></span>
+        <button class="icon-btn" id="next-page" data-icon="chevronRight" data-i18n-title="nextPage"></button>
+      </div>
+      <div class="zoom" id="zoom-tools">
+        <button class="icon-btn" id="zoom-out" data-icon="zoomOut" data-i18n-title="zoomOut"></button>
+        <button class="select-btn compact" id="zoom-level"><span class="select-value"></span><span data-icon="chevronDown" data-size="14"></span></button>
+        <button class="icon-btn" id="zoom-in" data-icon="zoomIn" data-i18n-title="zoomIn"></button>
+      </div>
+      <button class="icon-btn" id="layout-btn" data-icon="pages" data-i18n-title="layout"></button>
+      <button class="icon-btn" id="search-btn" data-icon="search" data-i18n-title="findInBook"></button>
+      <button class="icon-btn" id="look-btn" data-icon="sparkle" data-i18n-title="atmosphere"></button>
+      <button class="icon-btn" id="mode-btn" data-icon="moon" data-i18n-title="cmdMode"></button>
+      <button class="icon-btn" id="fullscreen-btn" data-icon="fullscreen" data-i18n-title="fullscreen"></button>
+      <button class="icon-btn" id="reader-more" data-icon="more" data-i18n-title="more"></button>
     </header>
     <div class="lite-bar" id="lite-bar" hidden>
       <span class="title" id="lite-title"></span>
       <button class="btn" id="lite-add" data-i18n="addToLibrary"></button>
     </div>
-    <div class="viewport" id="viewport">
-      <div class="frame" id="frame"><article class="page" id="page"></article></div>
+    <div class="reader-body">
+      <aside class="side-panel" id="side" hidden>
+        <div class="tabs" role="tablist" id="side-tabs">
+          <button class="tab" data-tab="toc" data-i18n="contents"></button>
+          <button class="tab" data-tab="thumbs" data-i18n="pages"></button>
+          <button class="tab" data-tab="notes" data-i18n="notes"></button>
+          <button class="tab" data-tab="search" data-i18n="find"></button>
+        </div>
+        <div class="tab-body" id="side-body"></div>
+      </aside>
+      <div class="viewport" id="viewport">
+        <div class="frame" id="frame"><article class="page" id="page"></article></div>
+      </div>
     </div>
-    <footer class="reader-foot"><span id="foot-chapter"></span><span id="foot-page"></span></footer>
-    <aside class="panel left toc" id="toc"></aside>
-    <aside class="panel right" id="notes"></aside>
-    <aside class="panel right" id="settings"></aside>
+    <div class="progress"><i id="progress"></i></div>
     <div class="selbar" id="selbar" hidden>
-      <button class="btn quiet" data-act="highlight" data-i18n="highlight"></button>
-      <button class="btn quiet" data-act="note" data-i18n="note"></button>
-      <button class="btn quiet" data-act="copy" data-i18n="copy"></button>
+      <button class="icon-btn" data-act="highlight" data-icon="marker" data-i18n-title="highlight"></button>
+      <button class="icon-btn" data-act="note" data-icon="notes" data-i18n-title="note"></button>
+      <button class="icon-btn" data-act="copy" data-icon="copy" data-i18n-title="copy"></button>
+      <button class="icon-btn" data-act="find" data-icon="search" data-i18n-title="findInBook"></button>
     </div>
     <div class="notepop" id="notepop" hidden></div>
   </section>
+
+  <section class="view settings-view" id="settings-view" hidden></section>
 
   <div class="palette" id="palette" hidden>
     <div class="palette-box">
@@ -67,7 +99,8 @@
       <ul id="palette-list" role="listbox"></ul>
     </div>
   </div>
-  <div class="toast" id="toast" hidden></div>
+  <div class="progress-strip" id="progress-strip" hidden><span class="progress-label"></span><span class="progress-bar"><i></i></span></div>
+  <div class="toast" id="toast" role="status" hidden></div>
 
   <script src="vendor/highlight/highlight.min.js"></script>
   <script src="vendor/katex/katex.min.js"></script>
