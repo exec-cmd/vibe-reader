@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=vibe-reader
+Comment=Book reader with atmosphere and a CLI for AI agents
+Comment[ru]=Читалка с атмосферой и CLI для AI-агентов
+Exec=vibe-reader-gui %f
+Icon=vibe-reader
+Terminal=false
+Categories=Office;Viewer;Education;
+MimeType=application/epub+zip;application/x-fictionbook+xml;application/pdf;
