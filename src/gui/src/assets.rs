@@ -20,6 +20,9 @@ pub fn serve(app: &AppHandle, overrides: &Path, path: &str) -> Reply {
     let Some(rel) = clean(path) else {
         return status(StatusCode::BAD_REQUEST);
     };
+    if rel == "book" {
+        return open_file(app);
+    }
     if let Some(name) = rel.strip_prefix("res/") {
         return book_resource(app, name);
     }
@@ -52,6 +55,18 @@ fn clean(path: &str) -> Option<String> {
         .any(|part| part == ".." || part == "." || part.is_empty())
         || rel.contains('\\');
     (!bad).then_some(rel)
+}
+
+/// The open book file itself, for pdf.js.
+fn open_file(app: &AppHandle) -> Reply {
+    let state = crate::app_state(app);
+    let Some(path) = state.open.lock().unwrap().as_ref().map(|o| o.path.clone()) else {
+        return status(StatusCode::NOT_FOUND);
+    };
+    match fs::read(&path) {
+        Ok(bytes) => reply(bytes, mime(&path.to_string_lossy())),
+        Err(_) => status(StatusCode::NOT_FOUND),
+    }
 }
 
 /// A file from inside the open book: an image or a stylesheet referenced by a chapter.

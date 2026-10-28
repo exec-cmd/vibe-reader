@@ -84,6 +84,7 @@ pub fn open(path: &Path) -> Result<Document> {
                 chapter,
                 level: link.level,
                 anchor,
+                offset: 0,
             })
         })
         .collect();

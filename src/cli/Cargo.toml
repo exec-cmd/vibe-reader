@@ -13,7 +13,7 @@ name = "vibe-reader"
 path = "src/main.rs"
 
 [dependencies]
-vibe-reader-core.workspace = true
+vibe-reader-core = { workspace = true, features = ["fb2", "pdf"] }
 anyhow.workspace = true
 serde.workspace = true
 serde_json.workspace = true

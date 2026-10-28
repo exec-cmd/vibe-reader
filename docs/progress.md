@@ -36,9 +36,9 @@ Temporary checklist for building the first version. It is removed together with 
 
 ## Phase 4. FB2 and PDF
 
-- [ ] FB2
-- [ ] PDF (text for agents, pdf.js view)
-- [ ] Release workflow, docs (releasing)
+- [x] FB2
+- [x] PDF (text for agents, pdf.js view)
+- [x] Release workflow, docs (releasing)
 
 ## Phase 5. Documentation and cleanup
 

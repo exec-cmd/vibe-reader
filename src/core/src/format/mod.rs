@@ -1,7 +1,7 @@
 //! Book formats. Every format turns a file into the same [`Document`].
 
 #[cfg(feature = "epub")]
-pub(crate) mod epub;
+mod epub;
 #[cfg(feature = "fb2")]
 mod fb2;
 mod html;
@@ -127,6 +127,9 @@ pub struct TocEntry {
     pub level: usize,
     /// Prefixed element id inside the chapter, when the entry points into it.
     pub anchor: Option<String>,
+    /// Offset of the anchor in the chapter's normalized text; 0 without an anchor.
+    #[serde(default)]
+    pub offset: usize,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -187,14 +190,28 @@ impl Document {
                     chapter,
                     level: 0,
                     anchor: None,
+                    offset: 0,
                 })
                 .collect();
+        }
+        for entry in &mut self.toc {
+            if let (Some(anchor), Some(chapter)) = (&entry.anchor, self.chapters.get(entry.chapter)) {
+                entry.offset = anchor_offset(&chapter.html, anchor).unwrap_or(0);
+            }
         }
         if self.kind == Kind::Prose && looks_technical(&self.chapters) {
             self.kind = Kind::Tech;
         }
         self
     }
+}
+
+/// The `data-o` of the element with this id, or of the first block after it.
+fn anchor_offset(html: &str, anchor: &str) -> Option<usize> {
+    let at = html.find(&format!("id=\"{anchor}\""))?;
+    let rest = &html[at..];
+    let start = rest.find("data-o=\"")? + 8;
+    rest[start..].split('"').next()?.parse().ok()
 }
 
 fn looks_technical(chapters: &[Chapter]) -> bool {

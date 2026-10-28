@@ -36,6 +36,9 @@ jobs:
       - name: Tests
         run: cargo test --workspace
 
+      - name: Core without optional formats
+        run: cargo test -p vibe-reader-core --no-default-features
+
       - name: Release build
         run: cargo build --release --workspace
 

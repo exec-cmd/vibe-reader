@@ -477,8 +477,13 @@ pub(crate) mod tests {
         let dir = tempfile::tempdir().unwrap();
         let paths = Paths::under(dir.path().join("home"));
         let library = Library::open(&paths).unwrap();
-        let file = dir.path().join("book.epub");
-        crate::format::epub::tests::sample(&file);
+        // TXT needs no optional format feature.
+        let file = dir.path().join("Преступление и наказание.txt");
+        fs::write(
+            &file,
+            "Глава 1\n\nВ начале июля, в чрезвычайно жаркое время.\n\nГлава 2\n\nОн благополучно избегнул встречи.",
+        )
+        .unwrap();
         let (book, new) = library.add(&file, false).unwrap();
         assert!(new);
         (dir, library, book)
@@ -487,7 +492,14 @@ pub(crate) mod tests {
     #[test]
     fn adds_finds_and_shelves() {
         let (dir, library, book) = library();
-        assert_eq!(library.add(&dir.path().join("book.epub"), false).unwrap().0.id, book.id);
+        assert_eq!(
+            library
+                .add(&dir.path().join("Преступление и наказание.txt"), false)
+                .unwrap()
+                .0
+                .id,
+            book.id
+        );
         assert_eq!(book.chapters(), 2);
         assert_eq!(library.find("наказание").unwrap().id, book.id);
         assert_eq!(library.find(&book.id.to_string()).unwrap().id, book.id);
@@ -509,8 +521,8 @@ pub(crate) mod tests {
     #[test]
     fn copies_files() {
         let (dir, library, _) = library();
-        let md = dir.path().join("notes.md");
-        fs::write(&md, "# Notes\n\ntext").unwrap();
+        let md = dir.path().join("notes.txt");
+        fs::write(&md, "Notes\n\ntext").unwrap();
         let (book, _) = library.add(&md, true).unwrap();
         assert!(book.copied && book.path.starts_with(&library.paths().data));
         library.remove(book.id).unwrap();

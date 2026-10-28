@@ -286,3 +286,8 @@ body.lite { --slow: 0ms; }
 body.lite .reader-bar { display: none; }
 body.lite .viewport { padding-top: 24px; }
 .seg { display: flex; gap: 2px; }
+
+/* PDF pages keep their own paper; the atmosphere frames them. */
+.page.pdf { max-width: none; display: flex; flex-direction: column; align-items: center; gap: 18px; }
+.pdf-page { background: #fff; box-shadow: var(--shadow); flex: none; }
+.pdf-page canvas { width: 100%; height: 100%; display: block; }

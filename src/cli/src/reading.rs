@@ -59,16 +59,16 @@ pub fn toc(ctx: &Ctx, query: &str) -> Result<Out> {
     let mut text = format!("# {}\n\n", book.title);
     for entry in &doc.toc {
         text.push_str(&format!(
-            "{}- {}  `ch:{}`\n",
+            "{}- {}  `{}`\n",
             "  ".repeat(entry.level),
             entry.title,
-            entry.chapter + 1
+            Locator::new(entry.chapter, entry.offset)
         ));
     }
     let entries: Vec<_> = doc
         .toc
         .iter()
-        .map(|e| json!({ "title": e.title, "level": e.level, "locator": Locator::new(e.chapter, 0), "chars": doc.chapters[e.chapter].text.chars().count() }))
+        .map(|e| json!({ "title": e.title, "level": e.level, "locator": Locator::new(e.chapter, e.offset), "chars": doc.chapters[e.chapter].text.chars().count() }))
         .collect();
     Ok(Out::new(
         json!({ "book": book.id, "title": book.title, "chapters": doc.chapters.len(), "toc": entries }),

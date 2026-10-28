@@ -19,6 +19,16 @@ sudo pacman -S webkit2gtk-4.1 gtk3
 
 The core and the CLI need no system libraries: SQLite is compiled in.
 
+## Core features
+
+`vibe-reader-core` keeps formats behind Cargo features. `epub` and `markdown`
+are on by default (TXT and HTML are always available); `fb2` and `pdf` are
+optional. The CLI and the GUI enable all of them.
+
+```bash
+cargo test -p vibe-reader-core --features fb2,pdf
+```
+
 ## Build and run
 
 ```bash
@@ -46,6 +56,17 @@ cargo run --release -p vibe-reader-gui -- --measure
 
 The window prints the time from process start to the first painted frame and
 exits. The budget is 700 ms.
+
+## Vendored files
+
+Fonts, KaTeX, highlight.js and pdf.js are committed under `src/gui/ui/fonts/`
+and `src/gui/ui/vendor/`. To upgrade them, change the pinned versions in
+`scripts/vendor.py` and run:
+
+```bash
+python3 scripts/vendor.py            # everything
+python3 scripts/vendor.py fonts      # or one part: fonts, katex, highlight, pdfjs
+```
 
 ## Checks
 

@@ -5,6 +5,7 @@ import { $, calm, call, commands, debounce, escapeHtml, fail, isAgent, locator, 
 import { enhance } from "./enhance.js";
 import { t } from "./i18n.js";
 import { offsetOf, rangeOf } from "./offsets.js";
+import * as pdfview from "./pdfview.js";
 
 /** @typedef {import("./core.js").Annotation} Annotation */
 /** @typedef {{ book: import("./core.js").Book | null, title: string, authors: string[], language: string | null,
@@ -23,6 +24,8 @@ let columnWidth = 0;
 let layout = "pages";
 /** Set while the page is being rebuilt, so scroll events do not save a bogus position. */
 let busy = false;
+/** The pdf.js view when a PDF is open; pages stand in for chapters. @type {import("./pdfview.js").PdfView | null} */
+let pdf = null;
 
 const reader = () => $("#reader");
 const viewport = () => $("#viewport");
@@ -44,8 +47,27 @@ export async function open(/** @type {Opened} */ opened) {
   renderToc();
   renderNotes();
   const at = parseLocator(opened.position);
+  pdf = null;
+  page().classList.toggle("pdf", opened.format === "pdf");
+  if (opened.format === "pdf") return openPdf(at.chapter);
   chapter = -1;
   await loadChapter(Math.min(at.chapter, opened.chapters.length - 1), { offset: at.offset, initial: true });
+}
+
+async function openPdf(/** @type {number} */ start) {
+  layout = "scroll";
+  reader().dataset.layout = layout;
+  busy = true;
+  atmosphere.apply(await lookAt(locator(0, 0)));
+  pdf = await pdfview.render(page(), (index) => {
+    chapter = index;
+    updateChrome();
+    savePosition();
+  });
+  chapter = Math.min(start, pdf.pages - 1);
+  pdf.goto(chapter);
+  updateChrome();
+  busy = false;
 }
 
 /** The atmosphere at a place; none for files outside the library and in lite mode. */
@@ -94,6 +116,7 @@ function insertArt() {
 /** @param {number} index @param {{offset?: number, atEnd?: boolean, anchor?: string | null, initial?: boolean}} [where] */
 async function loadChapter(index, where = {}) {
   if (!book || index < 0 || index >= book.chapters.length) return;
+  if (pdf) return pdf.goto(index);
   busy = true;
   const changed = index !== chapter;
   const [view, look] = await Promise.all([call("chapter", { index }), lookAt(locator(index, where.offset ?? 0))]);
@@ -201,6 +224,7 @@ function showElement(/** @type {Element} */ el) {
 
 /** Offset of the first character visible at the top of the page. */
 function visibleOffset() {
+  if (pdf) return 0;
   const p = page();
   const pr = p.getBoundingClientRect();
   const vr = viewport().getBoundingClientRect();
@@ -260,6 +284,7 @@ function chapterAnnotations() {
 
 function paintAnnotations() {
   for (const el of page().querySelectorAll(".mark")) el.remove();
+  if (pdf) return;
   if (!("highlights" in CSS)) return;
   const user = new Highlight();
   const agent = new Highlight();
@@ -305,7 +330,7 @@ function selectionSpan() {
 function showSelbar() {
   const span = selectionSpan();
   const bar = $("#selbar");
-  if (!span || !book?.book) return void (bar.hidden = true);
+  if (!span || !book?.book || pdf) return void (bar.hidden = true);
   const rr = reader().getBoundingClientRect();
   bar.style.left = `${span.rect.left + span.rect.width / 2 - rr.left}px`;
   bar.style.top = `${span.rect.top - rr.top - 8}px`;
@@ -464,7 +489,7 @@ function onLink(/** @type {MouseEvent} */ e) {
 }
 
 export function relayoutKeepingPlace() {
-  if (!book || state.view !== "reader") return;
+  if (!book || state.view !== "reader" || pdf) return;
   const offset = visibleOffset();
   busy = true;
   relayout();
@@ -475,7 +500,7 @@ export function relayoutKeepingPlace() {
 }
 
 export function toggleLayout() {
-  if (!book) return;
+  if (!book || pdf) return;
   const offset = visibleOffset();
   layout = layout === "pages" ? "scroll" : "pages";
   reader().dataset.layout = layout;
