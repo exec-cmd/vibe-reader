@@ -12,12 +12,12 @@ Temporary checklist for building the first version. It is removed together with 
 
 ## Phase 1. Core and offline CLI
 
-- [ ] Config, database, migrations
-- [ ] Formats: EPUB, Markdown, TXT, HTML
-- [ ] Sanitizer with block offsets, locators
-- [ ] CLI command groups 1–6 and offline service commands
-- [ ] Skills: reader-cli, reader-analyze, reader-discuss, reader-atmosphere
-- [ ] Tests, docs (data-model, locator, cli, agents, configuration)
+- [x] Config, database, migrations
+- [x] Formats: EPUB, Markdown, TXT, HTML (FB2 and PDF are stubs until phase 4)
+- [x] Sanitizer with block offsets, locators
+- [x] CLI command groups 1–6 and offline service commands
+- [x] Skills: reader-cli, reader-analyze, reader-discuss, reader-atmosphere
+- [x] Tests, docs (data-model, locator, cli, agents, configuration)
 
 ## Phase 2. GUI reader and lite mode
 

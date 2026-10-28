@@ -15,4 +15,11 @@ path = "src/main.rs"
 [dependencies]
 vibe-reader-core.workspace = true
 anyhow.workspace = true
-clap = { version = "4.6", features = ["derive"] }
+serde.workspace = true
+serde_json.workspace = true
+clap = { version = "4.6", features = ["derive", "env"] }
+toml = "1"
+ureq = "3"
+
+[dev-dependencies]
+tempfile.workspace = true

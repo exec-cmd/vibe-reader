@@ -36,15 +36,11 @@ fn main() -> anyhow::Result<()> {
         .invoke_handler(tauri::generate_handler![ready])
         .setup(move |app| {
             assets::watch(app.handle().clone(), paths.ui_overrides());
-            WebviewWindowBuilder::new(
-                app,
-                "main",
-                WebviewUrl::CustomProtocol("vr://localhost/".parse()?),
-            )
-            .title("vibe-reader")
-            .inner_size(1100.0, 760.0)
-            .min_inner_size(480.0, 360.0)
-            .build()?;
+            WebviewWindowBuilder::new(app, "main", WebviewUrl::CustomProtocol("vr://localhost/".parse()?))
+                .title("vibe-reader")
+                .inner_size(1100.0, 760.0)
+                .min_inner_size(480.0, 360.0)
+                .build()?;
             Ok(())
         })
         .run(tauri::generate_context!())?;

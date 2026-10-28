@@ -8,11 +8,29 @@ license.workspace = true
 authors.workspace = true
 repository.workspace = true
 
+[features]
+default = ["epub", "markdown"]
+epub = ["dep:zip"]
+markdown = ["dep:pulldown-cmark"]
+fb2 = []
+pdf = []
+
 [dependencies]
 anyhow.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+ammonia = "4.2"
 dirs = "7"
+encoding_rs = "0.8"
+# Same version as ammonia uses, to edit its DOM before serialization.
+html5ever = "0.40"
+pulldown-cmark = { version = "0.13", default-features = false, features = ["html"], optional = true }
+quick-xml = { version = "0.42", features = ["encoding"] }
+regex = "1"
+rusqlite = { version = "0.41", features = ["bundled", "fallible_uint"] }
+toml = "1"
+zip = { version = "9", default-features = false, features = ["deflate-flate2-zlib-rs"], optional = true }
 
 [dev-dependencies]
 tempfile.workspace = true
+zip = { version = "9", default-features = false, features = ["deflate-flate2-zlib-rs"] }

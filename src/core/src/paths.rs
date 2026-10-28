@@ -22,20 +22,12 @@ impl Paths {
         if let Some(home) = env::var_os(HOME_ENV) {
             return Ok(Self::under(PathBuf::from(home)));
         }
-        let data = dirs::data_dir()
-            .context("no data directory")?
-            .join("vibe-reader");
-        let config = dirs::config_dir()
-            .context("no config directory")?
-            .join("vibe-reader");
+        let data = dirs::data_dir().context("no data directory")?.join("vibe-reader");
+        let config = dirs::config_dir().context("no config directory")?.join("vibe-reader");
         let runtime = dirs::runtime_dir()
             .map(|dir| dir.join("vibe-reader"))
             .unwrap_or_else(|| data.join("run"));
-        Ok(Self {
-            data,
-            config,
-            runtime,
-        })
+        Ok(Self { data, config, runtime })
     }
 
     /// Layout used for `VIBE_READER_HOME` and tests.
