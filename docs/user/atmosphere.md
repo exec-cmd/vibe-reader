@@ -1,9 +1,16 @@
+[Русская версия](ru/atmosphere.md)
+
 # Atmosphere
 
 Each book can carry its own look: palette, a pair of fonts, a background, quiet
 particles, a chapter heading style, a drawing at the start of each chapter, and
 light effects. A chapter or a single scene can have its own look on top of the
 book's.
+
+The atmosphere is drawn on the desk around the page, never over the text.
+In the reader, the atmosphere menu (the sparkle icon in the toolbar) picks a
+preset for the open book, or Default, and turns particles on or off. In the
+library, the details panel and the book menu have an Atmosphere setting too.
 
 ## Presets
 
@@ -31,7 +38,7 @@ vibe-reader atmosphere clear --book 3 --chapter 7
 
 An open reader window changes at once. `vibe-reader undo` reverts the last
 change. The default for books without their own look is `preset` in
-`config.toml`.
+`config.toml`. You can also pick it in Settings → Atmosphere.
 
 ## Writing a profile
 
@@ -88,7 +95,7 @@ vibe-reader art add 3 ./cover.jpg --as cover
 | `chapter` | At the start of the chapter, instead of the preset's drawing. |
 | `margin` | Beside the paragraph at the locator. |
 | `page` | A whole page inserted at the locator. |
-| `cover` | The cover on the library card. |
+| `cover` | The book's cover, shown in the details panel. |
 
 PNG, JPEG, WebP, GIF and SVG up to 10 MB are accepted; SVG with scripts or
 external links is refused. vibe-reader does not generate images; an agent can
@@ -97,12 +104,14 @@ hand in a file or a URL made elsewhere.
 ## Motion
 
 Particles run at up to 30 frames per second on one canvas and stop when the
-window is hidden. Lightning flashes at most once in 6 seconds. Particles and
-transitions are off in lite mode, with **Reduce motion** in settings, and when
-the system asks for reduced motion.
+window is hidden. Lightning flashes at most once in 6 seconds.
+
+Lite mode has no atmosphere and no animations. Turn on **Reduce motion** in
+Settings → Appearance to stop particles and page-turn animations. Motion also
+stops when the system asks for reduced motion.
 
 ## Changing the whole design
 
-Atmosphere covers the reader. To change anything else (the shelf, panels,
+Atmosphere covers the reader. To change anything else (the library, panels,
 spacing), put CSS into `~/.config/vibe-reader/ui/user.css`; the window applies it
 while running. See [UI](../dev/ui.md).

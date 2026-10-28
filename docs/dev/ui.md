@@ -4,32 +4,67 @@ The window's interface lives in `src/gui/ui/` as plain HTML, CSS and ES
 modules. There is no build step, no Node and no framework: edit a file, rebuild
 the GUI crate (or drop the file into `<config>/ui/`), and reload.
 
-## Files
+## Modules
 
 | File | Role |
 |---|---|
-| `index.html` | All views as static markup; modules fill them. |
-| `theme.css` | Design tokens: colors, fonts, sizes, motion. Light and dark sets. |
-| `app.css` | Layout and components, built only from tokens. |
-| `app.js` | Boot, view switching, keyboard, file opening, live reload of overrides. |
-| `core.js` | Shared state, `call()` for Tauri commands, helpers, JSDoc types. |
-| `library.js` | Shelf and library: spines, groups, search, the book card. |
-| `reader.js` | Chapters, pages and scroll, position saving, annotations, panels, links. |
-| `offsets.js` | DOM point ↔ chapter offset, mirroring `src/core/src/text.rs`. |
-| `enhance.js` | Code highlighting, copy buttons, KaTeX, table wrappers, image zoom. |
-| `settings.js` | Typography and appearance panel. |
-| `palette.js` | `Ctrl+K` palette over the `commands` registry and the books. |
-| `i18n.js`, `i18n/*.json` | Strings. English is the fallback; add a locale by adding a JSON file. |
-| `fonts/`, `vendor/` | Fonts (OFL) and KaTeX, highlight.js, pdf.js. Refresh with `python3 scripts/vendor.py`. |
+| `index.html` | Every view as static markup (library, reader, settings); links the stylesheets. |
+| `app.js` | Boot, view switching, global keys (Ctrl+O, M), opening files and drops. |
+| `core.js` | `state`, `call()` for Tauri commands, `commands` registry for the palette, `applyConfig()` and `saveConfig()`. |
+| `ui.js` | Shared widgets: `icon`, `menu`, `select`, `dialog`, `ask`, `confirmAction`, `toast`, `progress`. |
+| `library.js` | Sidebar, shelves of spines, details panel, book menu, mini mode, library keys. |
+| `reader.js` | Reader shell: toolbar, pager, zoom, side panel tabs, annotations, find. It creates one engine per open book. |
+| `flow.js` | `FlowEngine` for EPUB, FB2, Markdown, TXT and HTML. |
+| `pdfview.js` | `PdfEngine` for PDF, drawn with pdf.js. |
+| `pdfcover.js` | `loadPdfjs()` (lazy pdf.js loader) and PDF covers. |
+| `offsets.js` | DOM point ↔ offset (`offsetOf`, `rangeOf`, `pointAt`), and `normalize()` for PDF text pieces. |
+| `enhance.js` | Code highlighting, copy buttons, KaTeX, table wrappers, image zoom in chapter content. |
+| `atmosphere.js`, `particles.js` | Apply an atmosphere look to the reader; particle and light effects. |
+| `settings.js` | The settings page: sections built from `row`, `segmented`, `dropdown`, `toggle`, `slider`. |
+| `palette.js` | Command palette (Ctrl+Shift+P) over the `commands` registry and the books. |
+| `i18n.js`, `i18n/*.json` | Strings. `t(key)`; English is the fallback. |
+| `fonts/`, `vendor/` | Fonts (OFL), KaTeX, highlight.js, pdf.js. Refresh with `python3 scripts/vendor.py`. |
 
 Types are written in JSDoc so editors can check them without a compiler.
 
+## Stylesheets
+
+`index.html` loads them in this order: `fonts/fonts.css`, KaTeX, then:
+
+| File | Role |
+|---|---|
+| `theme.css` | Design tokens: colors, fonts, sizes, motion. Light set on `:root`, dark set under `data-mode="dark"`. |
+| `base.css` | Shared components: buttons, fields, toolbars, menus, dialogs, toasts. |
+| `library.css`, `reader.css`, `settings.css` | One view each. |
+| `atmosphere.css` | Background, effects and particle layers; palette values come from the atmosphere profile. |
+| `user.css` | Loaded last, from `<config>/ui/` if present. |
+
+Animations use the `--fast` and `--slow` tokens. They drop to zero for reduced
+motion and in lite mode.
+
+## Engines
+
+The reader shell holds one engine per open book. Both engines expose the same
+methods, so `reader.js` drives either one the same way:
+
+| Method | Meaning |
+|---|---|
+| `open(...)` | Lay out the book at a place. `FlowEngine.open(chapters, {chapter, offset})`; `PdfEngine.open(page)`. |
+| `next()`, `prev()` | Move one screen or page. At the edge, flow moves to the next chapter; PDF moves to the next spread. |
+| `label()` | The pager text for the current place. |
+| `selection()` | The current text selection as `{chapter, start, end, text, rect}`, or `null`. For PDF, `chapter` is the page index. |
+| `range(chapter, start, end)` | A DOM `Range` for an offset span on what is drawn, or `null`. Used to paint highlights and find hits. |
+| `setLayout(layout)` | Switch spread, one page or scroll, keeping the place. |
+
+Engine-specific calls stay behind `instanceof PdfEngine` checks in `reader.js`
+(for example `chapterStart()` and `chapterEnd()`). Keep format branches there,
+not in the engines.
+
 ## Talking to Rust
 
-`call(name, args)` invokes a Tauri command from `src/gui/src/state.rs`. The
-commands work on the open book held in the `App` state: `open_book`,
-`open_path`, `chapter`, `save_position`, `annotate`, and so on. Book files are
-served under `vr://localhost/res/<path inside the book>`, art under `/art/`.
+`call(name, args)` invokes a Tauri command registered in `src/gui/src/state.rs`.
+Book files are served under `vr://localhost/res/<path inside the book>`, art
+under `/art/`. Command names are in `state.rs`; use them from there.
 
 ## Offsets and annotations
 
@@ -41,8 +76,25 @@ text as `offsets.js` sees it:
 - add `data-wrap` to wrappers that are not part of the book (`.table-wrap`);
 - keep replaced text in `data-tex` (KaTeX does this).
 
+A PDF page has one block: its text layer, stamped `data-o="0"`. Its offsets
+come from the pdf.js text items through `normalize()`.
+
 Highlights use the CSS Custom Highlight API (`::highlight(user)`,
-`::highlight(agent)`), so annotations never change the DOM.
+`::highlight(agent)`, `::highlight(found)`), so annotations never change the DOM.
+
+## Adding a setting
+
+1. Add the field to its struct in `src/core/src/config.rs` (`Reader`,
+   `Typography`, `LibraryView`, `Pdf` or `Agent`). Fields carry `#[serde(default)]`,
+   so old config files still load.
+2. Add a `row(label, hint, control)` to the section builder in `settings.js`
+   (`appearance`, `reading`, `pdf`, `library`, ...). The change callback writes
+   the field and calls `changed()` (applies and saves) or `changed(true)` to
+   re-render the section.
+3. Add the label and hint keys to both `i18n/en.json` and `i18n/ru.json`.
+4. If the setting changes the look, apply it in `applyConfig()` in `core.js`.
+   Font families must match `FONTS` in `config.rs` and `settings.js`.
+5. Document it in `docs/user/configuration.md`.
 
 ## Changing the design
 
@@ -51,5 +103,3 @@ Highlights use the CSS Custom Highlight API (`::highlight(user)`,
    in `<config>/ui/` replaces the file with the same path, and `user.css` there
    is loaded after everything else. CSS changes apply live; other files reload
    the page.
-3. Keep animations behind the `--fast` and `--slow` tokens: they drop to zero
-   for reduced motion and in lite mode.

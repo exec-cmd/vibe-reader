@@ -1,3 +1,5 @@
+[Русская версия](ru/agents.md)
+
 # Using vibe-reader with AI agents
 
 vibe-reader has no AI inside. Any agent that can run shell commands — Claude
@@ -30,6 +32,7 @@ Code, Codex, opencode and others — works with your library through the
 ## What agents can and cannot do
 
 - **Read** everything in the library: book text, your position, notes, shelves.
+  For PDF books, agents get the text that the core extracts.
 - **Write** notes, highlights, bookmarks, memory, illustrations and atmosphere.
   Each write records the agent's name, shows up marked in the reader window,
   and `vibe-reader undo --author NAME` reverts it step by step.
@@ -53,8 +56,8 @@ Finished books have no limit.
 ## Your reading profile
 
 Reading sessions, speed and habits are private until you share them under
-`[agent.consent]` in `config.toml` ([configuration](configuration.md)). The app
-gives agents numbers; conclusions such as "you read faster in the evening" are
+`[agent.consent]` in `config.toml` or in Settings → AI agents
+([configuration](configuration.md)). The app gives agents numbers; conclusions such as "you read faster in the evening" are
 the agent's.
 
 ## Prompt injection

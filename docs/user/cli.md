@@ -1,3 +1,5 @@
+[Русская версия](ru/cli.md)
+
 # Command-line reference
 
 `vibe-reader` works with the same library as the reader window. Every command
@@ -21,7 +23,7 @@ file, or a unique part of the title: `vibe-reader show наказание`.
 
 Places are written as locators: `ch:3` is the start of chapter 3, `ch:3:120` is
 character 120 of that chapter, and `ch:3:120..ch:3:480` is a span.
-`vibe-reader toc <book>` lists chapter locators.
+`vibe-reader toc <book>` lists chapter locators. For PDF books, `ch:N` is page N.
 
 ## Commands
 

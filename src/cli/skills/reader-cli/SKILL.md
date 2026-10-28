@@ -13,11 +13,13 @@ description: Work with the user's book library through the vibe-reader CLI. Use 
 - **The reader's position is the spoiler boundary.** `read`, `search`, `context` and `recap` stop at it. Add `--allow-spoilers` only after the user asks for text beyond their place in this conversation. Finished books have no boundary.
 - **Sign your writes.** Pass `--author <your-name>` (for example `--author claude-code`) or set `VIBE_READER_AUTHOR`. Notes, highlights, memory, art and atmosphere carry the author, and the reader's window marks agent notes differently.
 - **Undo your own mistakes.** `vibe-reader undo --author <your-name>` reverts your newest write. You can change and delete only your own records.
-- **Leave the library intact.** Removing books and deleting shelves need the user at a terminal; suggest the command to the user when they want it.
+- **Leave the library intact.** Removing books and deleting shelves are for the user: in the window, or with `vibe-reader remove` at an interactive terminal. Suggest it when they want a book gone.
 
 ## Addresses
 
 A locator is `ch:N` or `ch:N:OFFSET`: chapter `N` from 1, offset in characters of the chapter's normalized text. A range is `ch:3:120..ch:3:480`. `toc` lists chapter locators; `read` returns `from`, `to` and `next`; `search` returns a locator per hit.
+
+For PDFs, `ch:N` is page N, and the offset counts characters of that page's text. A note you leave on a PDF appears in the window, found by its quoted text.
 
 ## Output
 

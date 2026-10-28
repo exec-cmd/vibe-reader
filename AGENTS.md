@@ -27,11 +27,15 @@ Run the CLI with `cargo run -p vibe-reader -- --help` and the window with `cargo
 
 - The core stays synchronous, without GUI, async runtime or heavy dependencies. New formats go behind a Cargo feature.
 - The UI has no build step: no Node, npm or frameworks. Types go in JSDoc comments. Design values are CSS tokens in `theme.css`.
+- Every UI string goes in both `src/gui/ui/i18n/en.json` and `ru.json`, under the same key.
+- New UI pieces use the shared widgets in `ui.js` (`menu`, `select`, `dialog`, `ask`, `confirmAction`, `toast`), not a new widget.
+- UI elements inside a book page carry `data-skip` (or `data-wrap` for wrappers) so offsets stay correct.
+- PDF locators count characters of the pdf.js text layer, normalized as `offsets.js` `normalize()` does. Never derive them from the PDF file itself.
+- Normalized text rules exist twice, in `src/core/src/text.rs` and `src/gui/ui/offsets.js`; change both together.
+- Bump `CACHE_VERSION` (`src/core/src/store/mod.rs`) when the parsed book form changes. The cache is keyed only by file size and mtime.
 - Files embedded with `include_str!` or Tauri assets live inside the crate that embeds them, so `cargo package` ships them.
 - Dependencies must be compatible with MIT OR Apache-2.0. GPL crates are rejected; this is why EPUB and FB2 are parsed in-house.
 - Book text is untrusted input: sanitize HTML before it reaches the webview and mark it as data in CLI output.
-- Normalized text rules exist twice, in `src/core/src/text.rs` and `src/gui/ui/offsets.js`; change both together.
-- UI elements added inside a chapter page carry `data-skip` (or `data-wrap` for wrappers) so offsets stay correct.
 - User-visible behavior changes update the matching page in `docs/user/`; CLI changes update `docs/user/cli.md` and, when agents use the command, the Skills.
 
 ## Where to read before changing a subsystem

@@ -1,3 +1,5 @@
+[Русская версия](ru/getting-started.md)
+
 # Getting started
 
 ## Install
@@ -19,11 +21,16 @@ GitHub release.
 
 ## Add your first book
 
-Start the window and drop book files onto it, or press **Open…** (`O`):
+Start the window:
 
 ```bash
 vibe-reader-gui
 ```
+
+Then add books in one of these ways:
+
+- click **Add books** in the toolbar, or press `Ctrl+O`;
+- drag the files onto the window.
 
 From a terminal:
 
@@ -32,17 +39,23 @@ vibe-reader add ~/Books/crime-and-punishment.epub --shelf Classics
 vibe-reader open
 ```
 
-The library keeps a link to the file; add `--copy` to store a copy instead.
-Supported formats: EPUB, FB2, Markdown, TXT, HTML and PDF.
+The library keeps a link to each file. To store a copy in the library instead,
+add `--copy`, or turn on **Keep copies of added files** in Settings → Library.
+Supported formats: EPUB, FB2, PDF, Markdown, TXT and HTML.
 
 ## Read
 
-Click a spine to open the book. Prose opens in pages, technical books and
-Markdown in a continuous scroll; `L` switches between them. The thin line at the
-top shows how far you are, and the window remembers your place.
+Double-click a spine, or select it and press Enter, to open the book. Press
+`Esc` to go back to the library. The thin progress line at the top shows how far
+you are, and the window remembers your place.
 
-Press `Ctrl+K` for the command palette, `Esc` to go back to the shelf. See
-[reading](reading.md) and [keyboard](keyboard.md) for more.
+Use the layout button or `L` to switch between layouts. The default comes from
+Settings → Reading (for PDF, from Settings → PDF).
+
+Press `Ctrl+Shift+P` for the command palette. It lists commands and books.
+
+See [library](library.md), [reading](reading.md), [PDF](pdf.md) and
+[keyboard](keyboard.md) for more.
 
 ## Quick look at a file
 
@@ -57,4 +70,4 @@ open in lite mode reloads when you save it in your editor.
 ## Next steps
 
 - Let an AI agent discuss and annotate your books: [agents](agents.md).
-- Change fonts, colors and the whole design: [configuration](configuration.md).
+- Change the font, theme and atmosphere: [configuration](configuration.md).

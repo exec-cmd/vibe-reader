@@ -28,7 +28,7 @@ vibe-reader add ~/Books/crime-and-punishment.epub --shelf Classics
 vibe-reader open
 ```
 
-Drop more files onto the window or press **Open…**. Release archives and an
+Drop more files onto the window or press **Add books**. Release archives and an
 AppImage are attached to each [GitHub release](https://github.com/exec-cmd/vibe-reader/releases).
 
 ## Reading
@@ -39,16 +39,20 @@ AppImage are attached to each [GitHub release](https://github.com/exec-cmd/vibe-
 - **Pages or scroll.** Prose opens in pages (a spread on wide windows),
   technical books and Markdown in a scroll. Code is highlighted and copyable,
   TeX and MathML formulas are typeset, wide tables scroll, images zoom.
+- **PDF.** Spread, one-page and scroll layouts, zoom, the PDF's own outline,
+  page thumbnails, search, highlights and notes on selected text, and dark pages
+  in dark mode.
 - **Notes.** Highlights, notes and bookmarks, exported to Markdown or JSON.
   Notes by an agent are marked differently from yours.
 - **Typography.** Six bundled fonts with Cyrillic, size, line length and
   spacing, justification and hyphenation, light and dark.
-- **Keyboard first.** `Ctrl+K` palette, single-key commands, optional Vim keys.
+- **Keyboard first.** `Ctrl+Shift+P` palette, single-key commands, optional Vim keys.
 - **Quick view.** `vibe-reader open notes.md --lite` opens one file without the
   library; Markdown reloads when you save it.
 
 More: [getting started](docs/user/getting-started.md),
-[reading](docs/user/reading.md), [keyboard](docs/user/keyboard.md).
+[library](docs/user/library.md), [reading](docs/user/reading.md),
+[PDF](docs/user/pdf.md), [keyboard](docs/user/keyboard.md).
 
 ## Atmosphere
 

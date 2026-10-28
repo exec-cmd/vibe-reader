@@ -1,43 +1,54 @@
+[Русская версия](ru/keyboard.md)
+
 # Keyboard
 
-vibe-reader is built for the keyboard; the mouse and touchpad work too.
+vibe-reader is built for the keyboard. The mouse and touchpad work too.
 
 ## Everywhere
 
 | Key | Action |
 |---|---|
-| `Ctrl+K` | Command palette: commands and books |
-| `Esc` | Close a panel or popup; in a book, back to the shelf |
+| `Ctrl+Shift+P` | Command palette: commands and books |
+| `Esc` | Close a popup; in a book, back to the library |
 
-## Shelf and library
+## Library
 
 | Key | Action |
 |---|---|
-| `F` | Expand or collapse the library |
-| `/` | Search |
-| `Enter` in search | Open the first match |
-| `O` | Open files |
-| `Tab`, `Enter` | Move between spines, open one |
+| `Ctrl+O` | Add books |
+| `Ctrl+,` | Settings |
+| `M` | Expand or collapse the mini library |
+| `←`, `→`, `↑`, `↓` | Move between spines |
+| `Enter` | Open the selected book |
+| `F2` | Edit the selected book |
+| `Delete` | Remove the selected book (asks first) |
 
 ## Reading
 
 | Key | Action |
 |---|---|
-| `→`, `Space`, `Page Down` | Next page (or screen in scroll mode) |
+| `→`, `Space`, `Page Down` | Next page |
 | `←`, `Shift+Space`, `Page Up` | Previous page |
-| `]`, `[` | Next, previous chapter |
+| `↑`, `↓` | Scroll |
+| `]`, `[` | Next, previous chapter (in PDF: 10 pages) |
 | `Home`, `End` | Start, end of the chapter |
-| `T` | Contents |
+| `G` | Go to page |
+| `T` | Side panel |
 | `N` | Notes |
-| `,` | Settings |
+| `Ctrl+F` | Find |
 | `B` | Bookmark this page |
-| `L` | Pages or scroll |
+| `L` | Change the layout |
 | `D` | Light or dark |
-| `Ctrl+Enter` in a note | Save |
+| `Ctrl+=`, `+` | Zoom in (PDF) |
+| `Ctrl+-`, `-` | Zoom out (PDF) |
+| `0` | Reset zoom (PDF) |
+| `F11` | Full screen |
+| `Ctrl+Enter` in a note | Save the note |
 
 ## Vim keys
 
-Turn on **Vim keys** in settings (or `vim = true` in `config.toml`) to add:
+Turn on **Vim keys** in Settings → Keyboard, or set `vim = true` in
+`config.toml`. This adds:
 
 | Key | Action |
 |---|---|
@@ -45,5 +56,7 @@ Turn on **Vim keys** in settings (or `vim = true` in `config.toml`) to add:
 | `j`, `k` | Scroll down, up |
 | `g`, `G` | Start, end of the chapter |
 
-With Vim keys on, `l` turns the page instead of switching the layout; use the
-palette for **Switch pages and scroll**.
+With Vim keys on, `l` turns the page instead of changing the layout. Use the
+layout button in the toolbar to change the layout.
+
+Settings → Keyboard also shows the list of shortcuts.

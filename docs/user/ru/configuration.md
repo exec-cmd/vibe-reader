@@ -1,0 +1,90 @@
+[English version](../configuration.md)
+
+# Настройка
+
+## Настройки
+
+Откройте настройки кнопкой **Настройки** на панели библиотеки или клавишами
+`Ctrl+,`. В настройках есть такие разделы:
+
+| Раздел | Что внутри |
+|---|---|
+| Оформление | Тема (Авто, Светлое, Тёмное), язык (Авто, English, Русский), меньше движения. |
+| Чтение | Раскладка книг, шрифт, размер, длина строки, интерлиньяж, выравнивание, переносы и живое превью. |
+| PDF | Раскладка (Разворот, Одна страница, Прокрутка), размер страницы (Страница целиком, По ширине), тёмные страницы в тёмной теме. |
+| Библиотека | Запускать мини-библиотеку, хранить копии добавленных файлов, группировка и порядок. |
+| Атмосфера | Карточки пресетов по умолчанию, частицы и световые эффекты, путь к `user.css` и папка пресетов. |
+| AI-агенты | Что видят агенты: привычки чтения, скорость чтения и предпочтения. Всё выключено по умолчанию. Здесь же установка Skills. |
+| Клавиши | Переключатель клавиш Vim и список сочетаний. |
+| О программе | Версия и пути к файлу настроек, папке библиотеки, папке переопределений дизайна и папке пресетов. Щёлчок по пути копирует его. |
+
+Изменения применяются сразу и сохраняются в `config.toml`.
+
+## Где лежат файлы
+
+| Что | Путь по умолчанию |
+|---|---|
+| База библиотеки | `~/.local/share/vibe-reader/library.db` |
+| Кэш разобранных книг | `~/.local/share/vibe-reader/cache/` |
+| Обложки | `~/.local/share/vibe-reader/covers/` |
+| Иллюстрации | `~/.local/share/vibe-reader/art/` |
+| Копии книг | `~/.local/share/vibe-reader/books/` |
+| Настройки | `~/.config/vibe-reader/config.toml` |
+| Переопределения дизайна | `~/.config/vibe-reader/ui/` |
+| Ваши пресеты | `~/.config/vibe-reader/presets/` |
+
+Переменные XDG (`XDG_DATA_HOME`, `XDG_CONFIG_HOME`) переносят эти папки, как
+обычно. Чтобы держать всё в одной папке (`data/`, `config/`, `run/`), например
+для переносной установки или тестов, задайте `VIBE_READER_HOME`.
+
+`vibe-reader config` выводит действующие настройки, `vibe-reader config path`
+показывает путь к файлу, а `vibe-reader config edit` открывает его в `$EDITOR`.
+
+## config.toml
+
+Все ключи необязательны. Если ключа нет, используется значение по умолчанию.
+
+```toml
+[reader]
+locale = "auto"        # auto, en, ru
+preset = "study"
+mode = "auto"          # auto, light, dark
+vim = false
+reduce_motion = false
+layout = "spread"      # spread, pages, scroll
+particles = true
+
+[typography]
+font = "auto"          # auto (from the atmosphere), a bundled font, "system", any installed family
+size = 19.0            # px, 14 to 30
+width = 34.0           # line length in em, 22 to 50
+line_height = 1.6      # 1.2 to 2.2
+justify = true
+hyphens = true
+
+[library]
+group = "shelf"        # shelf, author, format, status, none
+sort = "recent"        # recent, title, author, progress, added
+start_mini = false
+copy_on_import = false
+
+[pdf]
+layout = "spread"      # spread, single, scroll
+fit = "page"           # page, width
+invert_dark = true
+
+[agent.consent]
+habits = false
+genres = false
+speed = false
+```
+
+Ключ `preset` задаёт атмосферу для книг, у которых нет собственной.
+
+## Что видят агенты
+
+Агенты читают ваши книги, заметки и прогресс через CLI. Ваш профиль читателя
+(привычки, жанры, скорость) остаётся закрытым, пока вы не включите нужный ключ в
+разделе `[agent.consent]`. Те же переключатели есть в Настройках, в разделе
+«AI-агенты». Команда `vibe-reader config edit` работает только в интерактивном
+терминале, поэтому агент не может сам себе дать доступ.

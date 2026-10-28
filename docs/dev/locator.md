@@ -34,6 +34,16 @@ replaying the same rules up to the point (`src/gui/ui/offsets.js`), so it never
 needs the whole chapter text. The cases in `text::tests::CASES` define the
 rules; change both implementations together.
 
+## PDF locators
+
+For PDF the chapter is the page: `ch:N` is page N. The offset counts characters
+of that page's text as pdf.js extracts it, normalized by `normalize()` in
+`offsets.js` (a line break after each text item that ends a line). The text
+layer is the page's one block, stamped `data-o="0"`. A page without a text
+layer (a scanned PDF) has no offsets, so it cannot take selections or notes.
+Notes that the CLI leaves on a PDF are found in the window by their quote, not
+by offset.
+
 ## Anchor quotes
 
 Each stored locator keeps the next 40 characters of text as a quote.

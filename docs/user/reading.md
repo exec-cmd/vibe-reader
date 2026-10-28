@@ -1,54 +1,84 @@
+[Русская версия](ru/reading.md)
+
 # Reading
 
-## The window
+## The reader
 
-The window has three states:
+Open a book to switch the window to the reader. The reader has these controls:
 
-- **Shelf**: recent books as spines and a search field. This is where the app starts.
-- **Library**: every book, grouped by your shelves or by author. Press `F` or **Library**.
-- **Reading**: the text and a thin progress line. Everything else hides until you ask for it.
+| Control | What it does |
+|---|---|
+| Back to library (`Esc`) | Returns to the library. |
+| Side panel (`T`) | Shows or hides the side panel. |
+| Title, author and chapter | Shows where you are. |
+| Pager | Previous page, a page number field, the total number of pages, and next page. Type a number and press Enter to go to that page. |
+| Zoom | PDF only. See [PDF](pdf.md). |
+| Layout (`L`) | Chooses the layout. |
+| Find (`Ctrl+F`) | Searches the book. The results are in the Find tab of the side panel. |
+| Atmosphere (sparkle icon) | Picks the atmosphere for this book. |
+| Light or dark (`D`) | Switches the color mode. |
+| Full screen (`F11`) | Hides the toolbar. The toolbar comes back when the mouse moves to the top. |
+| More (…) | Bookmark this page, go to page, find in book, and reading settings. |
 
-A spine's color comes from the book, its height from the book's length, and the
-lighter fill from the bottom shows your progress. Hover or focus a spine to see
-its card with a typographic cover, status and progress.
+## Layouts
 
-## Shelves and status
+For EPUB, FB2, Markdown and TXT there are three layouts:
 
-Shelves are labels: a book can sit on several shelves, and moving it between
-shelves never touches the file. Manage them with `vibe-reader shelf`.
+- **Spread**: two facing pages, bound in the middle. This layout needs a wide window.
+- **One page**: one full-height sheet.
+- **Scroll**: a continuous text.
 
-Opening a book marks it as **reading**. The card has buttons to mark it
-**finished** or **dropped**. Status is kept for statistics; the library is not
-grouped by it.
+The default comes from Settings → Reading. Technical books open on one page when
+you choose Spread. Press `L` to cycle through the layouts.
 
-## Pages and scroll
-
-Prose opens in pages; on a wide window you see a two-page spread. Technical
-books and Markdown open in a continuous scroll. Press `L` to switch.
+PDF has its own layouts. See [PDF](pdf.md).
 
 Technical books get:
 
-- highlighted code with a **Copy** button,
-- formulas (TeX in Markdown, MathML in EPUB),
-- tables that scroll sideways when they are wide,
-- images that open full size on click.
+- highlighted code with a **Copy** button;
+- formulas (TeX in Markdown, MathML in EPUB);
+- tables that scroll sideways when they are wide;
+- images that open at full size when you click them.
 
-## Notes, highlights, bookmarks
+## Side panel
 
-Select text to get a small toolbar: **Highlight**, **Note**, **Copy**. A note
-opens an editor; `Ctrl+Enter` saves it. `B` bookmarks the current page.
+Press `T` to open the side panel. It has these tabs:
 
-Your highlights are underlined with a solid line. Notes and highlights written
-by an AI agent use a dotted line and a ✦ mark in the margin; click the mark to
-read the note. Open all notes with `N`, and export them with
+- **Contents** lists the chapters, with nested chapters shown inside their
+  parents. For PDF, it shows the PDF's own bookmarks. See [PDF](pdf.md).
+- **Pages** shows page thumbnails. Click one to jump to it. This tab is for PDF.
+- **Notes** lists all highlights, notes and bookmarks in the book. Click an
+  item to go to it. Right-click an item to delete it, if you wrote it.
+- **Find** runs a full-text search. Click a result to jump to it. The match
+  stays marked for a few seconds.
+
+## Notes, highlights and bookmarks
+
+Select text to see a small bar with **Highlight**, **Note**, **Copy** and **Find
+in book**. Click **Note** to write a note. Press `Ctrl+Enter` to save it.
+
+Press `B` to bookmark the current page. Press `N` to open the notes.
+
+- Your highlights are underlined with a gilt line.
+- Notes and highlights written by an AI agent are blue, with a dotted underline.
+  They also have a ✦ mark in the margin. Click the mark to read the note.
+
+Export all notes, highlights and bookmarks from a terminal with
 `vibe-reader export notes`.
 
 ## Typography
 
-`,` opens settings: font, size, line length, line spacing, justification,
-hyphenation, light or dark appearance, language, Vim keys and reduced motion.
-Changes apply at once and are saved to `config.toml`.
+Open Settings (`Ctrl+,`) and go to Reading. You can change the books layout,
+the font, the size, the line length, the line spacing, justification and
+hyphenation. The page shows a live preview. Changes apply at once and are saved
+to `config.toml`. See [configuration](configuration.md).
 
 Bundled fonts (all with Cyrillic): Literata, Spectral, Cormorant Garamond,
-Playfair Display, Onest, JetBrains Mono. You can also pick the system font, or
-set any installed family in `config.toml`.
+Playfair Display, Onest and JetBrains Mono. You can also choose the system font,
+or set any installed font family in `config.toml`.
+
+## Atmosphere
+
+The atmosphere menu in the reader sets the preset for the open book, or Default.
+It also turns particles on or off. The atmosphere is drawn on the desk around the
+page, never over the text. See [atmosphere](atmosphere.md).
