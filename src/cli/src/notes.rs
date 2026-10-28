@@ -45,6 +45,7 @@ fn add(ctx: &Ctx, book: &Book, kind: AnnotationKind, span: Span, body: &str) -> 
     let doc = ctx.lib.document(book)?;
     let quote = quote(&doc, span)?;
     let id = ctx.lib.annotate(book.id, kind, span, &quote, body, &ctx.author)?;
+    crate::look::notify(ctx.lib.paths());
     Ok(Out::new(
         json!({ "id": id, "book": book.id, "kind": kind, "start": span.start, "end": span.end, "author": ctx.author }),
         format!(
@@ -107,6 +108,7 @@ pub fn note(ctx: &Ctx, cmd: NoteCmd) -> Result<Out> {
         NoteCmd::List { book } => list(ctx, &ctx.lib.find(&book)?, Some(AnnotationKind::Note)),
         NoteCmd::Edit { id, text } => {
             let new = ctx.lib.edit_annotation(id, &text, &ctx.author)?;
+            crate::look::notify(ctx.lib.paths());
             Ok(Out::new(
                 json!({ "id": new, "replaces": id }),
                 format!("Note {id} is now {new}."),
@@ -114,6 +116,7 @@ pub fn note(ctx: &Ctx, cmd: NoteCmd) -> Result<Out> {
         }
         NoteCmd::Delete { id } => {
             ctx.lib.delete_annotation(id, &ctx.author)?;
+            crate::look::notify(ctx.lib.paths());
             Ok(Out::new(
                 json!({ "deleted": id }),
                 format!("Deleted {id}. `vibe-reader undo` brings it back."),

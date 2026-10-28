@@ -1,0 +1,40 @@
+[preset]
+name = "Terminal"
+description = "Monospace, a faint grid and scanlines. For code and technical books."
+modes = ["light", "dark"]
+
+[palette.light]
+paper = "#f2f1ea"
+paper_2 = "#e7e5da"
+ink = "#1f2a22"
+muted = "#5e6b60"
+rule = "#cfd3c6"
+accent = "#2f7d4f"
+spine = "#2f4a3a"
+
+[palette.dark]
+paper = "#0f1411"
+paper_2 = "#161d18"
+ink = "#c8e6cf"
+muted = "#6f8f78"
+rule = "#23302a"
+accent = "#5fd38a"
+spine = "#1f3a2a"
+
+[type]
+display = "JetBrains Mono"
+body = "JetBrains Mono"
+
+[background]
+kind = "grid"
+dim = 0.1
+
+[particles]
+kind = "none"
+
+[chapter]
+heading = "terminal"
+illustration = "terminal"
+
+[effects]
+grain = 0.0

@@ -313,6 +313,22 @@ impl Library {
         Ok(())
     }
 
+    /// Spine color in the library, set from the book's atmosphere.
+    pub fn set_color(&self, id: i64, color: &str) -> Result<()> {
+        self.conn
+            .execute("UPDATE books SET color = ?2 WHERE id = ?1", params![id, color])?;
+        Ok(())
+    }
+
+    /// Cover images attached with `art add --as cover`: book id and art file name.
+    pub fn covers(&self) -> Result<Vec<(i64, String)>> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT book_id, file FROM art WHERE placement = 'cover' AND deleted_at IS NULL ORDER BY id")?;
+        let rows = stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?;
+        rows.map(|r| Ok(r?)).collect()
+    }
+
     /// Marks a book as just opened; an unread book becomes `reading`.
     pub fn touch(&self, id: i64) -> Result<()> {
         self.conn.execute(

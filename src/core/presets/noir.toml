@@ -1,0 +1,43 @@
+[preset]
+name = "Noir"
+description = "Light through blinds, smoke, high contrast. For detective stories."
+modes = ["light", "dark"]
+
+[palette.light]
+paper = "#eeeae4"
+paper_2 = "#e2ddd5"
+ink = "#1c1b1a"
+muted = "#6d6862"
+rule = "#cdc6bc"
+accent = "#8c1c13"
+spine = "#2b2b2b"
+
+[palette.dark]
+paper = "#121212"
+paper_2 = "#1b1b1b"
+ink = "#e8e3da"
+muted = "#8d877e"
+rule = "#2f2c29"
+accent = "#c9473a"
+spine = "#2b2b2b"
+
+[type]
+display = "Playfair Display"
+body = "Literata"
+
+[background]
+kind = "blinds"
+dim = 0.3
+
+[particles]
+kind = "dust"
+density = 0.2
+speed = 0.15
+
+[chapter]
+heading = "caps"
+illustration = "blinds"
+
+[effects]
+grain = 0.35
+vignette = 0.5

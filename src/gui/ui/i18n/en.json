@@ -74,5 +74,6 @@
   "reloaded": "The file changed and was reloaded",
   "kind_note": "Note",
   "kind_highlight": "Highlight",
-  "kind_bookmark": "Bookmark"
+  "kind_bookmark": "Bookmark",
+  "fontAuto": "From the atmosphere"
 }

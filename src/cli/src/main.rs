@@ -1,6 +1,7 @@
 //! `vibe-reader`: the library from the command line, for people and AI agents.
 
 mod library;
+mod look;
 mod notes;
 mod output;
 mod reading;
@@ -64,9 +65,10 @@ enum Command {
     },
     /// Show details of one book.
     Show { book: String },
-    /// Open the reader window, optionally with a file.
+    /// Open the reader window, optionally with a file or a book from the library.
     Open {
-        file: Option<PathBuf>,
+        /// A file path, or a book id or title from the library.
+        file: Option<String>,
         /// Quick view: no library, atmosphere or animations.
         #[arg(long)]
         lite: bool,
@@ -148,6 +150,18 @@ enum Command {
     /// Set a book status: reading, finished or dropped.
     #[command(subcommand)]
     Status(StatusCmd),
+    /// Atmosphere of a book, a chapter or a range: palette, fonts, background, particles.
+    #[command(subcommand)]
+    Atmosphere(AtmosphereCmd),
+    /// Atmosphere presets: list, show, validate and install.
+    #[command(subcommand)]
+    Preset(PresetCmd),
+    /// Talk to the running reader window.
+    #[command(subcommand)]
+    Live(LiveCmd),
+    /// The reader window: `gui status`.
+    #[command(subcommand)]
+    Gui(GuiCmd),
     /// Install the bundled Agent Skills.
     #[command(subcommand)]
     Skills(SkillsCmd),
@@ -365,6 +379,86 @@ enum StatusCmd {
     },
 }
 
+/// Where an atmosphere applies; without flags, the whole book.
+#[derive(Args)]
+pub struct Where {
+    /// One chapter (1-based).
+    #[arg(long)]
+    chapter: Option<usize>,
+    /// A scene, like ch:5:1200..ch:5:4800.
+    #[arg(long)]
+    range: Option<String>,
+}
+
+#[derive(Subcommand)]
+pub enum AtmosphereCmd {
+    /// Stored profiles and the look in effect at a place (the reader's position by default).
+    Get {
+        #[arg(long)]
+        book: String,
+        #[command(flatten)]
+        at: Where,
+        #[arg(long)]
+        locator: Option<String>,
+    },
+    /// Store a profile: a preset by name, a TOML or JSON file, or an inline TOML or JSON profile.
+    Set {
+        #[arg(long)]
+        book: String,
+        #[command(flatten)]
+        at: Where,
+        #[arg(long)]
+        preset: Option<String>,
+        #[arg(long)]
+        file: Option<PathBuf>,
+        #[arg(long)]
+        profile: Option<String>,
+    },
+    /// Remove the profile of the book, a chapter or a range.
+    Clear {
+        #[arg(long)]
+        book: String,
+        #[command(flatten)]
+        at: Where,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum PresetCmd {
+    List,
+    Show {
+        name: String,
+    },
+    /// Check a profile or preset file without storing it.
+    Validate {
+        file: PathBuf,
+    },
+    /// Copy a preset (and an optional stylesheet) into the presets folder.
+    Install {
+        file: PathBuf,
+        #[arg(long)]
+        css: Option<PathBuf>,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum LiveCmd {
+    /// The book and position shown in the window.
+    Position,
+    /// The text selected in the window.
+    Selection,
+    /// Move the window to a locator.
+    Goto { locator: String },
+    /// Show a passage in the window, marked.
+    Highlight { range: String },
+}
+
+#[derive(Subcommand)]
+enum GuiCmd {
+    /// Whether the window runs, and what it shows.
+    Status,
+}
+
 #[derive(Subcommand)]
 enum SkillsCmd {
     /// Write the Skills into an agent's skills folder.
@@ -422,8 +516,22 @@ fn run(cli: Cli) -> Result<Out> {
     match &cli.command {
         Command::Skills(cmd) => return service::skills(cmd),
         Command::Config { action } => return service::config(&paths, action.as_ref()),
-        Command::Open { file, lite } => return library::open(file.as_deref(), *lite),
+        Command::Open { file, lite } => {
+            // A library book can be named instead of a file.
+            let file = match file {
+                Some(f) if !std::path::Path::new(f).exists() => Some(Library::open(&paths)?.find(f)?.path),
+                other => other.as_ref().map(PathBuf::from),
+            };
+            return library::open(file.as_deref(), *lite);
+        }
+        Command::Gui(GuiCmd::Status) => return look::gui_status(&paths),
         _ => {}
+    }
+    if let Command::Live(cmd) = cli.command {
+        return look::live(&paths, cmd);
+    }
+    if let Command::Preset(cmd) = cli.command {
+        return look::preset_cmd(&paths, cmd);
     }
     let ctx = Ctx {
         lib: Library::open(&paths)?,
@@ -457,9 +565,15 @@ fn run(cli: Cli) -> Result<Out> {
         Command::Highlight(cmd) => notes::highlight(&ctx, cmd),
         Command::Export(ExportCmd::Notes { book, output }) => notes::export(&ctx, book.as_deref(), output.as_deref()),
         Command::Memory(cmd) => notes::memory(&ctx, cmd),
+        Command::Atmosphere(cmd) => look::atmosphere_cmd(&ctx, cmd),
         Command::Doctor => service::doctor(&ctx),
         Command::Undo => service::undo(&ctx),
-        Command::Skills(_) | Command::Config { .. } | Command::Open { .. } => unreachable!("handled above"),
+        Command::Skills(_)
+        | Command::Config { .. }
+        | Command::Open { .. }
+        | Command::Gui(_)
+        | Command::Live(_)
+        | Command::Preset(_) => unreachable!("handled above"),
     }
 }
 

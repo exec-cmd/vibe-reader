@@ -1,6 +1,7 @@
 // The reading view: chapters, pages or scroll, position, annotations, panels.
 
-import { $, call, commands, debounce, escapeHtml, fail, isAgent, locator, on, parseLocator, state, toast } from "./core.js";
+import * as atmosphere from "./atmosphere.js";
+import { $, calm, call, commands, debounce, escapeHtml, fail, isAgent, locator, on, parseLocator, state, toast } from "./core.js";
 import { enhance } from "./enhance.js";
 import { t } from "./i18n.js";
 import { offsetOf, rangeOf } from "./offsets.js";
@@ -43,18 +44,67 @@ export async function open(/** @type {Opened} */ opened) {
   renderToc();
   renderNotes();
   const at = parseLocator(opened.position);
-  await loadChapter(Math.min(at.chapter, opened.chapters.length - 1), { offset: at.offset });
+  chapter = -1;
+  await loadChapter(Math.min(at.chapter, opened.chapters.length - 1), { offset: at.offset, initial: true });
 }
 
-/** @param {number} index @param {{offset?: number, atEnd?: boolean, anchor?: string | null}} [where] */
+/** The atmosphere at a place; none for files outside the library and in lite mode. */
+async function lookAt(/** @type {string} */ at) {
+  if (!book?.book || state.lite) return null;
+  const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+  return call("atmosphere", { at, dark }).catch(() => null);
+}
+
+/** Shows the chapter title for a moment while the page changes. */
+function splash(/** @type {string} */ title) {
+  const el = $("#splash");
+  el.textContent = title;
+  el.classList.add("on");
+  setTimeout(() => el.classList.remove("on"), 650);
+  return new Promise((r) => setTimeout(r, 260));
+}
+
+/** Art attached to this chapter, inserted as UI elements so offsets stay intact. */
+function insertArt() {
+  for (const art of /** @type {any[]} */ (book?.art ?? [])) {
+    const at = parseLocator(art.locator);
+    if (at.chapter !== chapter || art.placement === "cover") continue;
+    const figure = document.createElement("figure");
+    figure.className = `art-${art.placement}`;
+    figure.dataset.skip = "";
+    const img = document.createElement("img");
+    img.src = `/art/${encodeURIComponent(art.file)}`;
+    img.alt = "";
+    figure.append(img);
+    if (art.placement === "chapter") {
+      page().prepend(figure);
+      continue;
+    }
+    let anchor = null;
+    for (const el of page().querySelectorAll("[data-o]")) {
+      if (Number(/** @type {HTMLElement} */ (el).dataset.o) > at.offset) break;
+      anchor = el;
+    }
+    // Insert next to a top-level block so the figure never splits a paragraph.
+    while (anchor && anchor.parentElement !== page() && anchor.parentElement?.closest("#page")) anchor = anchor.parentElement;
+    anchor ? anchor.before(figure) : page().append(figure);
+  }
+}
+
+/** @param {number} index @param {{offset?: number, atEnd?: boolean, anchor?: string | null, initial?: boolean}} [where] */
 async function loadChapter(index, where = {}) {
   if (!book || index < 0 || index >= book.chapters.length) return;
   busy = true;
-  const view = await call("chapter", { index });
+  const changed = index !== chapter;
+  const [view, look] = await Promise.all([call("chapter", { index }), lookAt(locator(index, where.offset ?? 0))]);
+  if (changed && !where.initial && !calm()) await splash(view.title);
   chapter = index;
   page().style.transform = "";
   page().innerHTML = view.html;
   enhance(page());
+  insertArt();
+  atmosphere.apply(look);
+  atmosphere.illustrate(page(), look);
   relayout();
   paintAnnotations();
   if (where.anchor) {
@@ -168,13 +218,24 @@ function visibleOffset() {
   return 0;
 }
 
-const savePosition = debounce(() => {
+const savePosition = debounce(async () => {
   if (!book || busy || state.view !== "reader") return;
   const at = locator(chapter, visibleOffset());
   book.position = at;
   updateProgress();
-  if (book.book) call("save_position", { locator: at }).catch(fail);
+  reportState();
+  if (!book.book) return;
+  await call("save_position", { locator: at }).catch(fail);
+  // Scenes (range atmospheres) can change the look inside a chapter.
+  atmosphere.apply(await lookAt(at));
 }, 500);
+
+/** Tells the window state what the reader sees, for `vibe-reader live` and `context`. */
+function reportState() {
+  const span = selectionSpan();
+  const selection = span ? { start: locator(chapter, span.start), end: locator(chapter, span.end), text: span.text } : null;
+  call("report_state", { live: { position: book?.position ?? null, selection } }).catch(() => {});
+}
 
 function updateProgress() {
   if (!book) return;
@@ -458,6 +519,27 @@ export function init() {
   });
   addEventListener("resize", debounce(relayoutKeepingPlace, 150));
   document.fonts?.addEventListener?.("loadingdone", () => relayoutKeepingPlace());
+  document.addEventListener("selectionchange", debounce(() => book && reportState(), 300));
+  on("live-goto", ({ payload }) => {
+    const at = parseLocator(payload);
+    at.chapter === chapter ? showOffset(at.offset) : loadChapter(at.chapter, { offset: at.offset });
+  });
+  on("live-highlight", async ({ payload }) => {
+    const start = parseLocator(payload.start), end = parseLocator(payload.end);
+    if (start.chapter !== chapter) await loadChapter(start.chapter, { offset: start.offset });
+    else showOffset(start.offset);
+    const range = rangeOf(page(), start.offset, end.chapter === start.chapter ? end.offset : start.offset + 200);
+    if (range && "highlights" in CSS) CSS.highlights.set("found", new Highlight(range));
+    setTimeout(() => CSS.highlights?.delete("found"), 8000);
+  });
+  on("live-reload", async () => {
+    const fresh = await call("refresh_open").catch(() => null);
+    if (!fresh || !book) return;
+    book.annotations = fresh.annotations;
+    book.art = fresh.art;
+    renderNotes();
+    await loadChapter(chapter, { offset: visibleOffset(), initial: true });
+  });
   on("book-changed", async () => {
     if (!book) return;
     const offset = visibleOffset();

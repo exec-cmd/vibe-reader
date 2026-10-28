@@ -162,6 +162,16 @@ pub fn doctor(ctx: &Ctx) -> Result<Out> {
             "vibe-reader-gui not found next to vibe-reader or in PATH".into(),
         ),
     }
+    check(
+        "live link",
+        true,
+        if vibe_reader_core::ipc::running(&paths.socket()) {
+            "window running"
+        } else {
+            "window not running"
+        }
+        .to_owned(),
+    );
     let skills_dir = default_skills_dir()?;
     let installed = SKILLS
         .iter()
@@ -195,6 +205,7 @@ pub fn doctor(ctx: &Ctx) -> Result<Out> {
 pub fn undo(ctx: &Ctx) -> Result<Out> {
     match ctx.lib.undo(&ctx.author)? {
         Some(done) => {
+            crate::look::notify(ctx.lib.paths());
             let what = if done.action == "insert" {
                 "removed the new"
             } else {

@@ -109,3 +109,57 @@ fn installs_skills() {
     let skill = std::fs::read_to_string(dir.join("reader-cli/SKILL.md")).unwrap();
     assert!(skill.starts_with("---\nname: reader-cli\n"));
 }
+
+#[test]
+fn atmosphere_layers_and_presets() {
+    let home = Home::new();
+    let id = home.book();
+    assert_eq!(home.ok(&["preset", "list"])["presets"].as_array().unwrap().len(), 7);
+    home.ok(&["atmosphere", "set", "--book", &id, "--preset", "rain"]);
+    home.ok(&[
+        "atmosphere",
+        "set",
+        "--book",
+        &id,
+        "--chapter",
+        "2",
+        "--profile",
+        r#"{"particles": {"kind": "snow"}}"#,
+    ]);
+    let here = home.ok(&["atmosphere", "get", "--book", &id, "--locator", "ch:2:0"]);
+    assert_eq!(here["resolved"]["preset"], "rain");
+    assert_eq!(here["resolved"]["particles"]["kind"], "snow");
+    assert_eq!(
+        home.ok(&["atmosphere", "get", "--book", &id, "--locator", "ch:1:0"])["resolved"]["particles"]["kind"],
+        "rain"
+    );
+    // The book's spine takes the preset's color.
+    assert_eq!(home.ok(&["show", &id])["book"]["color"], "#2c3e4c");
+
+    let (ok, err) = home.run(&[
+        "atmosphere",
+        "set",
+        "--book",
+        &id,
+        "--profile",
+        r##"{"palette": {"dark": {"ink": "#222222"}}}"##,
+    ]);
+    assert!(!ok && err["error"].as_str().unwrap().contains("contrast"));
+    let (ok, _) = home.run(&[
+        "atmosphere",
+        "set",
+        "--book",
+        &id,
+        "--profile",
+        r#"{"type": {"body": "Comic Sans"}}"#,
+    ]);
+    assert!(!ok);
+
+    home.ok(&["atmosphere", "clear", "--book", &id, "--chapter", "2"]);
+    assert_eq!(
+        home.ok(&["atmosphere", "get", "--book", &id, "--locator", "ch:2:0"])["resolved"]["particles"]["kind"],
+        "rain"
+    );
+    let (ok, err) = home.run(&["live", "position"]);
+    assert!(!ok && err["error"].as_str().unwrap().contains("not running"));
+}

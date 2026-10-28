@@ -9,9 +9,6 @@
   --muted: #85745f;
   --rule: #d8ccb6;
   --accent: #9a4a2e;
-  --selection: rgba(154, 74, 46, 0.18);
-  --shadow: 0 1px 2px rgba(43, 36, 32, 0.08), 0 8px 28px rgba(43, 36, 32, 0.12);
-  --agent: #3f6a73;
 
   /* Type */
   --font-ui: "Onest", system-ui, sans-serif;
@@ -29,15 +26,6 @@
   --fast: 160ms;
   --slow: 420ms;
 
-  /* Code */
-  --code-bg: #ece3d2;
-  --code-keyword: #8a3b52;
-  --code-string: #4b6b2f;
-  --code-number: #9a5a1e;
-  --code-comment: #8f8170;
-  --code-title: #2f5a7a;
-
-  color-scheme: light;
 }
 
 :root[data-mode="dark"] {
@@ -47,10 +35,27 @@
   --muted: #958a7a;
   --rule: #3a342d;
   --accent: #d48b5e;
-  --selection: rgba(212, 139, 94, 0.25);
+}
+
+/* Tokens that follow light or dark but not the palette; the reader can differ from the shelf
+   when an atmosphere forces a mode. */
+:root, [data-mode="light"] {
+  --selection: color-mix(in srgb, var(--accent) 20%, transparent);
+  --shadow: 0 1px 2px rgba(43, 36, 32, 0.08), 0 8px 28px rgba(43, 36, 32, 0.12);
+  --agent: #3f6a73;
+  --code-bg: color-mix(in srgb, var(--ink) 6%, var(--paper));
+  --code-keyword: #8a3b52;
+  --code-string: #4b6b2f;
+  --code-number: #9a5a1e;
+  --code-comment: #8f8170;
+  --code-title: #2f5a7a;
+  color-scheme: light;
+}
+
+:root[data-mode="dark"], [data-mode="dark"] {
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 30px rgba(0, 0, 0, 0.45);
   --agent: #7fb2bc;
-  --code-bg: #24211e;
+  --code-bg: color-mix(in srgb, var(--ink) 7%, var(--paper));
   --code-keyword: #d68aa0;
   --code-string: #a8c58a;
   --code-number: #e0a46a;

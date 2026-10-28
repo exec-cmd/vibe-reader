@@ -244,6 +244,7 @@ pub fn art(ctx: &Ctx, cmd: ArtCmd) -> Result<Out> {
             fs::write(dir.join(&name), &bytes)?;
             let mime = image_mime(ext);
             let id = ctx.lib.add_art(book.id, at, placement, &name, mime, &ctx.author)?;
+            crate::look::notify(ctx.lib.paths());
             Ok(Out::new(
                 json!({ "id": id, "book": book.id, "locator": at, "placement": placement, "file": name }),
                 format!(
@@ -277,6 +278,7 @@ pub fn art(ctx: &Ctx, cmd: ArtCmd) -> Result<Out> {
         }
         ArtCmd::Remove { id } => {
             ctx.lib.remove_art(id, &ctx.author)?;
+            crate::look::notify(ctx.lib.paths());
             Ok(Out::new(json!({ "removed": id }), format!("Detached art {id}.")))
         }
     }

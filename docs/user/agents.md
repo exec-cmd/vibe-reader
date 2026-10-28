@@ -37,6 +37,13 @@ Code, Codex, opencode and others — works with your library through the
   terminal, where you confirm them.
 - **Not change your records**: an agent edits and deletes only what it wrote.
 
+## The live window
+
+When the reader window is open, agents see what you see: `vibe-reader context`
+includes your current selection, `vibe-reader live goto ch:5:0` turns the window
+to a place, and `vibe-reader live highlight` points at a passage. Notes and
+atmosphere an agent writes appear in the window at once.
+
 ## Spoilers
 
 Agents read only up to your current position in a book. They see text beyond it

@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="vendor/katex/katex.min.css">
   <link rel="stylesheet" href="theme.css">
   <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="atmosphere.css">
   <!-- Optional: <config>/ui/user.css overrides anything above. -->
   <link rel="stylesheet" href="user.css">
 </head>
@@ -27,7 +28,12 @@
     <div class="card" id="card"></div>
   </section>
 
-  <section class="view reader" id="reader" data-layout="pages" hidden>
+  <section class="view reader" id="reader" data-layout="pages" data-bg="" hidden>
+    <style id="preset-css"></style>
+    <div class="bg" id="bg"></div>
+    <canvas id="fx"></canvas>
+    <div class="fx-overlay"></div>
+    <div class="splash" id="splash"></div>
     <div class="progress"><i id="progress"></i></div>
     <header class="reader-bar">
       <button class="btn quiet" id="back" data-i18n-title="backKey">←</button>

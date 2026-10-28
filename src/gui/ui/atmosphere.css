@@ -1,0 +1,94 @@
+/* Atmosphere layers: background, effects, particles, headings, art. Tokens come from the profile. */
+
+.reader { transition: background-color var(--slow) var(--ease), color var(--slow) var(--ease); }
+.bg, #fx, .fx-overlay { position: absolute; inset: 0; pointer-events: none; }
+.bg { z-index: 0; background-size: cover; background-position: center; }
+#fx { z-index: 1; width: 100%; height: 100%; }
+.reader .viewport { z-index: 2; }
+.fx-overlay { z-index: 3; }
+.reader-bar, .reader-foot { z-index: 4; }
+.reader[data-preset]:not([data-preset=""]) .frame { background: var(--scrim, transparent); box-shadow: 0 0 60px 30px var(--scrim, transparent); }
+.reader[data-layout="scroll"][data-preset]:not([data-preset=""]) .page { background: var(--scrim, transparent); box-shadow: 0 0 60px 30px var(--scrim, transparent); }
+
+/* Backgrounds, drawn with gradients so they need no image files. */
+.reader[data-bg="lamp"] .bg {
+  background:
+    radial-gradient(ellipse 60% 45% at 12% 0%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%),
+    repeating-linear-gradient(90deg, transparent 0 34px, color-mix(in srgb, var(--ink) 6%, transparent) 34px 36px) bottom / 100% 26% no-repeat,
+    linear-gradient(transparent 73%, color-mix(in srgb, var(--ink) 8%, transparent) 73% 74.5%, transparent 74.5%);
+}
+.reader[data-bg="grid"] .bg {
+  background:
+    repeating-linear-gradient(0deg, color-mix(in srgb, var(--ink) 4%, transparent) 0 1px, transparent 1px 3px),
+    linear-gradient(color-mix(in srgb, var(--accent) 9%, transparent) 1px, transparent 1px) 0 0 / 32px 32px,
+    linear-gradient(90deg, color-mix(in srgb, var(--accent) 9%, transparent) 1px, transparent 1px) 0 0 / 32px 32px;
+}
+.reader[data-bg="blinds"] .bg {
+  background: repeating-linear-gradient(-28deg, transparent 0 26px, color-mix(in srgb, var(--ink) 7%, transparent) 26px 44px);
+  mask-image: radial-gradient(ellipse 80% 70% at 75% 30%, #000, transparent 75%);
+}
+.reader[data-bg="fog"] .bg {
+  background:
+    radial-gradient(ellipse 70% 40% at 20% 85%, color-mix(in srgb, var(--muted) 18%, transparent), transparent 70%),
+    radial-gradient(ellipse 60% 35% at 80% 70%, color-mix(in srgb, var(--muted) 14%, transparent), transparent 70%);
+  animation: drift 40s var(--ease) infinite alternate;
+}
+.reader[data-bg="clouds"] .bg {
+  background:
+    radial-gradient(ellipse 50% 22% at 15% 0%, color-mix(in srgb, var(--muted) 26%, transparent), transparent 70%),
+    radial-gradient(ellipse 55% 25% at 70% 2%, color-mix(in srgb, var(--muted) 22%, transparent), transparent 70%),
+    radial-gradient(ellipse 40% 18% at 45% 6%, color-mix(in srgb, var(--ink) 10%, transparent), transparent 70%);
+  animation: drift 60s linear infinite alternate;
+}
+.reader[data-bg="ridges"] .bg {
+  background: linear-gradient(transparent 60%, color-mix(in srgb, var(--ink) 7%, transparent));
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 200' preserveAspectRatio='none'%3E%3Cpath d='M0 150L80 90L150 130L250 60L330 120L420 80L520 130L600 100V200H0Z'/%3E%3C/svg%3E");
+  mask-size: 100% 100%;
+}
+.reader[data-bg="texture"] .bg {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.08'/%3E%3C/svg%3E");
+}
+.reader[data-bg="gradient"] .bg { background: linear-gradient(160deg, var(--paper-2), var(--paper) 55%, color-mix(in srgb, var(--accent) 10%, var(--paper))); }
+.reader[data-bg="image"] .bg::after { content: ""; position: absolute; inset: 0; background: var(--paper); opacity: 0.55; }
+@keyframes drift { to { transform: translateX(4%); } }
+
+/* Effects */
+.fx-overlay {
+  background:
+    radial-gradient(ellipse at 50% 0%, color-mix(in srgb, #ffcf8a calc(var(--glow, 0) * 18%), transparent), transparent 60%),
+    radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, calc(var(--vignette, 0) * 0.45)));
+}
+.fx-overlay::after {
+  content: ""; position: absolute; inset: 0; opacity: calc(var(--grain, 0) * 0.5);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='1' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23g)' opacity='.5'/%3E%3C/svg%3E");
+}
+body.lite .bg, body.lite #fx, body.lite .fx-overlay { display: none; }
+
+/* Chapter heading variants */
+.reader[data-heading="centered"] .page :is(h1, h2, h3) { text-align: center; }
+.reader[data-heading="rule"] .page :is(h1, h2) { padding-bottom: 0.4em; border-bottom: 1px solid var(--rule); font-weight: 400; }
+.reader[data-heading="caps"] .page :is(h1, h2, h3) { text-transform: uppercase; letter-spacing: 0.12em; font-size: 1.15em; text-align: center; }
+.reader[data-heading="italic"] .page :is(h1, h2, h3) { font-style: italic; font-weight: 500; text-align: center; }
+.reader[data-heading="terminal"] .page :is(h1, h2, h3) { font-family: var(--font-mono); font-size: 1.1em; color: var(--accent); }
+.reader[data-heading="terminal"] .page h1::before { content: "# "; opacity: 0.6; }
+.reader[data-heading="terminal"] .page h2::before { content: "## "; opacity: 0.6; }
+
+/* Chapter splash */
+.splash {
+  position: absolute; inset: 0; z-index: 5; display: grid; place-items: center; pointer-events: none;
+  font: 600 italic 32px var(--font-display); color: var(--ink);
+  background: var(--paper); opacity: 0; transition: opacity var(--slow) var(--ease);
+}
+.splash.on { opacity: 0.92; }
+
+/* Illustrations and art */
+.illustration { margin: 0 0 1.6em; height: 7.5em; break-inside: avoid; }
+.illustration svg { width: 100%; height: 100%; display: block; }
+.art-chapter { margin: 0 0 1.6em; text-align: center; break-inside: avoid; }
+.art-chapter img { max-height: 40vh; }
+.art-margin { float: right; width: 34%; margin: 0.2em 0 0.6em 1em; break-inside: avoid; }
+.art-page { margin: 0; display: flex; align-items: center; justify-content: center; break-inside: avoid; }
+.reader[data-layout="pages"] .art-page { height: 100%; break-before: column; break-after: column; }
+.art-page img { max-height: 100%; }
+.found-flash { animation: found 1.4s var(--ease); }
+@keyframes found { from { background: var(--selection); } }

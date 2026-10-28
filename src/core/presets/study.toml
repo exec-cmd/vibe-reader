@@ -1,0 +1,43 @@
+[preset]
+name = "Study"
+description = "A warm desk lamp, bookshelves in the dark, slow dust in the light."
+modes = ["light", "dark"]
+
+[palette.light]
+paper = "#f4ede0"
+paper_2 = "#ebe2d1"
+ink = "#2b2420"
+muted = "#85745f"
+rule = "#d8ccb6"
+accent = "#9a4a2e"
+spine = "#7a3e30"
+
+[palette.dark]
+paper = "#1d1a17"
+paper_2 = "#262220"
+ink = "#e6dccb"
+muted = "#9a8c78"
+rule = "#3b342c"
+accent = "#d9925f"
+spine = "#7a3e30"
+
+[type]
+display = "Cormorant Garamond"
+body = "Literata"
+
+[background]
+kind = "lamp"
+dim = 0.2
+
+[particles]
+kind = "dust"
+density = 0.3
+speed = 0.3
+
+[chapter]
+heading = "centered"
+illustration = "hills"
+
+[effects]
+glow = 0.4
+vignette = 0.2

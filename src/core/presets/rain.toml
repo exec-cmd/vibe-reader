@@ -1,0 +1,34 @@
+[preset]
+name = "Rain"
+description = "A gloomy evening, fog and rain on the glass. Dark only."
+modes = ["dark"]
+
+[palette.dark]
+paper = "#14181c"
+paper_2 = "#1b2127"
+ink = "#d5dde3"
+muted = "#7f8c96"
+rule = "#29323a"
+accent = "#8fb3cc"
+spine = "#2c3e4c"
+
+[type]
+display = "Spectral"
+body = "Spectral"
+
+[background]
+kind = "fog"
+dim = 0.3
+
+[particles]
+kind = "rain"
+density = 0.6
+speed = 1.0
+
+[chapter]
+heading = "rule"
+illustration = "rain"
+
+[effects]
+grain = 0.15
+vignette = 0.4

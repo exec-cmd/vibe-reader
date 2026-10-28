@@ -1,0 +1,3 @@
+/* Terminal preset: ragged lines and spaced paragraphs suit monospace text. */
+.reader[data-preset="terminal"] .page { text-align: left; hyphens: manual; font-size: 0.9em; }
+.reader[data-preset="terminal"] .page p + p { text-indent: 0; margin-top: 0.9em; }

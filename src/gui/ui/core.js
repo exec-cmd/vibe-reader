@@ -78,8 +78,9 @@ export function applyConfig() {
   const dark = reader.mode === "dark" || (reader.mode === "auto" && matchMedia("(prefers-color-scheme: dark)").matches);
   root.dataset.mode = dark ? "dark" : "light";
   root.dataset.motion = reader.reduce_motion ? "off" : "on";
-  const font = ty.font === "system" ? "system-ui" : `"${ty.font}"`;
-  root.style.setProperty("--font-body", `${font}, Georgia, serif`);
+  // "auto" leaves the body font to the theme and the atmosphere.
+  if (ty.font === "auto") root.style.removeProperty("--font-body");
+  else root.style.setProperty("--font-body", `${ty.font === "system" ? "system-ui" : `"${ty.font}"`}, Georgia, serif`);
   root.style.setProperty("--text-size", `${ty.size}px`);
   root.style.setProperty("--measure", `${ty.width}em`);
   root.style.setProperty("--leading", String(ty.line_height));

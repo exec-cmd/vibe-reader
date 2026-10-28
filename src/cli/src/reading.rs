@@ -177,6 +177,7 @@ pub fn context(ctx: &Ctx, query: Option<&str>, max_tokens: usize) -> Result<Out>
         .filter(|a| a.start.chapter == at.chapter && a.start <= at)
         .collect();
     let memory = ctx.lib.memories(book.id, None)?;
+    let selection = crate::look::live_selection(ctx.lib.paths(), book.id);
 
     let mut text = format!(
         "# {}\n\nChapter {}: {}\nPosition: `{at}` ({} of the book)\nStatus: {}\n",
@@ -186,6 +187,14 @@ pub fn context(ctx: &Ctx, query: Option<&str>, max_tokens: usize) -> Result<Out>
         percent(book.progress_at(at)),
         book.status.as_str()
     );
+    if let Some(sel) = &selection {
+        text.push_str(&format!(
+            "\n## Selected in the window `{}..{}`\n\n{}\n",
+            sel["start"].as_str().unwrap_or_default(),
+            sel["end"].as_str().unwrap_or_default(),
+            untrusted(sel["text"].as_str().unwrap_or_default())
+        ));
+    }
     if !notes.is_empty() {
         text.push_str("\n## Notes in this chapter\n\n");
         for note in &notes {
@@ -212,7 +221,7 @@ pub fn context(ctx: &Ctx, query: Option<&str>, max_tokens: usize) -> Result<Out>
             "chapter": { "index": at.chapter + 1, "title": chapter.title },
             "position": at,
             "progress": book.progress_at(at),
-            "selection": null,
+            "selection": selection,
             "notes": notes,
             "memory_entries": memory.len(),
             "untrusted": true,

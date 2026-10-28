@@ -108,6 +108,7 @@ async function boot() {
     if (onKey(e)) e.preventDefault();
   });
   $("#back").addEventListener("click", goHome);
+  on("live-open", ({ payload }) => openPath(payload).catch(fail));
   $("#open-files").addEventListener("click", pickFiles);
   on("ui-changed", ({ payload }) => {
     if (payload.every((/** @type {string} */ p) => p.endsWith(".css"))) {

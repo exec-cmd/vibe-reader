@@ -1,0 +1,34 @@
+[preset]
+name = "Storm"
+description = "Heavy clouds, a downpour and rare faint lightning. Dark only."
+modes = ["dark"]
+
+[palette.dark]
+paper = "#111316"
+paper_2 = "#191c21"
+ink = "#dfe2e6"
+muted = "#848b94"
+rule = "#2a2e35"
+accent = "#e7c75a"
+spine = "#3a3f4a"
+
+[type]
+display = "Playfair Display"
+body = "Spectral"
+
+[background]
+kind = "clouds"
+dim = 0.35
+
+[particles]
+kind = "downpour"
+density = 0.8
+speed = 1.6
+lightning = true
+
+[chapter]
+heading = "caps"
+illustration = "bolt"
+
+[effects]
+vignette = 0.55

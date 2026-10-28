@@ -29,10 +29,10 @@ Temporary checklist for building the first version. It is removed together with 
 
 ## Phase 3. Atmosphere and live IPC
 
-- [ ] Profile schema, validation, presets
-- [ ] Backgrounds, particles, headings, illustrations
-- [ ] IPC server and `live`/`gui` commands
-- [ ] Tests, docs (atmosphere, atmosphere-schema, ipc)
+- [x] Profile schema, validation, presets
+- [x] Backgrounds, particles, headings, illustrations
+- [x] IPC server and `live`/`gui` commands
+- [x] Tests, docs (atmosphere, atmosphere-schema, ipc)
 
 ## Phase 4. FB2 and PDF
 

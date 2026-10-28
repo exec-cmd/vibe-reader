@@ -74,5 +74,6 @@
   "reloaded": "Файл изменился и перезагружен",
   "kind_note": "Заметка",
   "kind_highlight": "Выделение",
-  "kind_bookmark": "Закладка"
+  "kind_bookmark": "Закладка",
+  "fontAuto": "По атмосфере"
 }

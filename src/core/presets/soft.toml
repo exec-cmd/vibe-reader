@@ -1,0 +1,41 @@
+[preset]
+name = "Soft"
+description = "Pastel gradient and slow bokeh. For gentle and romantic prose."
+modes = ["light", "dark"]
+
+[palette.light]
+paper = "#f7f1ee"
+paper_2 = "#efe5e1"
+ink = "#3a2f33"
+muted = "#8b7a80"
+rule = "#e3d3cf"
+accent = "#a0526b"
+spine = "#b9848f"
+
+[palette.dark]
+paper = "#1f1a1d"
+paper_2 = "#2a2327"
+ink = "#eadde2"
+muted = "#a08f96"
+rule = "#3d3238"
+accent = "#e09ab0"
+spine = "#6b4552"
+
+[type]
+display = "Cormorant Garamond"
+body = "Literata"
+
+[background]
+kind = "gradient"
+
+[particles]
+kind = "bokeh"
+density = 0.25
+speed = 0.2
+
+[chapter]
+heading = "italic"
+illustration = "orbs"
+
+[effects]
+glow = 0.3

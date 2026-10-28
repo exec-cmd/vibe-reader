@@ -31,7 +31,7 @@ vim = false            # h/j/k/l and friends in the reader window
 reduce_motion = false  # no particles or transitions, whatever the system says
 
 [typography]
-font = "Literata"      # a bundled font, "system", or any installed family
+font = "auto"          # auto (from the atmosphere), a bundled font, "system", or any installed family
 size = 19.0            # px
 width = 34.0           # line length in em
 line_height = 1.6

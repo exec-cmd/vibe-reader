@@ -7,6 +7,8 @@ import { t } from "./i18n.js";
 
 /** @type {Book[]} */
 let books = [];
+/** Book id to cover art file. @type {Record<string, string>} */
+let covers = {};
 let grouping = "shelf";
 let query = "";
 /** @type {Book | null} */
@@ -18,7 +20,7 @@ export const setOnOpen = (/** @type {(id: number) => void} */ fn) => (onOpen = f
 const home = () => $("#home");
 
 export async function refresh() {
-  ({ books } = await call("library"));
+  ({ books, covers } = await call("library"));
   render();
 }
 
@@ -97,7 +99,9 @@ function select(/** @type {Book | null} */ book) {
   const started = book.progress > 0;
   card.style.setProperty("--spine", book.color);
   card.innerHTML = `
-    <div class="cover"><span>${escapeHtml(book.title)}</span><small>${escapeHtml(book.authors[0] ?? book.format)}</small></div>
+    ${covers[book.id]
+      ? `<div class="cover art"><img alt="" src="/art/${encodeURIComponent(covers[book.id])}"></div>`
+      : `<div class="cover"><span>${escapeHtml(book.title)}</span><small>${escapeHtml(book.authors[0] ?? book.format)}</small></div>`}
     <div>
       <h2>${escapeHtml(book.title)}</h2>
       <div class="meta">${escapeHtml(book.authors.join(", "))}</div>

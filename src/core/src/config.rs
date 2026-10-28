@@ -7,6 +7,16 @@ use serde::{Deserialize, Serialize};
 
 use crate::Paths;
 
+/// Fonts bundled with the reader window (`src/gui/ui/fonts/`). Atmosphere profiles may use only these.
+pub const FONTS: &[&str] = &[
+    "Literata",
+    "Spectral",
+    "Cormorant Garamond",
+    "Playfair Display",
+    "Onest",
+    "JetBrains Mono",
+];
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Config {
@@ -44,7 +54,7 @@ impl Default for Reader {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Typography {
-    /// A bundled font name, `system`, or any installed font family.
+    /// `auto` follows the atmosphere; otherwise a bundled font, `system`, or any installed family.
     pub font: String,
     pub size: f32,
     /// Line length in `em`.

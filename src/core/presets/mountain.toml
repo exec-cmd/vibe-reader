@@ -1,0 +1,42 @@
+[preset]
+name = "Mountain noir"
+description = "Cold ridges, thin air and slow snow."
+modes = ["light", "dark"]
+
+[palette.light]
+paper = "#eef0f1"
+paper_2 = "#e2e6e8"
+ink = "#1f262b"
+muted = "#66737c"
+rule = "#cad2d7"
+accent = "#3c6e8f"
+spine = "#3c4f5c"
+
+[palette.dark]
+paper = "#13171a"
+paper_2 = "#1a2024"
+ink = "#dbe3e8"
+muted = "#7d8b94"
+rule = "#283138"
+accent = "#8ab8d6"
+spine = "#33444f"
+
+[type]
+display = "Cormorant Garamond"
+body = "Literata"
+
+[background]
+kind = "ridges"
+dim = 0.2
+
+[particles]
+kind = "snow"
+density = 0.4
+speed = 0.4
+
+[chapter]
+heading = "centered"
+illustration = "ridge"
+
+[effects]
+vignette = 0.3

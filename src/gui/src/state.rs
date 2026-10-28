@@ -20,6 +20,21 @@ pub struct App {
     pub lite: bool,
     /// File given on the command line, opened once the UI is ready.
     pub initial: Option<PathBuf>,
+    /// What the UI last reported, for the CLI's live commands.
+    pub live: Mutex<Live>,
+}
+
+#[derive(Default, Clone, Serialize, serde::Deserialize)]
+pub struct Live {
+    pub position: Option<Locator>,
+    pub selection: Option<Selection>,
+}
+
+#[derive(Clone, Serialize, serde::Deserialize)]
+pub struct Selection {
+    pub start: Locator,
+    pub end: Locator,
+    pub text: String,
 }
 
 pub struct Open {
@@ -327,4 +342,82 @@ pub fn shelve(app: State<App>, shelf: String, id: i64, on: bool) -> Res<()> {
         lib.unshelve(&shelf, id)
     }
     .map_err(err)
+}
+
+/// The UI reports the reader's place and selection for `vibe-reader live` and `context`.
+#[tauri::command]
+pub fn report_state(app: State<App>, live: Live) {
+    *app.live.lock().unwrap() = live;
+}
+
+/// The atmosphere in effect at a place in the open book, or none in lite mode.
+#[tauri::command]
+pub fn atmosphere(app: State<App>, at: Locator, dark: bool) -> Res<Option<vibe_reader_core::atmosphere::Resolved>> {
+    use vibe_reader_core::atmosphere::{self, Mode};
+    if app.lite {
+        return Ok(None);
+    }
+    let book = current_book(&app)?;
+    let lib = app.lib.lock().unwrap();
+    let config = Config::load(&app.paths).map_err(err)?;
+    let presets = atmosphere::presets(&app.paths).map_err(err)?;
+    let layers = atmosphere::layers_at(&lib.atmospheres(book.id).map_err(err)?, at);
+    let wanted = match config.reader.mode.as_str() {
+        "light" => Mode::Light,
+        "dark" => Mode::Dark,
+        _ if dark => Mode::Dark,
+        _ => Mode::Light,
+    };
+    // A broken stored profile must not leave the reader without a look: fall back to the default preset.
+    atmosphere::resolve(&presets, &config.reader.preset, &layers, Some(wanted))
+        .or_else(|_| atmosphere::resolve(&presets, "study", &[], Some(wanted)))
+        .map(Some)
+        .map_err(err)
+}
+
+/// Fresh annotations and art of the open book, after an agent changed them.
+#[tauri::command]
+pub fn refresh_open(app: State<App>) -> Res<Option<Opened>> {
+    let lib = app.lib.lock().unwrap();
+    let guard = app.open.lock().unwrap();
+    guard.as_ref().map(|open| opened(&lib, open)).transpose()
+}
+
+/// Answers `vibe-reader live` requests from the socket.
+pub fn handle_ipc(handle: &tauri::AppHandle, message: serde_json::Value) -> serde_json::Value {
+    use serde_json::json;
+    use tauri::Emitter;
+    let app = crate::app_state(handle);
+    let book = app.open.lock().unwrap().as_ref().map(|o| {
+        json!({
+            "id": o.book.as_ref().map(|b| b.id),
+            "title": o.doc.meta.title,
+            "path": o.path,
+        })
+    });
+    let live = app.live.lock().unwrap().clone();
+    let emit = |event: &str, payload: serde_json::Value| match handle.emit(event, payload) {
+        Ok(()) => json!({ "ok": true }),
+        Err(e) => json!({ "error": e.to_string() }),
+    };
+    match message["cmd"].as_str() {
+        Some("ping") => json!({ "ok": true }),
+        Some("status") => json!({ "ok": true, "lite": app.lite, "book": book, "position": live.position }),
+        Some("position") => json!({ "ok": true, "book": book, "position": live.position }),
+        Some("selection") => json!({ "ok": true, "book": book, "selection": live.selection }),
+        Some("goto") => match message["locator"].as_str().map(str::parse::<Locator>) {
+            Some(Ok(at)) => emit("live-goto", json!(at)),
+            _ => json!({ "error": "goto needs a locator like ch:3:120" }),
+        },
+        Some("highlight") => match message["range"].as_str().map(str::parse::<Span>) {
+            Some(Ok(span)) => emit("live-highlight", json!(span)),
+            _ => json!({ "error": "highlight needs a range like ch:3:0..ch:3:80" }),
+        },
+        Some("reload") => emit("live-reload", json!(null)),
+        Some("open") => match message["path"].as_str() {
+            Some(path) => emit("live-open", json!(path)),
+            None => json!({ "error": "open needs a path" }),
+        },
+        _ => json!({ "error": "unknown command" }),
+    }
 }

@@ -16,7 +16,8 @@ function changed() {
 export function render() {
   const { reader, typography: ty } = state.config;
   const panel = $("#settings");
-  const fonts = [...FONTS, "system"].map((f) => `<option value="${f}" ${f === ty.font ? "selected" : ""}>${f === "system" ? t("systemFont") : f}</option>`);
+  const label = (f) => (f === "system" ? t("systemFont") : f === "auto" ? t("fontAuto") : f);
+  const fonts = ["auto", ...FONTS, "system"].map((f) => `<option value="${f}" ${f === ty.font ? "selected" : ""}>${label(f)}</option>`);
   const seg = (name, value, options) =>
     options.map(([v, label]) => `<button class="btn quiet" data-${name}="${v}" aria-pressed="${v === value}">${t(label)}</button>`).join("");
   panel.innerHTML = `
