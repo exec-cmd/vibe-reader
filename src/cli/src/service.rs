@@ -21,6 +21,7 @@ pub const SKILLS: &[(&str, &str)] = &[
         "reader-atmosphere",
         include_str!("../skills/reader-atmosphere/SKILL.md"),
     ),
+    ("books-helper", include_str!("../skills/books-helper/SKILL.md")),
 ];
 
 fn default_skills_dir() -> Result<PathBuf> {

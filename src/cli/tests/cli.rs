@@ -105,7 +105,7 @@ fn installs_skills() {
     let home = Home::new();
     let dir = home.path().join("skills");
     let out = home.ok(&["skills", "install", "--dir", dir.to_str().unwrap()]);
-    assert_eq!(out["installed"].as_array().unwrap().len(), 4);
+    assert_eq!(out["installed"].as_array().unwrap().len(), 5);
     let skill = std::fs::read_to_string(dir.join("reader-cli/SKILL.md")).unwrap();
     assert!(skill.starts_with("---\nname: reader-cli\n"));
 }
