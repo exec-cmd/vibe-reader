@@ -9,7 +9,7 @@ import { t } from "./i18n.js";
 import * as particles from "./particles.js";
 import { PdfEngine } from "./pdfview.js";
 import * as translator from "./translator.js";
-import { dialog, icon, menu, paintIcons, toast } from "./ui.js";
+import { icon, menu, paintIcons, toast } from "./ui.js";
 
 /** @typedef {import("./core.js").Annotation} Annotation */
 /** @typedef {{ book: import("./core.js").Book | null, title: string, authors: string[], language: string | null,
@@ -51,6 +51,8 @@ export async function open(/** @type {Opened} */ opened) {
   page().lang = opened.language || "";
   document.title = opened.title;
   $("#reader-sub").textContent = opened.authors.join(", ");
+  $("#side-title").textContent = opened.title;
+  $("#side-author").textContent = opened.authors.join(", ");
   $("#lite-bar").hidden = !state.lite;
   $("#lite-title").textContent = opened.title;
   $("#lite-add").hidden = !!opened.book;
@@ -60,6 +62,7 @@ export async function open(/** @type {Opened} */ opened) {
   /** @type {HTMLElement} */ ($('[data-tab="agent"]')).hidden = !opened.book;
   if ((tab === "thumbs" && !pdf) || (tab === "agent" && !opened.book)) tab = "toc";
   translator.close();
+  $("#leaf").replaceChildren();
 
   if (pdf) {
     atmosphere.apply(await lookAt(locator(0, 0)));
@@ -139,12 +142,13 @@ function insertArt(/** @type {number} */ chapter) {
 export const next = () => turn(1);
 export const prev = () => turn(-1);
 
-/** Turns a page forward (1) or back (-1), with the leaf, a gust for the particles and, at a new chapter, its title. */
+/** Turns a page forward (1) or back (-1): the old sheet turns over the new one, the air moves and a new chapter shows its title. */
 async function turn(/** @type {number} */ dir) {
   if (!engine) return;
   const where = () => `${engine instanceof FlowEngine ? engine.chapter : ""}:${engine.label()}`;
   const before = where();
   const chapter = engine instanceof FlowEngine ? engine.chapter : -1;
+  const shot = engine.layout === "scroll" || state.config.reader.page_turn === "none" || calm() ? null : snapshot();
   await (dir > 0 ? engine.next() : engine.prev());
   if (where() === before) return;
   if (engine instanceof FlowEngine && engine.chapter !== chapter) {
@@ -154,28 +158,108 @@ async function turn(/** @type {number} */ dir) {
   if (engine.layout === "scroll") return;
   // A page turned toward the left pushes the air left.
   particles.blow(-dir);
-  playLeaf(dir);
+  if (shot) animateTurn(dir, shot);
 }
 
-let leafTimer = 0;
-/** A blank leaf swings over the spine; the new page is already underneath. */
-function playLeaf(/** @type {number} */ dir) {
-  if (state.config.reader.page_turn !== "curl" || calm()) return;
-  const bookEl = $("#book");
-  const leaf = $("#leaf");
-  const sheet = isPdf() ? page().querySelector(".pdf-spread") : $("#frame");
-  if (!sheet) return;
-  const br = bookEl.getBoundingClientRect();
-  const sr = sheet.getBoundingClientRect();
-  const spread = isPdf() ? sheet.childElementCount > 1 : $("#frame").dataset.spread === "true";
-  const width = spread ? sr.width / 2 : sr.width;
-  leaf.style.cssText = `top:${sr.top - br.top}px;height:${sr.height}px;width:${width}px;left:${sr.left - br.left + (spread && dir > 0 ? width : 0)}px`;
-  leaf.className = `leaf ${dir > 0 ? "forward" : "back"}`;
-  leaf.hidden = false;
-  void leaf.offsetWidth;
-  clearTimeout(leafTimer);
-  const ms = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--turn")) || 520;
-  leafTimer = setTimeout(() => (leaf.hidden = true), ms + 40);
+/** The sheet: the flow frame or the PDF spread. */
+const sheet = () => /** @type {HTMLElement | null} */ (isPdf() ? page().querySelector(".pdf-spread") : $("#frame"));
+
+/** @typedef {{x: number, y: number, w: number, h: number, spread: boolean, copy: () => HTMLElement}} Shot */
+
+/** The sheet as it looks now, placed in #book coordinates; `copy()` makes a fresh copy of it. */
+function snapshot() {
+  const el = sheet();
+  if (!el) return null;
+  const br = $("#book").getBoundingClientRect();
+  const r = el.getBoundingClientRect();
+  const template = /** @type {HTMLElement} */ (el.cloneNode(true));
+  template.removeAttribute("id");
+  for (const x of template.querySelectorAll("[id]")) x.removeAttribute("id");
+  // Canvases are copied by pixels now: pdf.js redraws the live ones for the next page.
+  const live = el.querySelectorAll("canvas");
+  template.querySelectorAll("canvas").forEach((c, i) => paintCopy(live[i], c));
+  const spread = isPdf() ? el.childElementCount > 1 : el.dataset.spread === "true";
+  let used = 0;
+  return /** @type {Shot} */ ({
+    x: r.left - br.left, y: r.top - br.top, w: r.width, h: r.height, spread,
+    // The first copy is the template itself; a spread needs a second one.
+    copy: () => {
+      if (!used++) return template;
+      const c = /** @type {HTMLElement} */ (template.cloneNode(true));
+      const from = template.querySelectorAll("canvas");
+      c.querySelectorAll("canvas").forEach((x, i) => paintCopy(from[i], x));
+      return c;
+    },
+  });
+}
+
+function paintCopy(/** @type {HTMLCanvasElement} */ from, /** @type {HTMLCanvasElement} */ to) {
+  if (!from?.width) return;
+  to.width = from.width;
+  to.height = from.height;
+  to.getContext("2d").drawImage(from, 0, 0);
+}
+
+/** A window onto part of a sheet copy: `left` and `width` in sheet pixels. */
+function piece(/** @type {Shot} */ shot, /** @type {number} */ left, /** @type {number} */ width) {
+  const box = document.createElement("div");
+  box.className = "turn-piece";
+  box.style.cssText = `left:${shot.x + left}px;top:${shot.y}px;width:${width}px;height:${shot.h}px`;
+  const c = shot.copy();
+  c.style.position = "absolute";
+  c.style.margin = "0";
+  c.style.left = `${-left}px`;
+  c.style.top = "0";
+  box.append(c);
+  return box;
+}
+
+let turnTimer = 0;
+/**
+ * Plays the page turn from the old sheet `old` to the sheet now on screen. A leaf hinged at the
+ * spine turns over: forward it carries the old page away, back it brings the new one in.
+ * A spread turns its right half and shows the next left page on the back of the leaf.
+ */
+function animateTurn(/** @type {number} */ dir, /** @type {Shot} */ old) {
+  const box = $("#leaf");
+  clearTimeout(turnTimer);
+  box.replaceChildren();
+  const r = sheet()?.getBoundingClientRect();
+  if (!r || Math.abs(r.width - old.w) > 2 || Math.abs(r.height - old.h) > 2) return;
+  const slide = state.config.reader.page_turn === "slide";
+  const now = !slide && (old.spread || dir < 0) ? snapshot() : null;
+  box.hidden = false;
+  const ms = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--turn")) || 520) * (old.spread ? 1.2 : 1);
+  box.style.setProperty("--dir", String(dir));
+  box.style.setProperty("--ms", `${ms}ms`);
+  if (slide || (!now && (old.spread || dir < 0))) {
+    const out = piece(old, 0, old.w);
+    out.classList.add("turn-slide");
+    box.append(out);
+  } else {
+    const half = old.spread ? old.w / 2 : old.w;
+    const hinge = old.spread ? half : 0;
+    box.style.perspectiveOrigin = `${old.x + hinge}px 50%`;
+    const leaf = document.createElement("div");
+    leaf.className = `turn-leaf ${dir > 0 ? "forward" : "backward"}${old.spread ? "" : " single"}`;
+    leaf.style.cssText = `left:${old.x + hinge}px;top:${old.y}px;width:${half}px;height:${old.h}px`;
+    // Forward the leaf leaves with the old page; back it arrives with the new one.
+    const front = piece(dir > 0 ? old : /** @type {Shot} */ (now), hinge, half);
+    const back = old.spread ? piece(dir > 0 ? /** @type {Shot} */ (now) : old, 0, half) : document.createElement("div");
+    for (const [face, side] of [[front, "front"], [back, "back"]]) {
+      face.className = `face ${side}`;
+      face.style.cssText = face.style.cssText.replace(/left:[^;]+;top:[^;]+;/, "");
+      leaf.append(face);
+    }
+    // What the leaf has not covered yet still shows the old sheet.
+    if (old.spread && dir > 0) box.append(piece(old, 0, half));
+    if (dir < 0) box.append(piece(old, hinge, half));
+    box.append(leaf);
+  }
+  turnTimer = setTimeout(() => {
+    box.replaceChildren();
+    box.hidden = true;
+  }, ms + 40);
 }
 
 let splashTimer = 0;
@@ -234,7 +318,10 @@ function wake() {
   idleTimer = setTimeout(function sleep() {
     const busy = $("#dock").matches(":hover, :focus-within") || document.querySelector(".menu, .shade");
     if (busy) idleTimer = setTimeout(sleep, 1500);
-    else reader().dataset.idle = "true";
+    else {
+      reader().dataset.idle = "true";
+      particles.setPointer(null);
+    }
   }, 2600);
 }
 
@@ -275,6 +362,8 @@ function updateProgress() {
   if (!book || !engine) return;
   const read = share();
   $("#progress").style.width = `${read * 100}%`;
+  $("#side-progress").style.width = `${read * 100}%`;
+  $("#side-percent").textContent = `${Math.round(read * 100)}%`;
   // The page edges on both sides of the sheet grow and shrink with it.
   reader().style.setProperty("--read", read.toFixed(3));
 }
@@ -306,7 +395,9 @@ function updateChrome() {
   $("#mode-btn").innerHTML = icon(document.documentElement.dataset.mode === "dark" ? "sun" : "moon");
   const here = engine instanceof PdfEngine ? engine.page : engine.chapter;
   for (const el of document.querySelectorAll("#side-body [data-chapter]")) {
-    el.classList.toggle("current", Number(/** @type {HTMLElement} */ (el).dataset.chapter) === here);
+    const n = Number(/** @type {HTMLElement} */ (el).dataset.chapter);
+    el.classList.toggle("current", n === here);
+    el.classList.toggle("past", n < here);
   }
   updateProgress();
 }
@@ -840,63 +931,105 @@ async function sendToAgent(/** @type {"place" | "saved" | "message"} */ kind, /*
 export const rememberPlace = () => sendToAgent("place", placeText());
 const sendPage = () => sendToAgent("saved", visibleText());
 
-async function messageAgent() {
-  const body = document.createElement("div");
-  body.innerHTML = `<p></p><textarea class="textarea"></textarea>`;
-  body.querySelector("p").textContent = t("messageHint");
-  const area = /** @type {HTMLTextAreaElement} */ (body.querySelector("textarea"));
-  area.placeholder = t("messagePlaceholder");
-  const { action } = await dialog({ title: t("messageAgent"), body, actions: [{ id: "send", label: t("send"), primary: true }] });
-  if (action === "send" && area.value.trim()) sendToAgent("message", area.value);
+/** Opens the Agent tab with the cursor in the message box. */
+function messageAgent() {
+  showTab("agent");
+  setTimeout(() => /** @type {HTMLElement | null} */ ($("#side-body .composer textarea"))?.focus(), 60);
+}
+
+/** Ready requests: they reach the agent as a message at the current page. */
+const ASKS = { prose: ["askExplain", "askSoFar", "askCheck", "askCritics"], tech: ["askExplain", "askSummary", "askCheck", "askExercises"] };
+const asks = () => ASKS[book?.kind === "tech" ? "tech" : "prose"];
+
+/** What to paste into the agent's terminal so it reads and answers the reader's messages. */
+function copyPrompt() {
+  if (!book?.book) return;
+  navigator.clipboard.writeText(t("agentPrompt", { id: book.book.id })).then(() => toast(t("promptCopied")));
 }
 
 function agentMenu() {
   const sel = engine?.selection();
+  const off = !book?.book;
   menu($("#agent-btn"), [
-    { label: t("rememberPlace"), icon: "pin", disabled: !book?.book, run: rememberPlace },
-    { label: t("sendSelection"), icon: "marker", disabled: !book?.book || !sel, run: () => sel && sendToAgent("saved", sel.text, locator(sel.chapter, sel.start)) },
-    { label: t("sendPage"), icon: "page", disabled: !book?.book, run: sendPage },
-    { label: t("messageAgent"), icon: "message", disabled: !book?.book, run: messageAgent },
+    ...asks().map((key) => ({ label: t(key), icon: /** @type {const} */ ("message"), disabled: off, run: () => sendToAgent("message", t(key)) })),
     { separator: true },
-    { label: t("sentToAgentList"), icon: "agent", disabled: !book?.book, run: () => showTab("agent") },
+    { label: t("rememberPlace"), icon: "pin", hint: "R", disabled: off, run: rememberPlace },
+    { label: t("sendSelection"), icon: "marker", disabled: off || !sel, run: () => sel && sendToAgent("saved", sel.text, locator(sel.chapter, sel.start)) },
+    { label: t("sendPage"), icon: "page", disabled: off, run: sendPage },
+    { separator: true },
+    { label: t("copyPrompt"), icon: "copy", disabled: off, run: copyPrompt },
+    { label: t("agentConversation"), icon: "agent", disabled: off, run: () => showTab("agent") },
   ], { align: "end" });
 }
 
 const INBOX_ICONS = { place: "pin", saved: "marker", message: "message" };
 
+/** The Agent tab: a box to write to the agent, ready requests, and the conversation so far. */
 async function renderInbox(/** @type {HTMLElement} */ body) {
-  body.innerHTML = `<div class="side-actions"></div><p class="side-hint"></p><div class="inbox"></div>`;
-  const actions = body.querySelector(".side-actions");
-  for (const [label, iconName, run] of [["rememberPlace", "pin", rememberPlace], ["sendPage", "page", sendPage], ["messageAgent", "message", messageAgent]]) {
+  body.innerHTML = `
+    <div class="composer">
+      <textarea class="textarea" rows="3"></textarea>
+      <div class="row"><button class="btn quiet" data-act="place">${icon("pin", 15)}<span></span></button><span class="grow"></span>
+        <button class="btn primary" data-act="send">${icon("message", 15)}<span></span></button></div>
+    </div>
+    <div class="asks"></div>
+    <div class="agent-hint"><p></p><button class="btn quiet" data-act="prompt">${icon("copy", 15)}<span></span></button></div>
+    <div class="thread"></div>`;
+  const area = /** @type {HTMLTextAreaElement} */ (body.querySelector("textarea"));
+  area.placeholder = t("messagePlaceholder");
+  const send = () => {
+    if (!area.value.trim()) return area.focus();
+    sendToAgent("message", area.value);
+    area.value = "";
+  };
+  body.querySelector('[data-act="send"] span').textContent = t("send");
+  body.querySelector('[data-act="send"]').addEventListener("click", send);
+  area.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) send();
+    e.stopPropagation();
+  });
+  body.querySelector('[data-act="place"] span').textContent = t("rememberPlace");
+  body.querySelector('[data-act="place"]').addEventListener("click", rememberPlace);
+  for (const key of asks()) {
     const b = document.createElement("button");
-    b.className = "btn";
-    b.innerHTML = `${icon(/** @type {any} */ (iconName), 15)}<span></span>`;
-    b.querySelector("span").textContent = t(/** @type {string} */ (label));
-    b.addEventListener("click", /** @type {() => void} */ (run));
-    actions.append(b);
+    b.className = "chip ask";
+    b.textContent = t(key);
+    b.addEventListener("click", () => sendToAgent("message", t(key)));
+    body.querySelector(".asks").append(b);
   }
-  body.querySelector(".side-hint").textContent = t("inboxHint");
-  const list = body.querySelector(".inbox");
-  const entries = await call("inbox").catch(() => []);
+  body.querySelector(".agent-hint p").textContent = t("inboxHint");
+  body.querySelector('[data-act="prompt"] span').textContent = t("copyPrompt");
+  body.querySelector('[data-act="prompt"]').addEventListener("click", copyPrompt);
+
+  const thread = body.querySelector(".thread");
+  const all = await call("inbox").catch(() => []);
+  // Agents may rewrite a key; only its latest value counts.
+  /** @type {Map<string, any>} */
+  const latest = new Map();
+  for (const m of all) if (!latest.has(m.key) || latest.get(m.key).id < m.id) latest.set(m.key, m);
+  const entries = [...latest.values()].sort((a, b) => b.created_at - a.created_at || b.id - a.id);
   if (!entries.length) {
-    list.innerHTML = `<p class="side-empty">${escapeHtml(t("inboxEmpty"))}</p>`;
+    thread.innerHTML = `<p class="side-empty">${escapeHtml(t("inboxEmpty"))}</p>`;
     return;
   }
-  for (const m of entries.sort((a, b) => b.created_at - a.created_at)) {
-    const kind = m.key.split(".")[1];
+  for (const m of entries) {
+    const mine = !isAgent(m.author);
+    const kind = mine ? m.key.split(".")[1] : "";
     const el = document.createElement("div");
-    el.className = "note-item";
-    el.innerHTML = `<div class="note-head">${icon(INBOX_ICONS[kind] ?? "agent", 14)}<span class="where"></span>
-      <button class="icon-btn" title="${escapeHtml(t("delete"))}">${icon("trash", 14)}</button></div><div class="b"></div>`;
-    el.querySelector(".where").textContent = `${t(`inbox_${kind}`)}, ${new Date(m.created_at * 1000).toLocaleString()}`;
-    el.querySelector(".b").textContent = m.value.length > 600 ? `${m.value.slice(0, 600)}…` : m.value;
+    el.className = `bubble ${mine ? "mine" : "agent"} ${kind}`;
+    el.innerHTML = `<div class="note-head">${icon(mine ? INBOX_ICONS[kind] ?? "message" : "agent", 14)}<span class="where"></span>
+      ${mine ? `<button class="icon-btn" title="${escapeHtml(t("delete"))}">${icon("trash", 14)}</button>` : ""}</div><div class="b"></div>`;
+    const when = new Date(m.created_at * 1000).toLocaleString([], { dateStyle: "short", timeStyle: "short" });
+    el.querySelector(".where").textContent = `${mine ? t(`inbox_${kind}`) : `${m.author} · ${m.key}`}, ${when}`;
+    const cap = kind === "saved" ? 320 : 1200;
+    el.querySelector(".b").textContent = m.value.length > cap ? `${m.value.slice(0, cap)}…` : m.value;
     if (m.locator) el.addEventListener("click", () => goTo(parseLocator(m.locator)));
-    el.querySelector("button").addEventListener("click", async (e) => {
+    el.querySelector("button")?.addEventListener("click", async (e) => {
       e.stopPropagation();
       await call("forget", { id: m.id }).catch(fail);
       renderSide();
     });
-    list.append(el);
+    thread.append(el);
   }
 }
 
@@ -938,6 +1071,26 @@ export function init(/** @type {{ goHome: () => void }} */ hooks) {
   translator.init(visibleText);
   page().addEventListener("click", onLink);
   reader().addEventListener("mousemove", wake);
+  // The cursor lights the desk, moves the far background and stirs the particles.
+  let aim = 0;
+  reader().addEventListener("pointermove", (e) => {
+    if (aim || calm()) return;
+    aim = requestAnimationFrame(() => {
+      aim = 0;
+      const r = reader().getBoundingClientRect();
+      const style = reader().style;
+      style.setProperty("--px", `${e.clientX - r.left}px`);
+      style.setProperty("--py", `${e.clientY - r.top}px`);
+      style.setProperty("--tx", ((e.clientX - r.left) / r.width - 0.5).toFixed(3));
+      style.setProperty("--ty", ((e.clientY - r.top) / r.height - 0.5).toFixed(3));
+      particles.setPointer(e.clientX, e.clientY);
+    });
+  });
+  reader().addEventListener("pointerleave", () => particles.setPointer(null));
+  // A click on the desk, beside the book, scatters the particles.
+  viewport().addEventListener("click", (e) => {
+    if (!/** @type {Element} */ (e.target).closest(".frame, .pdf-page")) particles.burst(e.clientX, e.clientY);
+  });
   $("#dock").addEventListener("focusin", wake);
   $("#folio").addEventListener("click", focusPageInput);
   viewport().addEventListener("mouseup", () => setTimeout(showSelbar, 0));
@@ -970,6 +1123,7 @@ export function init(/** @type {{ goHome: () => void }} */ hooks) {
   });
   for (const b of $("#side-tabs").children) b.addEventListener("click", () => showTab(/** @type {HTMLElement} */ (b).dataset.tab));
   $("#toggle-side").addEventListener("click", () => toggleSide());
+  $("#side-close").addEventListener("click", () => setSide(false));
   $("#back").addEventListener("click", () => goHome());
   $("#prev-page").addEventListener("click", prev);
   $("#next-page").addEventListener("click", next);

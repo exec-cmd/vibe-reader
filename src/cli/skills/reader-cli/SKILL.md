@@ -25,6 +25,8 @@ The reader's window can leave things for you; `vibe-reader context` lists them u
 
 These belong to the user: read them, act on them, leave them in place.
 
+The window's Agent tab shows the book's memory as a conversation. To answer a message there as well as in the chat, save the answer with `vibe-reader memory set --book <id> answer.<topic> "..." --locator <where>`.
+
 ## Addresses
 
 A locator is `ch:N` or `ch:N:OFFSET`: chapter `N` from 1, offset in characters of the chapter's normalized text. A range is `ch:3:120..ch:3:480`. `toc` lists chapter locators; `read` returns `from`, `to` and `next`; `search` returns a locator per hit.

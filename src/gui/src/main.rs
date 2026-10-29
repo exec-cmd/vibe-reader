@@ -117,12 +117,13 @@ fn main() -> anyhow::Result<()> {
                 vibe_reader_core::ipc::serve(&paths.socket(), move |message| state::handle_ipc(&handle, message))?;
             }
             let title = if lite { "vibe-reader · lite" } else { "vibe-reader" };
+            // A transparent window costs compositing and sharp text, so only when asked for.
+            let glass = vibe_reader_core::Config::load(&paths).is_ok_and(|c| c.reader.opacity < 1.0);
             WebviewWindowBuilder::new(app, "main", WebviewUrl::CustomProtocol("vr://localhost/".parse()?))
                 .title(title)
                 .inner_size(if lite { 860.0 } else { 1180.0 }, 800.0)
                 .min_inner_size(480.0, 360.0)
-                // Always transparent; the UI paints solid unless the reader lowers the opacity.
-                .transparent(true)
+                .transparent(glass)
                 .build()?;
             Ok(())
         })

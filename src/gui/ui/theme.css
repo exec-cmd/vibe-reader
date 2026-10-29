@@ -1,24 +1,24 @@
 /* Design tokens. Override any of them in <config>/ui/user.css; the window reloads it live.
    Atmosphere profiles set the palette tokens on the reader.
 
-   Identity: a bindery. Cool paper and graphite for the interface, bookcloth and gilt for the
-   spines, which are the one loud thing on screen. */
+   Identity: violet dusk. A quiet violet-grey interface where the books, with their own colors,
+   are the loud thing; one violet accent for actions and progress, a warm gilt for highlights. */
 
 :root {
   /* Palette */
-  --paper: #ecefe9;      /* window background */
-  --paper-2: #e1e5de;    /* sidebars, panels */
-  --surface: #f6f7f3;    /* cards, menus, the reading page */
-  --ink: #1b2420;
-  --muted: #66716b;
-  --rule: #cdd3cb;
-  --accent: #2e5b4f;     /* bookcloth green: primary actions, focus, links */
-  --gilt: #b38b3c;       /* stamping on spines, progress */
-  --danger: #a3392f;
-  --case: #26302b;       /* inside of the bookcase */
-  --board: #5b4330;      /* shelf boards */
-  --card: #fbfaf3;       /* catalog cards */
-  --card-rule: #c9d9e2;  /* ruled lines of a catalog card */
+  --paper: #f5f3fa;      /* window background */
+  --paper-2: #efecf6;    /* sidebars, panels */
+  --surface: #ffffff;    /* cards, menus, the reading page */
+  --ink: #1f1a2e;
+  --muted: #6f6884;
+  --rule: #e3dfee;
+  --accent: #6c4ee0;     /* violet: primary actions, focus, links, progress */
+  --gilt: #b98a2e;       /* the reader's highlights */
+  --danger: #c0392f;
+  --case: #ebe7f4;       /* the room behind the shelves */
+  --board: #d9d3e8;      /* shelf ledges */
+  --card: #ffffff;       /* cards on the desk */
+  --card-rule: #e3dfee;
 
   /* Type */
   --font-ui: "Onest", system-ui, sans-serif;
@@ -32,9 +32,9 @@
   --hyphens: auto;
 
   /* Shape */
-  --radius-s: 4px;
-  --radius-m: 7px;
-  --radius-l: 11px;
+  --radius-s: 6px;
+  --radius-m: 9px;
+  --radius-l: 14px;
 
   /* Motion */
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
@@ -47,19 +47,19 @@
 }
 
 :root[data-mode="dark"] {
-  --paper: #141917;
-  --paper-2: #1a201d;
-  --surface: #1f2622;
-  --ink: #dde3dd;
-  --muted: #8b968f;
-  --rule: #2e3833;
-  --accent: #7fb8a4;
-  --gilt: #cfa75a;
-  --danger: #e07a6e;
-  --case: #0f1311;
-  --board: #3d2c20;
-  --card: #e7e4d8;
-  --card-rule: #b8c6cc;
+  --paper: #131019;
+  --paper-2: #17141f;
+  --surface: #1e1a29;
+  --ink: #ebe7f5;
+  --muted: #9a93ae;
+  --rule: #2b2639;
+  --accent: #a68cff;
+  --gilt: #d9ad5b;
+  --danger: #ef7d70;
+  --case: #100d16;
+  --board: #3a3350;
+  --card: #1c1826;
+  --card-rule: #2b2639;
 }
 
 /* Tokens that follow light or dark but not the palette; the reader can differ from the shelf
@@ -67,9 +67,9 @@
 :root, [data-mode="light"] {
   --selection: color-mix(in srgb, var(--accent) 22%, transparent);
   --hover: color-mix(in srgb, var(--ink) 6%, transparent);
-  --shadow-s: 0 1px 2px rgba(20, 30, 25, 0.1);
-  --shadow: 0 2px 6px rgba(20, 30, 25, 0.08), 0 12px 32px rgba(20, 30, 25, 0.14);
-  --agent: #3f6a8a;
+  --shadow-s: 0 1px 2px rgba(30, 20, 50, 0.1);
+  --shadow: 0 2px 6px rgba(30, 20, 50, 0.08), 0 12px 32px rgba(30, 20, 50, 0.14);
+  --agent: #2f72b8;
   --code-bg: color-mix(in srgb, var(--ink) 6%, var(--surface));
   --code-keyword: #8a3b52;
   --code-string: #4b6b2f;

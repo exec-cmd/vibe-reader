@@ -4,7 +4,12 @@
 /* --fx is the reader's effect strength (Settings → Atmosphere), 0 to 2. */
 .reader { --fx: 1; }
 .bg, #fx, .fx-overlay, .flash { position: absolute; inset: 0; pointer-events: none; }
-.bg { z-index: 0; background-size: cover; background-position: center; opacity: min(1, var(--fx)); }
+/* The background moves a little against the cursor (--tx, --ty from -0.5 to 0.5), like a far wall. */
+.bg {
+  z-index: 0; background-size: cover; background-position: center; opacity: min(1, var(--fx));
+  transform: translate3d(calc(var(--tx, 0) * -22px * var(--fx)), calc(var(--ty, 0) * -14px * var(--fx)), 0) scale(1.06);
+  transition: transform 900ms var(--ease);
+}
 #fx { z-index: 1; width: 100%; height: 100%; }
 .reader .reader-body { position: relative; z-index: 2; }
 .fx-overlay { z-index: 1; }
@@ -59,6 +64,13 @@
     radial-gradient(ellipse at 50% 0%, color-mix(in srgb, #ffcf8a calc(var(--glow, 0) * var(--fx) * 22%), transparent), transparent 60%),
     radial-gradient(ellipse at center, transparent 50%, rgba(0, 0, 0, calc(var(--vignette, 0) * var(--fx) * 0.55)));
 }
+/* A light that follows the cursor over the desk; it goes out while the reader reads. */
+.fx-overlay::before {
+  content: ""; position: absolute; inset: 0;
+  background: radial-gradient(circle 440px at var(--px, -999px) var(--py, -999px), color-mix(in srgb, color-mix(in srgb, var(--accent) 45%, #fff) calc(17% * min(var(--fx), 1.6)), transparent), transparent 72%);
+  transition: opacity 1.2s var(--ease);
+}
+.reader[data-idle="true"] .fx-overlay::before { opacity: 0; }
 /* A lamp breathes a little. */
 .reader[data-bg="lamp"] .fx-overlay { animation: flicker 7s ease-in-out infinite; }
 @keyframes flicker { 0%, 100% { opacity: 1; } 42% { opacity: 0.86; } 47% { opacity: 0.97; } 70% { opacity: 0.9; } }

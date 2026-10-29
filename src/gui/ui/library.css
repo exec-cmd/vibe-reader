@@ -1,245 +1,221 @@
-/* Library: a card catalog on the left, the desk and the bookcase in the middle, the catalog card
-   of the selected book on the right. In mini mode only the toolbar and one shelf remain. */
+/* Library: filters and shelves on the left, the desk and the shelves in the middle, the selected
+   book on the right. In mini mode only the toolbar and one shelf remain. */
 
 .library-body { flex: 1; min-height: 0; display: flex; }
 
-/* Catalog: every filter and shelf is a drawer with a label holder; the open one is pulled out. */
+/* Sidebar: a quiet list; the current filter is a violet pill. */
 .sidebar {
-  width: 236px; flex: none; overflow: auto;
-  padding: 12px 12px 20px 10px; background: var(--paper-2); border-right: 1px solid var(--rule);
+  width: 228px; flex: none; overflow: auto;
+  padding: 14px 10px 20px; background: var(--paper);
+  border-right: 1px solid color-mix(in srgb, var(--rule) 70%, transparent);
 }
 .library[data-sidebar="off"] .sidebar { display: none; }
-.side-head { display: flex; align-items: center; justify-content: space-between; margin: 18px 4px 6px; color: var(--muted); font: italic 500 15px/1 var(--font-display); }
-.side-head:first-child { margin-top: 4px; }
+.side-head { display: flex; align-items: center; justify-content: space-between; height: 26px; margin: 18px 8px 4px 10px; color: var(--muted); font-size: 12px; font-weight: 600; }
+.side-head:first-child { margin-top: 0; }
 .side-head .icon-btn { width: 24px; height: 24px; }
 .side-item {
-  position: relative;
-  display: grid; grid-template-columns: 18px 1fr auto; align-items: center; gap: 8px;
-  width: 100%; height: 34px; padding: 0 10px 0 8px; margin-bottom: 4px;
-  border: 1px solid color-mix(in srgb, var(--ink) 13%, var(--paper-2)); border-radius: 3px;
-  background: linear-gradient(color-mix(in srgb, var(--surface) 70%, var(--paper-2)), var(--paper-2));
-  box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--ink) 7%, transparent), inset 0 1px 0 color-mix(in srgb, #fff 40%, transparent);
-  text-align: left; cursor: pointer; color: var(--ink);
-  transition: transform var(--fast) var(--ease), box-shadow var(--fast);
+  display: grid; grid-template-columns: 18px 1fr auto; align-items: center; gap: 10px;
+  width: 100%; height: 34px; padding: 0 10px; margin-bottom: 1px;
+  border: 0; border-radius: var(--radius-m); background: transparent;
+  text-align: left; cursor: pointer; color: color-mix(in srgb, var(--ink) 86%, var(--muted));
+  transition: background var(--fast), color var(--fast);
 }
-.side-item:hover { transform: translateX(3px); }
-.side-item[aria-current="true"] {
-  transform: translateX(9px);
-  box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--ink) 7%, transparent), -6px 4px 10px -6px rgba(0, 0, 0, 0.35);
-}
-/* The label holder: a framed card with the drawer's name. */
-.side-item .name {
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  padding: 2px 7px; border: 1px solid color-mix(in srgb, var(--gilt) 55%, var(--rule)); border-radius: 2px;
-  background: var(--card); color: #2a2f2b; font-size: 13px; line-height: 1.25;
-}
-:root[data-mode="dark"] .side-item .name { background: color-mix(in srgb, var(--card) 14%, var(--paper-2)); color: var(--ink); border-color: color-mix(in srgb, var(--gilt) 45%, var(--paper-2)); }
-.side-item[aria-current="true"] .name { border-color: var(--accent); }
+.side-item:hover { background: var(--hover); color: var(--ink); }
+.side-item[aria-current="true"] { background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--ink); font-weight: 500; }
+.side-item .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .side-item .count { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 .side-item .icon { color: var(--muted); }
-.side-item[aria-current="true"] .icon { color: var(--accent); }
-.side-item.drop-target { outline: 2px dashed var(--accent); outline-offset: 1px; }
-.side-more { margin: 2px 8px; font-size: 12px; color: var(--muted); background: none; border: 0; cursor: pointer; padding: 4px 0; }
+.side-item[aria-current="true"] :is(.icon, .count) { color: var(--accent); }
+.side-item.drop-target { outline: 2px dashed var(--accent); outline-offset: -2px; }
+.side-more { margin: 2px 10px; font-size: 12px; color: var(--muted); background: none; border: 0; cursor: pointer; padding: 4px 0; }
+.side-more:hover { color: var(--accent); }
 
-/* The room: the desk on top, then the bookcase. */
-.room { flex: 1; min-width: 0; overflow: auto; outline: none; display: flex; flex-direction: column; }
+/* The room: the desk on top, then the shelves. A soft light follows the cursor (--mx, --my). */
+.room {
+  flex: 1; min-width: 0; overflow: auto; outline: none; display: flex; flex-direction: column; position: relative;
+  background:
+    radial-gradient(520px circle at var(--mx, 50%) var(--my, -200px), color-mix(in srgb, var(--accent) 11%, transparent), transparent 70%),
+    var(--case);
+}
 
-/* Desk: books being read, standing with their covers out, and the reading log. */
-.desk { display: flex; align-items: flex-end; gap: 18px 28px; padding: 22px 30px 18px; flex-wrap: wrap; }
-.desk-title { flex: 1 0 100%; display: flex; align-items: baseline; gap: 14px; margin: 0; }
-.desk-title h2 { margin: 0; font: 600 26px/1.1 var(--font-display); }
-.desk-title span { color: var(--muted); }
-.desk-books { display: flex; gap: 26px; align-items: flex-end; min-width: 0; max-width: 100%; overflow-x: auto; padding: 4px 4px 8px 0; scrollbar-width: thin; }
-.desk-book { flex: none; display: grid; grid-template-columns: auto 150px; gap: 14px; align-items: end; padding: 0; border: 0; background: none; text-align: left; cursor: pointer; color: var(--ink); }
-.desk-book b { display: block; font: 600 16px/1.2 var(--font-display); max-height: 3.6em; overflow: hidden; }
-.desk-book small { display: block; color: var(--muted); margin: 3px 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.desk-book .meter { margin: 0; }
+/* Desk: the book to continue, the other books being read, and the reading log. */
+.desk { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; padding: 24px 28px 8px; }
 .desk-empty { color: var(--muted); max-width: 32em; margin: 0; }
-.log { margin-left: auto; display: grid; gap: 6px; justify-items: end; color: var(--muted); font-size: 12.5px; }
-.log b { color: var(--ink); font: 600 20px/1 var(--font-display); }
-.week { display: flex; align-items: flex-end; gap: 4px; height: 40px; }
-.week i { width: 12px; min-height: 2px; border-radius: 2px 2px 0 0; background: color-mix(in srgb, var(--gilt) 75%, var(--paper-2)); }
+.hero {
+  position: relative; isolation: isolate; overflow: hidden;
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 22px; align-items: center;
+  min-height: 196px; padding: 20px 24px 20px 20px; border-radius: var(--radius-l);
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  border: 1px solid color-mix(in srgb, var(--rule) 80%, transparent);
+}
+/* The cover, blown up and blurred, tints the card. */
+.hero .glow { position: absolute; inset: -40px; z-index: -1; background: var(--cloth) center / cover; filter: blur(46px) saturate(1.4); opacity: 0.32; }
+.hero .cover-slot { width: 112px; }
+.hero h2 { margin: 0; font: 600 23px/1.2 var(--font-body); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.hero .by { margin: 6px 0 0; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hero .where { margin: 14px 0 8px; font-size: 13px; color: color-mix(in srgb, var(--ink) 75%, var(--muted)); }
+.hero .row { display: flex; align-items: center; gap: 14px; margin-top: 14px; }
+.hero .meter { flex: 1; max-width: 320px; }
+.hero-label { position: absolute; top: 14px; right: 18px; font-size: 12px; color: var(--muted); }
+.desk-side { display: grid; gap: 10px; align-content: start; width: 300px; }
+.desk-book {
+  display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; align-items: center;
+  padding: 8px 10px; border: 0; border-radius: var(--radius-m); background: transparent; text-align: left; cursor: pointer; color: var(--ink);
+  transition: background var(--fast);
+}
+.desk-book:hover, .desk-book:focus-visible { background: color-mix(in srgb, var(--surface) 70%, transparent); }
+.desk-book b { display: block; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.desk-book .meter { margin-top: 5px; }
+.desk-book .cover { padding: 0; font-size: 0; border-radius: 2px; }
+.log {
+  display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 4px 12px; padding: 12px 14px;
+  border-radius: var(--radius-m); background: color-mix(in srgb, var(--surface) 60%, transparent); color: var(--muted); font-size: 12.5px;
+}
+.log b { grid-column: 1; color: var(--ink); font: 600 20px/1 var(--font-ui); }
+.log .week { grid-row: 1 / span 3; grid-column: 2; }
+.week { display: flex; align-items: flex-end; gap: 4px; height: 44px; }
+.week i { width: 10px; min-height: 3px; border-radius: 3px; background: color-mix(in srgb, var(--accent) 45%, transparent); }
 .week i.today { background: var(--accent); }
 .week i.none { background: var(--rule); }
 
-/* A book as an object: cover in front, a block of pages on the right, turned a little. */
-.book3d { --w: 92px; perspective: 700px; flex: none; }
-.book3d .cover {
-  position: relative; width: var(--w); margin: 0;
-  transform: rotateY(24deg); transform-origin: left center; transform-style: preserve-3d;
-  transition: transform var(--slow) var(--ease);
-}
-.book3d .cover::after {
-  content: ""; position: absolute; top: 2px; bottom: 2px; left: 100%; width: calc(var(--w) * 0.16);
-  transform: rotateY(90deg); transform-origin: left center;
-  background: repeating-linear-gradient(90deg, #f3eee2 0 1px, #d9d1bf 1px 2px);
-}
-.desk-book:hover .cover, .desk-book:focus-visible .cover, .details .book3d:hover .cover { transform: rotateY(8deg); }
+/* A progress line with its percent. */
+.meter { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.meter .bar { flex: 1; height: 4px; border-radius: 4px; background: color-mix(in srgb, var(--ink) 10%, transparent); overflow: hidden; }
+.meter .bar i { display: block; height: 100%; border-radius: inherit; background: var(--accent); }
+
+/* Covers: flat, so they stay sharp; depth comes from the shadow. */
 .cover {
-  aspect-ratio: 2 / 3; border-radius: 2px 3px 3px 2px; overflow: visible;
-  box-shadow: inset 4px 0 0 rgba(0, 0, 0, 0.18), inset 6px 0 6px -4px rgba(255, 255, 255, 0.25), 6px 10px 18px -8px rgba(0, 0, 0, 0.55);
-  background: var(--cloth, var(--accent)); color: var(--stamp, #d8b866);
+  position: relative; aspect-ratio: 2 / 3; border-radius: 3px 5px 5px 3px; overflow: hidden;
+  box-shadow: inset 3px 0 0 rgba(0, 0, 0, 0.18), inset 5px 0 5px -4px rgba(255, 255, 255, 0.3), 0 12px 24px -12px rgba(0, 0, 0, 0.6), 0 2px 4px rgba(0, 0, 0, 0.18);
+  background: linear-gradient(150deg, color-mix(in srgb, var(--cloth, var(--accent)) 80%, #fff), var(--cloth, var(--accent)) 60%);
+  color: var(--stamp, #fff);
   display: flex; flex-direction: column; justify-content: space-between; padding: 12px 10px 10px 14px;
-  font: 600 14px/1.15 var(--font-display);
+  font: 600 13px/1.2 var(--font-ui);
+  transition: transform var(--slow) var(--ease), box-shadow var(--slow) var(--ease);
 }
 .cover > span { overflow: hidden; max-height: 70%; }
 .cover small { font: 500 10px/1.3 var(--font-ui); opacity: 0.85; }
 .cover.image { padding: 0; background: var(--paper-2); }
-.cover.image img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: inherit; }
+.cover.image img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.hero:hover .cover, .details .cover:hover { transform: translateY(-3px); }
 
-/* The bookcase: a dark case, boards with brass label plates, a lamp over every shelf. */
-.stacks {
-  flex: 1; margin: 6px 22px 26px; padding: 6px 24px 30px;
-  background:
-    linear-gradient(90deg, rgba(0, 0, 0, 0.35), transparent 26px, transparent calc(100% - 26px), rgba(0, 0, 0, 0.35)),
-    var(--case);
-  border: 10px solid var(--board); border-top-width: 14px; border-radius: 3px;
-  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.5), 0 18px 40px -20px rgba(0, 0, 0, 0.5);
-  outline: none;
-}
-.stack { margin-top: 18px; }
-/* Brass plate with engraved name, screwed to the board. */
-.stack-head {
-  display: inline-flex; align-items: baseline; gap: 10px; margin: 0 0 4px 14px; padding: 3px 14px;
-  border-radius: 2px; color: #2b2111;
-  background:
-    radial-gradient(circle at 6px 50%, rgba(0, 0, 0, 0.45) 1.2px, transparent 1.8px),
-    radial-gradient(circle at calc(100% - 6px) 50%, rgba(0, 0, 0, 0.45) 1.2px, transparent 1.8px),
-    linear-gradient(#e2c47c, #b48e43 55%, #9d7a35);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.45);
-}
-.stack-head h3 { margin: 0; font: 600 15px/1.2 var(--font-display); text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35); }
-.stack-head .count { font-size: 11px; opacity: 0.75; }
+/* Shelves: books stand on a lit glass ledge; each group has a quiet heading. */
+.stacks { flex: 1; padding: 8px 28px 40px; outline: none; }
+.stack { margin-top: 22px; }
+.stack-head { display: flex; align-items: baseline; gap: 10px; margin: 0 0 6px 2px; }
+.stack-head h3 { margin: 0; font: 600 15px/1.3 var(--font-ui); }
+.stack-head .count { color: var(--muted); font-size: 12px; }
 .shelf {
-  position: relative;
-  display: flex; align-items: flex-end; gap: 2px;
-  padding: 26px 16px 0; margin-bottom: 30px; min-height: 96px;
-  /* A lamp above each shelf. */
-  background: radial-gradient(ellipse 60% 85% at 50% 0%, color-mix(in srgb, #ffdca0 14%, transparent), transparent 70%);
+  position: relative; display: flex; align-items: flex-end; gap: 3px;
+  padding: 22px 14px 0; margin-bottom: 34px; min-height: 96px;
 }
-/* The board under every row of books. */
+/* The ledge: a thin lit edge and the shadow the books cast on it. */
 .shelf::after {
-  content: ""; position: absolute; left: -24px; right: -24px; bottom: -16px; height: 16px;
-  background:
-    repeating-linear-gradient(90deg, transparent 0 60px, rgba(0, 0, 0, 0.06) 60px 61px, transparent 61px 140px),
-    linear-gradient(color-mix(in srgb, var(--board) 70%, #fff), var(--board) 30%, color-mix(in srgb, var(--board) 75%, #000));
-  box-shadow: 0 10px 14px -6px rgba(0, 0, 0, 0.65);
+  content: ""; position: absolute; left: 0; right: 0; bottom: -10px; height: 10px; border-radius: 0 0 6px 6px;
+  background: linear-gradient(color-mix(in srgb, var(--board) 100%, #fff 12%), color-mix(in srgb, var(--board) 40%, transparent));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 22%, transparent), 0 14px 22px -12px rgba(0, 0, 0, 0.55);
 }
 .stack.recent, .continue { display: none; }
 
 .spine {
-  --h: 220px; --w: 40px; --cloth: #2e5b4f; --stamp: #d8b866; --lean: 0deg;
+  --h: 220px; --w: 40px; --cloth: #5b4bb0; --stamp: #fff; --lean: 0deg; --lift: 0px;
   position: relative; flex: none;
   width: var(--w); height: var(--h);
   padding: 0; border: 0; cursor: pointer;
-  border-radius: 3px 3px 1px 1px;
+  border-radius: 4px 4px 2px 2px;
   background:
-    linear-gradient(90deg, rgba(0, 0, 0, 0.32), rgba(255, 255, 255, 0.12) 16%, rgba(255, 255, 255, 0) 42%, rgba(0, 0, 0, 0.06) 72%, rgba(0, 0, 0, 0.34)),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90'%3E%3Cfilter id='c'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.6 0.35' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='90' height='90' filter='url(%23c)'/%3E%3C/svg%3E"),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.05) 14%, transparent 34%, rgba(0, 0, 0, 0.1) 80%, rgba(0, 0, 0, 0.3)),
     var(--cloth);
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.2), 1px 0 0 rgba(0, 0, 0, 0.3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
   color: var(--stamp);
-  transform: rotate(var(--lean));
+  transform: translateY(var(--lift)) rotate(var(--lean));
   transform-origin: bottom left;
-  transition: transform var(--slow) cubic-bezier(0.3, 1.5, 0.5, 1), box-shadow var(--fast);
+  transition: transform var(--slow) cubic-bezier(0.3, 1.4, 0.5, 1), box-shadow var(--slow) var(--ease), filter var(--slow);
 }
 /* The last book of a short row leans on its neighbour. */
-.spine.lean { --lean: -7deg; margin-left: calc(var(--h) * 0.12); }
-/* Raised bands with gilt rules near the head and tail. */
-.spine::before, .spine::after {
-  content: ""; position: absolute; left: 3px; right: 3px; height: 5px;
-  border-top: 1px solid color-mix(in srgb, var(--stamp) 75%, transparent);
-  border-bottom: 1px solid color-mix(in srgb, var(--stamp) 75%, transparent);
-}
-.spine::before { top: 12px; }
-.spine::after { bottom: 14px; }
+.spine.lean { --lean: -6deg; margin-left: calc(var(--h) * 0.11); }
 .spine .t {
-  position: absolute; left: 50%; top: 26px; bottom: 54px;
+  position: absolute; left: 50%; top: 14px; bottom: 46px;
   writing-mode: vertical-rl; transform: translateX(-50%) rotate(180deg);
-  max-height: calc(100% - 80px);
-  font: 600 14px/1.05 var(--font-display); letter-spacing: 0.02em;
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
+  font: 600 12px/1.1 var(--font-ui); letter-spacing: 0.01em;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .spine .a {
-  position: absolute; left: 2px; right: 2px; bottom: 26px;
-  font: 500 9px/1.1 var(--font-ui); text-align: center; opacity: 0.8;
+  position: absolute; left: 3px; right: 3px; bottom: 16px;
+  font: 500 9px/1.1 var(--font-ui); text-align: center; opacity: 0.75;
   overflow: hidden; white-space: nowrap; text-overflow: clip;
 }
-.spine .ribbon {
-  position: absolute; top: -9px; right: 22%; width: 7px; height: 26px;
-  background: var(--gilt); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 82%, 0 100%);
-  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
-}
-/* Pulled from the shelf. */
-.spine:hover, .spine:focus-visible { transform: translateY(-10px); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.2), 0 12px 18px -6px rgba(0, 0, 0, 0.7); outline: none; }
-.spine[aria-selected="true"] { transform: translateY(-16px); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.2), 0 0 0 2px var(--case), 0 0 0 4px var(--gilt), 0 16px 22px -8px rgba(0, 0, 0, 0.7); }
-.spine.finished { filter: saturate(0.7) brightness(0.88); }
+/* Progress runs up the foot of the spine. */
+.spine .read { position: absolute; left: 5px; right: 5px; bottom: 7px; height: 3px; border-radius: 3px; background: color-mix(in srgb, var(--stamp) 22%, transparent); overflow: hidden; }
+.spine .read i { display: block; height: 100%; background: var(--stamp); border-radius: inherit; }
+.spine:hover, .spine:focus-visible { --lift: -10px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 16px 26px -10px color-mix(in srgb, var(--cloth) 70%, #000); outline: none; }
+.spine[aria-selected="true"] { --lift: -14px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 0 0 2px var(--case), 0 0 0 4px var(--accent), 0 18px 28px -10px color-mix(in srgb, var(--accent) 60%, #000); }
+.spine.finished { filter: saturate(0.75) brightness(0.9); }
 .spine.dragging { opacity: 0.4; }
-.stacks .empty { color: color-mix(in srgb, var(--card) 70%, transparent); }
-.stacks .empty h2 { color: var(--card); }
 
-/* The catalog card of the selected book. */
+/* The cover of the spine under the cursor floats above the shelf. */
+.peek {
+  position: absolute; z-index: 5; width: 132px; pointer-events: none;
+  opacity: 0; transform: translateY(8px) scale(0.96); transform-origin: bottom center;
+  transition: opacity var(--fast) var(--ease), transform var(--slow) var(--ease);
+}
+.peek.on { opacity: 1; transform: none; }
+.peek .cover { box-shadow: 0 24px 40px -16px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.06); }
+.peek p { margin: 8px 0 0; font-size: 12px; line-height: 1.3; color: var(--ink); text-align: center; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-shadow: 0 1px 6px var(--case); }
+
+/* The selected book. */
 .details {
-  width: 330px; flex: none; overflow: auto;
-  padding: 26px 20px 28px; background: var(--paper-2); border-left: 1px solid var(--rule);
+  position: relative; width: 320px; flex: none; overflow: auto;
+  padding: 28px 22px 28px; background: var(--paper);
+  border-left: 1px solid color-mix(in srgb, var(--rule) 70%, transparent);
 }
 .library[data-details="off"] .details { display: none; }
-.details .book3d { --w: 128px; margin: 0 0 20px 28px; }
-.index-card {
-  position: relative; padding: 14px 16px 40px; color: #252a27;
-  border-radius: 3px;
-  background:
-    radial-gradient(circle at 50% calc(100% - 16px), var(--paper-2) 5px, color-mix(in srgb, #000 25%, transparent) 5.5px, transparent 6.5px),
-    linear-gradient(transparent 58px, color-mix(in srgb, var(--danger) 55%, var(--card)) 58px 59.5px, transparent 59.5px),
-    repeating-linear-gradient(transparent 0 23px, var(--card-rule) 23px 24px) 0 60px / 100% calc(100% - 100px) no-repeat,
-    var(--card);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15), 0 8px 20px -10px rgba(0, 0, 0, 0.4);
-}
-.index-card .call { display: flex; justify-content: space-between; font: 12px var(--font-mono); color: #5c645f; }
-.index-card h2 { margin: 6px 0 0; font: 600 20px/1.15 var(--font-display); color: #1e2320; user-select: text; min-height: 1.2em; }
-.index-card .by { margin: 12px 0 0; font: 13px/24px var(--font-mono); user-select: text; }
-.index-card .meter { margin: 0 0 6px; height: 24px; }
-.index-card .meter .bar { background: color-mix(in srgb, #000 12%, transparent); }
-.index-card .actions { display: flex; gap: 6px; margin: 4px 0 12px; }
-.index-card .actions .btn.primary { flex: 1; justify-content: center; }
-.index-card .btn:not(.primary) { background: transparent; color: #2a2f2b; border-color: color-mix(in srgb, #000 18%, transparent); }
-.facts { display: grid; grid-template-columns: auto 1fr; gap: 0 12px; margin: 0; font: 12.5px/24px var(--font-mono); }
-.facts dt { color: #6a726d; }
-.facts dd { margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.index-card .select-btn.boxed { height: 22px; margin: 1px 0; padding: 0 4px 0 6px; font: inherit; color: inherit; background: transparent; border-color: transparent; border-bottom: 1px dashed color-mix(in srgb, #000 30%, transparent); border-radius: 0; }
-.index-card .select-btn .icon { color: #6a726d; }
-.chips { display: flex; flex-wrap: wrap; gap: 4px; padding: 1px 0; }
-.chip { display: inline-flex; align-items: center; gap: 2px; height: 22px; padding: 0 2px 0 8px; border-radius: 2px; background: color-mix(in srgb, var(--accent) 14%, transparent); color: #24493f; font: 12px var(--font-ui); }
-.chip button { display: grid; place-items: center; width: 18px; height: 18px; border: 0; padding: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; }
-.chip button:hover { background: color-mix(in srgb, var(--accent) 20%, transparent); }
-.chip.add { padding: 0 8px; background: transparent; border: 1px dashed color-mix(in srgb, #000 25%, transparent); color: #5c645f; cursor: pointer; }
-.details-empty { color: var(--muted); text-align: center; margin-top: 40%; font: italic 16px var(--font-display); }
-.card-close { display: none; position: absolute; top: 8px; right: 8px; }
+.details .cover-slot { width: 150px; margin: 0 auto 22px; }
+.details .cover { box-shadow: 0 24px 40px -18px color-mix(in srgb, var(--cloth, var(--accent)) 70%, #000), 0 2px 6px rgba(0, 0, 0, 0.2); }
+.details h2 { margin: 0; font: 600 20px/1.25 var(--font-body); user-select: text; }
+.details .by { margin: 6px 0 16px; color: var(--muted); user-select: text; }
+.details .meter { margin-bottom: 16px; }
+.details .actions { display: flex; gap: 6px; margin-bottom: 20px; }
+.details .actions .btn.primary { flex: 1; justify-content: center; height: 36px; }
+.details .actions .btn:not(.primary) { width: 36px; height: 36px; padding: 0; justify-content: center; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 2px 14px; margin: 0; padding-top: 14px; border-top: 1px solid var(--rule); font-size: 13px; line-height: 30px; }
+.facts dt { color: var(--muted); }
+.facts dd { margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
+.details .select-btn.boxed { width: auto; max-width: 100%; height: 28px; margin-left: auto; padding: 0 6px 0 10px; border: 0; background: var(--hover); font-size: 13px; }
+.details .facts dd:has(.select-btn) { display: flex; }
+.chips { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; padding: 3px 0; line-height: normal; }
+.chip { display: inline-flex; align-items: center; gap: 2px; height: 24px; padding: 0 2px 0 9px; border-radius: 24px; background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--ink); font-size: 12px; }
+.chip button { display: grid; place-items: center; width: 20px; height: 20px; border: 0; padding: 0; border-radius: 50%; background: transparent; color: var(--muted); cursor: pointer; }
+.chip button:hover { background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--ink); }
+.chip.add { padding: 0 10px; background: transparent; border: 1px dashed var(--rule); color: var(--muted); cursor: pointer; }
+.chip.add:hover { border-color: var(--accent); color: var(--accent); }
+.details-empty { color: var(--muted); text-align: center; margin-top: 40%; }
+.card-close { display: none; position: absolute; top: 10px; right: 10px; }
+.path { margin-top: 18px; font: 11px/1.45 var(--font-mono); color: var(--muted); word-break: break-all; user-select: text; opacity: 0.8; }
 
-/* Narrow windows: the catalog card slides over the room only while a book is selected. */
+/* Narrow windows: the selected book slides over the room only while one is selected. */
 @media (max-width: 1180px) {
-  .sidebar { width: 204px; }
+  .sidebar { width: 200px; }
   .library-body { position: relative; }
+  .desk { grid-template-columns: 1fr; }
+  .desk-side { width: auto; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
   .details {
-    position: absolute; z-index: 6; top: 0; right: 0; bottom: 0;
+    position: absolute; z-index: 6; top: 0; right: 0; bottom: 0; background: var(--surface);
     box-shadow: -18px 0 40px -20px rgba(0, 0, 0, 0.6);
     transition: transform var(--slow) var(--ease), visibility var(--slow);
   }
   .library:not([data-card="open"]) .details { transform: translateX(100%); visibility: hidden; }
   .card-close { display: grid; }
 }
-.path { margin-top: 14px; font: 11px/1.4 var(--font-mono); color: var(--muted); word-break: break-all; user-select: text; }
 
 /* Mini mode: a small window with one shelf of recent books. */
 body[data-mini="1"] [data-hide-mini], body[data-mini="1"] .sidebar, body[data-mini="1"] .details { display: none !important; }
-body[data-mini="1"] .stacks { margin: 0; border-width: 0 0 8px; padding: 4px 14px 0; display: flex; flex-direction: column; justify-content: flex-start; overflow: hidden; }
+body[data-mini="1"] .stacks { padding: 4px 14px 0; display: flex; flex-direction: column; justify-content: flex-start; overflow: hidden; }
 body[data-mini="1"] .stack { display: none; margin: 0; }
-body[data-mini="1"] .stack.recent { display: block; }
+body[data-mini="1"] .stack.recent { display: block; padding-bottom: 18px; }
 body[data-mini="1"] .stack-head { display: none; }
 body[data-mini="1"] .shelf { overflow-x: auto; overflow-y: hidden; padding: 24px 8px 2px; margin-bottom: 14px; scrollbar-width: thin; }
-body[data-mini="1"] .shelf::after { bottom: 0; left: 0; right: 0; }
-body[data-mini="1"] .stack { padding-bottom: 18px; }
+body[data-mini="1"] .shelf::after { bottom: 0; }
 body[data-mini="1"] .search-box { width: auto; flex: 1; }
-body[data-mini="1"] .continue { display: flex; align-items: center; gap: 10px; padding: 8px 6px 0; color: var(--card); font-size: 12px; }
-body[data-mini="1"] .continue b { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body[data-mini="1"] .continue { display: flex; align-items: center; gap: 10px; padding: 8px 6px 0; color: var(--muted); font-size: 12px; }
+body[data-mini="1"] .continue b { font-weight: 500; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

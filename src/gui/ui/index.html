@@ -52,12 +52,18 @@
     </div>
     <div class="reader-body">
       <aside class="side-panel" id="side" data-open="false">
+        <div class="side-book">
+          <b id="side-title"></b>
+          <button class="icon-btn" id="side-close" data-icon="close" data-size="16" data-i18n-title="close"></button>
+          <small id="side-author"></small>
+          <span class="meter"><span class="bar"><i id="side-progress"></i></span><span id="side-percent"></span></span>
+        </div>
         <div class="tabs" role="tablist" id="side-tabs">
-          <button class="tab" data-tab="toc" data-i18n="contents"></button>
-          <button class="tab" data-tab="thumbs" data-i18n="pages"></button>
-          <button class="tab" data-tab="notes" data-i18n="notes"></button>
-          <button class="tab" data-tab="search" data-i18n="find"></button>
-          <button class="tab" data-tab="agent" data-i18n="agentTab"></button>
+          <button class="tab" data-tab="toc" data-icon="toc"><span data-i18n="contents"></span></button>
+          <button class="tab" data-tab="thumbs" data-icon="thumbs"><span data-i18n="pages"></span></button>
+          <button class="tab" data-tab="notes" data-icon="notes"><span data-i18n="notes"></span></button>
+          <button class="tab" data-tab="search" data-icon="search"><span data-i18n="find"></span></button>
+          <button class="tab" data-tab="agent" data-icon="agent"><span data-i18n="agentTab"></span></button>
         </div>
         <div class="tab-body" id="side-body"></div>
       </aside>
@@ -65,7 +71,7 @@
       <div class="viewport" id="viewport">
         <div class="book" id="book">
           <div class="frame" id="frame"><article class="page" id="page"></article></div>
-          <div class="leaf" id="leaf" hidden></div>
+          <div class="turn" id="leaf" hidden></div>
         </div>
       </div>
       <button class="folio" id="folio" data-i18n-title="goToPage"></button>

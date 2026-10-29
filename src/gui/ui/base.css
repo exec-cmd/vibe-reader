@@ -21,7 +21,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .icon { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 
 .view { position: absolute; inset: 0; display: flex; flex-direction: column; animation: view-in var(--slow) var(--ease); }
-@keyframes view-in { from { opacity: 0; transform: scale(0.992); } }
+/* Opacity only: a transform would blur the text while it runs. */
+@keyframes view-in { from { opacity: 0; } }
 
 /* Transparent window (Settings → Appearance): surfaces let the desktop through, the reading page
    stays nearly solid so the text keeps its contrast. */
@@ -97,11 +98,12 @@ html[data-glass="true"] .viewport[data-engine="flow"] .frame { background-color:
 .toolbar {
   display: flex; align-items: center; gap: 4px;
   height: 48px; padding: 0 10px; flex: none;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid color-mix(in srgb, var(--rule) 70%, transparent);
   background: var(--paper);
 }
 .toolbar .grow { flex: 1; }
-.brand { font: 600 19px/1 var(--font-display); letter-spacing: 0.01em; padding: 0 8px 0 4px; white-space: nowrap; }
+.brand { display: inline-flex; align-items: center; gap: 8px; font: 650 16px/1 var(--font-ui); letter-spacing: -0.01em; padding: 0 8px 0 4px; white-space: nowrap; }
+.brand::before { content: ""; width: 10px; height: 14px; border-radius: 2px 3px 3px 2px; background: var(--accent); box-shadow: 3px 0 0 color-mix(in srgb, var(--accent) 45%, transparent); }
 .search-box {
   display: flex; align-items: center; gap: 8px;
   width: min(340px, 34vw); height: 32px; padding: 0 10px; margin-left: 8px;
@@ -133,7 +135,7 @@ html[data-glass="true"] .viewport[data-engine="flow"] .frame { background-color:
 .menu-sep { height: 1px; margin: 5px 6px; background: var(--rule); }
 
 /* Dialogs */
-.shade { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 24px; background: rgba(12, 18, 15, 0.45); animation: fade var(--fast); }
+.shade { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 24px; background: rgba(14, 10, 24, 0.5); animation: fade var(--fast); }
 @keyframes fade { from { opacity: 0; } }
 .dialog {
   width: min(440px, 100%); max-height: calc(100vh - 48px); overflow: auto;
@@ -148,7 +150,7 @@ html[data-glass="true"] .viewport[data-engine="flow"] .frame { background-color:
 .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
 
 /* Command palette */
-.palette { position: fixed; inset: 0; z-index: 45; background: rgba(12, 18, 15, 0.35); display: flex; justify-content: center; align-items: flex-start; padding-top: 12vh; }
+.palette { position: fixed; inset: 0; z-index: 45; background: rgba(14, 10, 24, 0.4); display: flex; justify-content: center; align-items: flex-start; padding-top: 12vh; }
 .palette-box { width: min(560px, calc(100vw - 32px)); background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius-l); box-shadow: var(--shadow); overflow: hidden; }
 .palette input { width: 100%; border: 0; border-bottom: 1px solid var(--rule); background: transparent; padding: 15px 16px; font-size: 16px; outline: none; }
 .palette ul { list-style: none; margin: 0; padding: 6px; max-height: 50vh; overflow: auto; }
@@ -166,7 +168,7 @@ html[data-glass="true"] .viewport[data-engine="flow"] .frame { background-color:
   max-width: min(560px, calc(100vw - 32px)); padding: 9px 10px 9px 16px; border-radius: var(--radius-m);
   background: var(--ink); color: var(--paper); box-shadow: var(--shadow);
 }
-.toast .btn { color: var(--gilt); height: 26px; }
+.toast .btn { color: color-mix(in srgb, var(--accent) 60%, var(--paper)); height: 26px; }
 .progress-strip {
   position: fixed; right: 16px; bottom: 16px; z-index: 55;
   display: grid; gap: 7px; width: 300px; padding: 12px 14px;
@@ -174,7 +176,7 @@ html[data-glass="true"] .viewport[data-engine="flow"] .frame { background-color:
 }
 .progress-label { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .progress-bar { height: 4px; border-radius: 4px; background: var(--rule); overflow: hidden; }
-.progress-bar > i { display: block; height: 100%; width: 0; background: var(--gilt); transition: width var(--slow) var(--ease); }
+.progress-bar > i { display: block; height: 100%; width: 0; background: var(--accent); transition: width var(--slow) var(--ease); }
 
 .empty { margin: auto; max-width: 30em; padding: 40px 24px; text-align: center; color: var(--muted); }
 .empty h2 { font: 600 24px/1.2 var(--font-display); color: var(--ink); margin: 14px 0 8px; }

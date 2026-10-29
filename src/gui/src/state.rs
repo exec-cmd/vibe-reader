@@ -646,7 +646,8 @@ pub async fn translate(app: State<'_, App>, text: String, target: String) -> Res
     crate::translate::translate(&config.translate, &text, &target).map_err(err)
 }
 
-/// What the reader sent to agents about the open book: memory under `reader.*` by the user.
+/// The conversation with agents about the open book: what the reader sent (memory under
+/// `reader.*` by the user) and everything agents keep in the book's memory.
 #[tauri::command]
 pub fn inbox(app: State<App>) -> Res<Vec<vibe_reader_core::store::MemoryEntry>> {
     use vibe_reader_core::store::FROM_READER;
@@ -654,7 +655,7 @@ pub fn inbox(app: State<App>) -> Res<Vec<vibe_reader_core::store::MemoryEntry>> 
     let list = app.lib.lock().unwrap().memories(book.id, None).map_err(err)?;
     Ok(list
         .into_iter()
-        .filter(|m| m.author == USER && m.key.starts_with(FROM_READER))
+        .filter(|m| m.author != USER || m.key.starts_with(FROM_READER))
         .collect())
 }
 

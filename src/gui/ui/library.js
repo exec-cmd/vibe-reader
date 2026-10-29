@@ -46,12 +46,41 @@ function surname(/** @type {string} */ name) {
   return parts.length > 1 && /\./.test(parts.slice(1).join("")) ? parts[0] : parts.at(-1) ?? "";
 }
 
-/** Gilt on dark cloth, dark ink on light cloth. */
+/** White lettering on dark cloth, dark on light cloth. */
 function stampFor(/** @type {string} */ hex) {
   const h = hex.replace("#", "");
   const full = h.length === 3 ? [...h].map((c) => c + c).join("") : h;
   const [r, g, b] = [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16) / 255);
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.55 ? "#2a241c" : "#dcbd6c";
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.55 ? "#1f1a2e" : "#ffffff";
+}
+
+/** Average color of each cover, so a spine wears the colors of its book. @type {Map<string, string | null>} */
+const tints = new Map();
+
+function tint(/** @type {Book} */ book, /** @type {HTMLElement} */ el) {
+  const key = `${book.id}:${book.opened_at ?? 0}`;
+  const paint = (/** @type {string | null | undefined} */ hex) => {
+    if (!hex) return;
+    el.style.setProperty("--cloth", hex);
+    el.style.setProperty("--stamp", stampFor(hex));
+  };
+  if (tints.has(key)) return void paint(tints.get(key));
+  const img = new Image();
+  img.onload = () => {
+    const c = document.createElement("canvas");
+    c.width = c.height = 6;
+    const ctx = c.getContext("2d", { willReadFrequently: true });
+    ctx.drawImage(img, 0, 0, 6, 6);
+    const d = ctx.getImageData(0, 0, 6, 6).data;
+    const sum = [0, 0, 0];
+    for (let i = 0; i < d.length; i += 4) for (let k = 0; k < 3; k++) sum[k] += d[i + k];
+    // Darkened a little so white lettering and the shelf light read on it.
+    const hex = `#${sum.map((v) => Math.round((v / (d.length / 4)) * 0.82).toString(16).padStart(2, "0")).join("")}`;
+    tints.set(key, hex);
+    paint(hex);
+  };
+  img.onerror = () => tints.set(key, null);
+  img.src = `/cover/${book.id}?v=${book.opened_at ?? 0}`;
 }
 
 function matches(/** @type {Book} */ b) {
@@ -87,33 +116,65 @@ function render() {
 
 // ---------- desk ----------
 
-/** Books being read stand on the desk with their covers out; the reading log sits beside them. */
+/** The book to continue as a large card, the other books being read beside it, and the reading log. */
 function renderDesk() {
   const desk = $("#desk");
   desk.hidden = !books.length;
   if (!books.length) return;
   const reading = books.filter((b) => b.status === "reading" && b.progress < 1).sort(SORTS.recent).slice(0, 4);
-  desk.innerHTML = `<div class="desk-title"><h2>${t("onTheDesk")}</h2><span></span></div><div class="desk-books"></div><div class="log" hidden></div>`;
-  desk.querySelector(".desk-title span").textContent = t("deskCount", { n: books.length });
-  const shelf = desk.querySelector(".desk-books");
-  if (!reading.length) shelf.innerHTML = `<p class="desk-empty">${escapeHtml(t("deskEmpty"))}</p>`;
-  for (const book of reading) {
+  desk.innerHTML = `<div class="desk-main"></div><div class="desk-side"><div class="log" hidden></div></div>`;
+  const main = desk.querySelector(".desk-main");
+  const [first, ...rest] = reading;
+  if (!first) main.innerHTML = `<p class="desk-empty">${escapeHtml(t("deskEmpty"))}</p>`;
+  else {
+    const hero = document.createElement("article");
+    hero.className = "hero";
+    hero.style.setProperty("--cloth", first.color);
+    hero.innerHTML = `<div class="glow"></div><span class="hero-label">${escapeHtml(t("onTheDesk"))}</span>
+      <div class="cover-slot">${coverHtml(first)}</div>
+      <div><h2></h2><p class="by"></p><p class="where"></p>
+        <div class="row"><span class="meter"><span class="bar"><i style="width:${percent(first.progress)}"></i></span><span>${percent(first.progress)}</span></span>
+        <button class="btn primary">${icon("bookOpen", 16)}${escapeHtml(t("continue"))}</button></div></div>`;
+    hero.querySelector("h2").textContent = first.title;
+    hero.querySelector(".by").textContent = first.authors.join(", ");
+    hero.querySelector(".where").textContent = whereIn(first);
+    hero.querySelector("button").addEventListener("click", () => onOpen(first.id));
+    hero.querySelector(".cover-slot").addEventListener("click", () => onOpen(first.id));
+    bookContext(hero, first);
+    main.append(hero);
+    loadCover(first, /** @type {HTMLElement} */ (hero.querySelector(".cover-slot")), (src) => {
+      /** @type {HTMLElement} */ (hero.querySelector(".glow")).style.background = `url("${src}") center / cover`;
+    });
+  }
+  const side = desk.querySelector(".desk-side");
+  for (const book of rest) {
     const b = document.createElement("button");
     b.className = "desk-book";
-    b.innerHTML = `<div class="book3d"><div class="cover-slot">${coverHtml(book)}</div></div>
-      <span><b></b><small></small><span class="meter"><span class="bar"><i style="width:${percent(book.progress)}"></i></span><span>${percent(book.progress)}</span></span></span>`;
+    b.innerHTML = `<div class="cover-slot">${coverHtml(book)}</div>
+      <span><b></b><span class="meter"><span class="bar"><i style="width:${percent(book.progress)}"></i></span><span>${percent(book.progress)}</span></span></span>`;
     b.querySelector("b").textContent = book.title;
-    b.querySelector("small").textContent = book.authors.join(", ");
+    b.title = [book.title, book.authors.join(", ")].filter(Boolean).join("\n");
     b.addEventListener("click", () => onOpen(book.id));
-    b.addEventListener("contextmenu", (e) => {
-      e.preventDefault();
-      selectBook(book.id);
-      menu({ x: e.clientX, y: e.clientY }, bookMenu(book));
-    });
-    shelf.append(b);
+    bookContext(b, book);
+    side.insertBefore(b, side.querySelector(".log"));
     loadCover(book, /** @type {HTMLElement} */ (b.querySelector(".cover-slot")));
   }
   renderLog(/** @type {HTMLElement} */ (desk.querySelector(".log")));
+}
+
+/** "Page 58 of 530" or "Chapter 7 of 40": where the reader stopped. */
+function whereIn(/** @type {Book} */ book) {
+  const total = book.chapter_chars.length;
+  const n = Math.min(total, Number(/^ch:(\d+)/.exec(book.position ?? "")?.[1] ?? 1));
+  return t(book.format === "pdf" ? "heroPage" : "heroChapter", { n, total });
+}
+
+function bookContext(/** @type {HTMLElement} */ el, /** @type {Book} */ book) {
+  el.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    selectBook(book.id);
+    menu({ x: e.clientX, y: e.clientY }, bookMenu(book));
+  });
 }
 
 /** Minutes read in the last seven days, and how many days in a row the reader has opened a book. */
@@ -132,7 +193,7 @@ async function renderLog(/** @type {HTMLElement} */ box) {
   const max = Math.max(...week, 1);
   const total = Math.round(week.reduce((a, b) => a + b, 0));
   if (!total && streak < 2) return;
-  box.innerHTML = `<span>${escapeHtml(t("thisWeek"))}</span><b></b><div class="week"></div><span></span>`;
+  box.innerHTML = `<span>${escapeHtml(t("thisWeek"))}</span><div class="week"></div><b></b><span></span>`;
   box.querySelector("b").textContent = total >= 60 ? t("hoursMinutes", { h: Math.floor(total / 60), m: total % 60 }) : t("minutesN", { n: total });
   box.querySelector(".week").innerHTML = week
     .map((m, i) => `<i class="${i === 6 ? "today" : m ? "" : "none"}" style="height:${Math.max(4, (m / max) * 100)}%" title="${Math.round(m)}"></i>`)
@@ -232,10 +293,13 @@ function spine(/** @type {Book} */ book) {
   const w = Math.round(30 + Math.min(30, Math.sqrt(size / 3500)));
   el.style.cssText = `--cloth:${book.color};--stamp:${stampFor(book.color)};--h:${h}px;--w:${w}px`;
   const author = book.authors[0] ? surname(book.authors[0]) : "";
-  el.innerHTML = `<span class="t"></span><span class="a"></span>${book.status === "reading" && book.progress < 1 ? `<span class="ribbon"></span>` : ""}`;
+  el.innerHTML = `<span class="t"></span><span class="a"></span>${book.progress > 0 ? `<span class="read"><i style="width:${percent(book.progress)}"></i></span>` : ""}`;
   el.querySelector(".t").textContent = book.title;
   el.querySelector(".a").textContent = author;
-  el.title = [book.title, book.authors.join(", "), percent(book.progress)].filter(Boolean).join("\n");
+  el.setAttribute("aria-label", [book.title, book.authors.join(", "), percent(book.progress)].filter(Boolean).join(", "));
+  el.addEventListener("pointerenter", () => peek(book, el));
+  el.addEventListener("pointerleave", () => peek(null, el));
+  tint(book, el);
   el.setAttribute("aria-selected", String(book.id === selected));
   el.addEventListener("click", () => selectBook(book.id));
   el.addEventListener("dblclick", () => onOpen(book.id));
@@ -250,6 +314,33 @@ function spine(/** @type {Book} */ book) {
   });
   el.addEventListener("dragend", () => el.classList.remove("dragging"));
   return el;
+}
+
+let peekTimer = 0;
+/** Shows the cover of the spine under the cursor above the shelf. */
+function peek(/** @type {Book | null} */ book, /** @type {HTMLElement} */ el) {
+  let box = $("#room .peek");
+  clearTimeout(peekTimer);
+  if (!book) return box?.classList.remove("on");
+  if (!box) {
+    box = document.createElement("div");
+    box.className = "peek";
+    box.setAttribute("aria-hidden", "true");
+    $("#room").append(box);
+  }
+  const target = box;
+  peekTimer = setTimeout(() => {
+    const room = $("#room");
+    const rr = room.getBoundingClientRect();
+    const sr = el.getBoundingClientRect();
+    target.innerHTML = `<div class="cover-slot">${coverHtml(book)}</div><p></p>`;
+    target.querySelector("p").textContent = book.title;
+    loadCover(book, /** @type {HTMLElement} */ (target.querySelector(".cover-slot")));
+    const left = sr.left - rr.left + room.scrollLeft + sr.width / 2 - 66;
+    target.style.left = `${Math.max(8, Math.min(left, room.clientWidth - 140))}px`;
+    target.style.top = `${sr.top - rr.top + room.scrollTop - 250}px`;
+    target.classList.add("on");
+  }, 260);
 }
 
 function stack(/** @type {string} */ title, /** @type {Book[]} */ list, cls = "") {
@@ -369,9 +460,7 @@ function renderDetails() {
   const pages = book.format === "pdf" ? t("pagesN", { n: book.chapter_chars.length }) : t("chaptersN", { n: book.chapter_chars.length });
   card.innerHTML = `
     <button class="icon-btn card-close" data-act="close" title="${escapeHtml(t("close"))}">${icon("close", 16)}</button>
-    <div class="book3d"><div class="cover-slot">${coverHtml(book)}</div></div>
-    <div class="index-card">
-    <div class="call"><span>${book.format.toUpperCase()} ${String(book.id).padStart(4, "0")}</span><span>${date(book.added_at)}</span></div>
+    <div class="cover-slot" style="--cloth:${book.color}">${coverHtml(book)}</div>
     <h2></h2>
     <div class="by"></div>
     <div class="meter"><span class="bar"><i style="width:${percent(book.progress)}"></i></span><span>${percent(book.progress)}</span></div>
@@ -389,7 +478,6 @@ function renderDetails() {
       <dt>${t("added")}</dt><dd>${date(book.added_at)}</dd>
       <dt>${t("opened")}</dt><dd>${date(book.opened_at)}</dd>
     </dl>
-    </div>
     <div class="path"></div>`;
   card.querySelector("h2").textContent = book.title;
   card.querySelector(".by").textContent = book.authors.join(", ") || t("noAuthor");
@@ -428,13 +516,14 @@ function renderDetails() {
 }
 
 /** Shows the cover image when there is one; PDFs get their first page drawn once. */
-function loadCover(/** @type {Book} */ book, /** @type {HTMLElement} */ slot) {
+function loadCover(/** @type {Book} */ book, /** @type {HTMLElement} */ slot, onImage = (/** @type {string} */ _src) => {}) {
   const img = new Image();
   img.alt = "";
   img.onload = () => {
     if (!slot.isConnected) return;
     slot.innerHTML = `<div class="cover image"></div>`;
     slot.firstElementChild.append(img);
+    onImage(img.src);
   };
   img.onerror = async () => {
     if (book.format !== "pdf" || img.dataset.tried) return;
@@ -650,6 +739,19 @@ export function init() {
     home().dataset.sidebar = off ? "on" : "off";
   });
   new ResizeObserver(() => shelveRows()).observe($("#shelves"));
+  // A soft light follows the cursor over the room.
+  const room = $("#room");
+  let frame = 0;
+  room.addEventListener("pointermove", (e) => {
+    if (frame) return;
+    frame = requestAnimationFrame(() => {
+      frame = 0;
+      const r = room.getBoundingClientRect();
+      room.style.setProperty("--mx", `${e.clientX - r.left}px`);
+      room.style.setProperty("--my", `${e.clientY - r.top}px`);
+    });
+  });
+  room.addEventListener("scroll", () => peek(null, room));
   paintIcons(home());
   commands.set("mini", { label: () => t("miniMode"), run: toggleMini, when: () => state.view === "home", key: "M" });
 }
