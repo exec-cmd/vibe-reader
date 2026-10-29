@@ -1,5 +1,5 @@
-// Library: sidebar with sections and shelves, shelves of spines, details of the selected book,
-// book menus and dialogs, and the mini window.
+// Library: the catalog (filters and shelves), the desk with books being read, the bookcase of
+// spines, the catalog card of the selected book, book menus and dialogs, and the mini window.
 
 import { $, call, commands, escapeHtml, fail, saveConfig, state } from "./core.js";
 import { t } from "./i18n.js";
@@ -31,6 +31,8 @@ const home = () => $("#home");
 export async function refresh() {
   ({ books, shelves } = await call("library"));
   if (!presets.length) presets = await call("presets").catch(() => []);
+  // A wide window shows the card of the last book read rather than an empty panel.
+  if (selected === null && matchMedia("(min-width: 1181px)").matches) selected = [...books].sort(SORTS.recent)[0]?.id ?? null;
   render();
 }
 
@@ -78,8 +80,65 @@ function visible() {
 
 function render() {
   renderSidebar();
+  renderDesk();
   renderStacks();
   renderDetails();
+}
+
+// ---------- desk ----------
+
+/** Books being read stand on the desk with their covers out; the reading log sits beside them. */
+function renderDesk() {
+  const desk = $("#desk");
+  desk.hidden = !books.length;
+  if (!books.length) return;
+  const reading = books.filter((b) => b.status === "reading" && b.progress < 1).sort(SORTS.recent).slice(0, 4);
+  desk.innerHTML = `<div class="desk-title"><h2>${t("onTheDesk")}</h2><span></span></div><div class="desk-books"></div><div class="log" hidden></div>`;
+  desk.querySelector(".desk-title span").textContent = t("deskCount", { n: books.length });
+  const shelf = desk.querySelector(".desk-books");
+  if (!reading.length) shelf.innerHTML = `<p class="desk-empty">${escapeHtml(t("deskEmpty"))}</p>`;
+  for (const book of reading) {
+    const b = document.createElement("button");
+    b.className = "desk-book";
+    b.innerHTML = `<div class="book3d"><div class="cover-slot">${coverHtml(book)}</div></div>
+      <span><b></b><small></small><span class="meter"><span class="bar"><i style="width:${percent(book.progress)}"></i></span><span>${percent(book.progress)}</span></span></span>`;
+    b.querySelector("b").textContent = book.title;
+    b.querySelector("small").textContent = book.authors.join(", ");
+    b.addEventListener("click", () => onOpen(book.id));
+    b.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      selectBook(book.id);
+      menu({ x: e.clientX, y: e.clientY }, bookMenu(book));
+    });
+    shelf.append(b);
+    loadCover(book, /** @type {HTMLElement} */ (b.querySelector(".cover-slot")));
+  }
+  renderLog(/** @type {HTMLElement} */ (desk.querySelector(".log")));
+}
+
+/** Minutes read in the last seven days, and how many days in a row the reader has opened a book. */
+async function renderLog(/** @type {HTMLElement} */ box) {
+  const sessions = await call("sessions", { days: 60 }).catch(() => []);
+  if (!sessions.length) return;
+  const day = (/** @type {number} */ s) => new Date(s * 1000).toDateString();
+  /** @type {Map<string, number>} */
+  const minutes = new Map();
+  for (const s of sessions) minutes.set(day(s.started_at), (minutes.get(day(s.started_at)) ?? 0) + (s.ended_at - s.started_at) / 60);
+  const today = Date.now() / 1000;
+  const week = Array.from({ length: 7 }, (_, i) => minutes.get(day(today - (6 - i) * 86400)) ?? 0);
+  let streak = 0;
+  // A streak still counts when today has no reading yet.
+  for (let i = minutes.has(day(today)) ? 0 : 1; minutes.has(day(today - i * 86400)); i++) streak++;
+  const max = Math.max(...week, 1);
+  const total = Math.round(week.reduce((a, b) => a + b, 0));
+  if (!total && streak < 2) return;
+  box.innerHTML = `<span>${escapeHtml(t("thisWeek"))}</span><b></b><div class="week"></div><span></span>`;
+  box.querySelector("b").textContent = total >= 60 ? t("hoursMinutes", { h: Math.floor(total / 60), m: total % 60 }) : t("minutesN", { n: total });
+  box.querySelector(".week").innerHTML = week
+    .map((m, i) => `<i class="${i === 6 ? "today" : m ? "" : "none"}" style="height:${Math.max(4, (m / max) * 100)}%" title="${Math.round(m)}"></i>`)
+    .join("");
+  box.lastElementChild.textContent = streak > 1 ? t("streak", { n: streak }) : "";
+  box.hidden = false;
 }
 
 function sideItem(/** @type {string} */ key, /** @type {string} */ iconName, /** @type {string} */ label, /** @type {number} */ count) {
@@ -215,6 +274,7 @@ function shelveRows() {
     let row = null;
     let used = 0;
     for (const el of spines) {
+      el.classList.remove("lean");
       const w = parseFloat(el.style.getPropertyValue("--w")) + 2;
       if (!row || (!mini && used + w > width)) {
         row = document.createElement("div");
@@ -225,6 +285,9 @@ function shelveRows() {
       row.append(el);
       used += w;
     }
+    // With room to spare, the last book leans on its neighbour.
+    const last = /** @type {HTMLElement | null} */ (row?.lastElementChild);
+    if (last && !mini && row.children.length > 1 && used + 60 < width) last.classList.add("lean");
   }
 }
 
@@ -293,17 +356,22 @@ function coverHtml(/** @type {Book} */ book) {
   return `<div class="cover" style="--cloth:${book.color};--stamp:${stampFor(book.color)}"><span>${escapeHtml(book.title)}</span><small>${escapeHtml(book.authors[0] ?? "")}</small></div>`;
 }
 
+const date = (/** @type {number | null} */ s) => (s ? new Date(s * 1000).toLocaleDateString() : "—");
+
 function renderDetails() {
   const card = $("#card");
   const book = books.find((b) => b.id === selected) ?? null;
+  home().dataset.card = book ? "open" : "closed";
   if (!book) {
     card.innerHTML = `<p class="details-empty">${t("selectBook")}</p>`;
     return;
   }
-  const date = (/** @type {number | null} */ s) => (s ? new Date(s * 1000).toLocaleDateString() : "—");
   const pages = book.format === "pdf" ? t("pagesN", { n: book.chapter_chars.length }) : t("chaptersN", { n: book.chapter_chars.length });
   card.innerHTML = `
-    <div class="cover-slot">${coverHtml(book)}</div>
+    <button class="icon-btn card-close" data-act="close" title="${escapeHtml(t("close"))}">${icon("close", 16)}</button>
+    <div class="book3d"><div class="cover-slot">${coverHtml(book)}</div></div>
+    <div class="index-card">
+    <div class="call"><span>${book.format.toUpperCase()} ${String(book.id).padStart(4, "0")}</span><span>${date(book.added_at)}</span></div>
     <h2></h2>
     <div class="by"></div>
     <div class="meter"><span class="bar"><i style="width:${percent(book.progress)}"></i></span><span>${percent(book.progress)}</span></div>
@@ -321,11 +389,13 @@ function renderDetails() {
       <dt>${t("added")}</dt><dd>${date(book.added_at)}</dd>
       <dt>${t("opened")}</dt><dd>${date(book.opened_at)}</dd>
     </dl>
+    </div>
     <div class="path"></div>`;
   card.querySelector("h2").textContent = book.title;
   card.querySelector(".by").textContent = book.authors.join(", ") || t("noAuthor");
   card.querySelector(".path").textContent = book.path;
   card.querySelector('[data-act="open"]').addEventListener("click", () => onOpen(book.id));
+  card.querySelector('[data-act="close"]').addEventListener("click", () => selectBook(null));
   card.querySelector('[data-act="edit"]').addEventListener("click", () => editBook(book));
   const more = /** @type {HTMLElement} */ (card.querySelector('[data-act="more"]'));
   more.addEventListener("click", () => menu(more, bookMenu(book), { align: "end" }));
@@ -362,7 +432,7 @@ function loadCover(/** @type {Book} */ book, /** @type {HTMLElement} */ slot) {
   const img = new Image();
   img.alt = "";
   img.onload = () => {
-    if (selected !== book.id) return;
+    if (!slot.isConnected) return;
     slot.innerHTML = `<div class="cover image"></div>`;
     slot.firstElementChild.append(img);
   };
@@ -544,7 +614,8 @@ export function onKey(/** @type {KeyboardEvent} */ e) {
     return true;
   }
   if (!book) return false;
-  if (e.key === "Enter") onOpen(book.id);
+  if (e.key === "Escape" && home().dataset.card === "open" && !matchMedia("(min-width: 1181px)").matches) selectBook(null);
+  else if (e.key === "Enter") onOpen(book.id);
   else if (e.key === "Delete") removeBook(book);
   else if (e.key === "F2") editBook(book);
   else return false;

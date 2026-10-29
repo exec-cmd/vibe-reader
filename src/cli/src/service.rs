@@ -110,7 +110,7 @@ pub fn config(paths: &Paths, action: Option<&ConfigCmd>) -> Result<Out> {
             Ok(Out::new(json!({ "path": file }), format!("Saved {}.", file.display())))
         }
         None => {
-            let config = Config::load(paths)?;
+            let config = Config::load(paths)?.redacted();
             let text = format!("# {}\n\n{}", file.display(), toml::to_string_pretty(&config)?);
             Ok(Out::new(json!({ "path": file, "config": config }), text))
         }

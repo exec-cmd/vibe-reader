@@ -13,6 +13,10 @@ use crate::{Locator, Span};
 /// The author name of the person reading; every other author is an agent.
 pub const USER: &str = "user";
 
+/// Memory keys the reader sends to agents from the window: `reader.place`, `reader.saved.<ms>`,
+/// `reader.message.<ms>`. Saved entries quote the book and stay untrusted.
+pub const FROM_READER: &str = "reader.";
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AnnotationKind {

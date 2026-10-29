@@ -32,3 +32,7 @@ illustration = "rain"
 [effects]
 grain = 0.15
 vignette = 0.4
+
+[sound]
+kind = "rain"
+volume = 0.7

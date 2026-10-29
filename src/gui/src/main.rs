@@ -2,6 +2,7 @@
 
 mod assets;
 mod state;
+mod translate;
 
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -103,6 +104,11 @@ fn main() -> anyhow::Result<()> {
             state::set_book_preset,
             state::set_cover,
             state::search_book,
+            state::translate,
+            state::inbox,
+            state::send_to_agent,
+            state::forget,
+            state::sessions,
         ])
         .setup(move |app| {
             assets::watch(app.handle().clone(), paths.ui_overrides());
@@ -115,6 +121,8 @@ fn main() -> anyhow::Result<()> {
                 .title(title)
                 .inner_size(if lite { 860.0 } else { 1180.0 }, 800.0)
                 .min_inner_size(480.0, 360.0)
+                // Always transparent; the UI paints solid unless the reader lowers the opacity.
+                .transparent(true)
                 .build()?;
             Ok(())
         })

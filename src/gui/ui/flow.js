@@ -80,7 +80,8 @@ export class FlowEngine {
     this.columnWidth = Math.floor(Math.max(16 * em, Math.min(measure, available)));
     this.gap = 2 * pad;
     const width = n * this.columnWidth + (n - 1) * this.gap;
-    const height = vp.clientHeight - 40;
+    const cs = getComputedStyle(vp);
+    const height = vp.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
     f.style.width = `${width + 2 * pad}px`;
     f.style.height = `${height}px`;
     f.style.padding = `${Math.round(pad * 0.75)}px ${pad}px`;
@@ -172,6 +173,26 @@ export class FlowEngine {
 
   total() {
     return this.layout === "scroll" ? "" : String(this.pages);
+  }
+
+  /** Text on the screen: blocks whose text overlaps the visible sheet, one paragraph per block. */
+  visibleText() {
+    const box = (this.layout === "scroll" ? this.viewport : this.frame).getBoundingClientRect();
+    const walker = document.createTreeWalker(this.page, NodeFilter.SHOW_TEXT);
+    const range = document.createRange();
+    const out = [];
+    let block = null;
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      if (n.parentElement?.closest("[data-skip]")) continue;
+      range.selectNodeContents(n);
+      const r = range.getBoundingClientRect();
+      if (!r.width || r.right < box.left || r.left > box.right || r.bottom < box.top || r.top > box.bottom) continue;
+      const b = n.parentElement?.closest("[data-o]");
+      if (block && b !== block) out.push("\n\n");
+      block = b;
+      out.push(/** @type {Text} */ (n).data);
+    }
+    return out.join("").replace(/[ \t\r]+/g, " ").replace(/ *\n\n */g, "\n\n").trim();
   }
 
   selection() {

@@ -1,12 +1,15 @@
-// The reading view: toolbar, side panel (contents, pages, notes, find), annotations, position.
+// The reading view: the dock, the side panel (contents, pages, notes, find, agent), page turns,
+// annotations, things sent to the agent, and the position.
 // The page itself is drawn by an engine: FlowEngine for reflowable books, PdfEngine for PDF.
 
 import * as atmosphere from "./atmosphere.js";
-import { $, call, commands, debounce, escapeHtml, fail, isAgent, locator, on, parseLocator, state } from "./core.js";
+import { $, calm, call, commands, debounce, escapeHtml, fail, isAgent, locator, on, parseLocator, state } from "./core.js";
 import { FlowEngine } from "./flow.js";
 import { t } from "./i18n.js";
+import * as particles from "./particles.js";
 import { PdfEngine } from "./pdfview.js";
-import { icon, menu, paintIcons, toast } from "./ui.js";
+import * as translator from "./translator.js";
+import { dialog, icon, menu, paintIcons, toast } from "./ui.js";
 
 /** @typedef {import("./core.js").Annotation} Annotation */
 /** @typedef {{ book: import("./core.js").Book | null, title: string, authors: string[], language: string | null,
@@ -46,7 +49,7 @@ export async function open(/** @type {Opened} */ opened) {
   page().className = `page${pdf ? " pdf" : ""}`;
   page().replaceChildren();
   page().lang = opened.language || "";
-  $("#reader-title").textContent = opened.title;
+  document.title = opened.title;
   $("#reader-sub").textContent = opened.authors.join(", ");
   $("#lite-bar").hidden = !state.lite;
   $("#lite-title").textContent = opened.title;
@@ -54,7 +57,9 @@ export async function open(/** @type {Opened} */ opened) {
   $("#back").hidden = state.lite;
   $("#zoom-tools").hidden = !pdf;
   /** @type {HTMLElement} */ ($('[data-tab="thumbs"]')).hidden = !pdf;
-  if (tab === "thumbs" && !pdf) tab = "toc";
+  /** @type {HTMLElement} */ ($('[data-tab="agent"]')).hidden = !opened.book;
+  if ((tab === "thumbs" && !pdf) || (tab === "agent" && !opened.book)) tab = "toc";
+  translator.close();
 
   if (pdf) {
     atmosphere.apply(await lookAt(locator(0, 0)));
@@ -94,6 +99,7 @@ export async function open(/** @type {Opened} */ opened) {
   }
   renderSide();
   updateChrome();
+  wake();
 }
 
 const invertPdf = () => state.config.pdf.invert_dark && (reader().dataset.mode || document.documentElement.dataset.mode) === "dark";
@@ -130,16 +136,57 @@ function insertArt(/** @type {number} */ chapter) {
 
 // ---------- navigation ----------
 
-export async function next() {
-  const before = engine instanceof FlowEngine ? engine.chapter : -1;
-  await engine?.next();
-  if (engine instanceof FlowEngine && engine.chapter !== before) paintFlow();
+export const next = () => turn(1);
+export const prev = () => turn(-1);
+
+/** Turns a page forward (1) or back (-1), with the leaf, a gust for the particles and, at a new chapter, its title. */
+async function turn(/** @type {number} */ dir) {
+  if (!engine) return;
+  const where = () => `${engine instanceof FlowEngine ? engine.chapter : ""}:${engine.label()}`;
+  const before = where();
+  const chapter = engine instanceof FlowEngine ? engine.chapter : -1;
+  await (dir > 0 ? engine.next() : engine.prev());
+  if (where() === before) return;
+  if (engine instanceof FlowEngine && engine.chapter !== chapter) {
+    paintFlow();
+    splash(book.chapters[engine.chapter]?.title);
+  }
+  if (engine.layout === "scroll") return;
+  // A page turned toward the left pushes the air left.
+  particles.blow(-dir);
+  playLeaf(dir);
 }
 
-export async function prev() {
-  const before = engine instanceof FlowEngine ? engine.chapter : -1;
-  await engine?.prev();
-  if (engine instanceof FlowEngine && engine.chapter !== before) paintFlow();
+let leafTimer = 0;
+/** A blank leaf swings over the spine; the new page is already underneath. */
+function playLeaf(/** @type {number} */ dir) {
+  if (state.config.reader.page_turn !== "curl" || calm()) return;
+  const bookEl = $("#book");
+  const leaf = $("#leaf");
+  const sheet = isPdf() ? page().querySelector(".pdf-spread") : $("#frame");
+  if (!sheet) return;
+  const br = bookEl.getBoundingClientRect();
+  const sr = sheet.getBoundingClientRect();
+  const spread = isPdf() ? sheet.childElementCount > 1 : $("#frame").dataset.spread === "true";
+  const width = spread ? sr.width / 2 : sr.width;
+  leaf.style.cssText = `top:${sr.top - br.top}px;height:${sr.height}px;width:${width}px;left:${sr.left - br.left + (spread && dir > 0 ? width : 0)}px`;
+  leaf.className = `leaf ${dir > 0 ? "forward" : "back"}`;
+  leaf.hidden = false;
+  void leaf.offsetWidth;
+  clearTimeout(leafTimer);
+  const ms = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--turn")) || 520;
+  leafTimer = setTimeout(() => (leaf.hidden = true), ms + 40);
+}
+
+let splashTimer = 0;
+/** The chapter title over the desk for a moment. */
+function splash(/** @type {string | undefined} */ title) {
+  if (!title || calm() || !state.config.reader.effects) return;
+  const el = $("#splash");
+  el.textContent = title;
+  el.classList.add("on");
+  clearTimeout(splashTimer);
+  splashTimer = setTimeout(() => el.classList.remove("on"), 1100);
 }
 
 /** Goes to a place: chapter (or page) and offset. */
@@ -170,9 +217,25 @@ export const chapterEnd = () => (engine instanceof PdfEngine ? engine.go(engine.
 export const scrollBy = (/** @type {number} */ dy) => viewport().scrollBy({ top: dy });
 
 export function focusPageInput() {
+  wake();
   const input = /** @type {HTMLInputElement} */ ($("#page-input"));
   input.focus();
   input.select();
+}
+
+// ---------- dock ----------
+
+let idleTimer = 0;
+/** Shows the dock; it hides again after a few quiet seconds unless the reader keeps it. */
+function wake() {
+  reader().dataset.idle = "false";
+  clearTimeout(idleTimer);
+  if (!state.config.reader.autohide || state.lite) return;
+  idleTimer = setTimeout(function sleep() {
+    const busy = $("#dock").matches(":hover, :focus-within") || document.querySelector(".menu, .shade");
+    if (busy) idleTimer = setTimeout(sleep, 1500);
+    else reader().dataset.idle = "true";
+  }, 2600);
 }
 
 function position() {
@@ -199,16 +262,21 @@ function reportState() {
   call("report_state", { live: { position: book?.position ?? null, selection } }).catch(() => {});
 }
 
+/** Share of the book read, 0 to 1. */
+function share() {
+  if (!book || !engine) return 0;
+  if (engine instanceof PdfEngine) return engine.pages > 1 ? engine.page / (engine.pages - 1) : 1;
+  const total = book.chapters.reduce((s, c) => s + c.chars, 0) || 1;
+  const before = book.chapters.slice(0, engine.chapter).reduce((s, c) => s + c.chars, 0);
+  return Math.min(1, (before + parseLocator(book.position).offset) / total);
+}
+
 function updateProgress() {
   if (!book || !engine) return;
-  let share;
-  if (engine instanceof PdfEngine) share = engine.pages > 1 ? engine.page / (engine.pages - 1) : 1;
-  else {
-    const total = book.chapters.reduce((s, c) => s + c.chars, 0) || 1;
-    const before = book.chapters.slice(0, engine.chapter).reduce((s, c) => s + c.chars, 0);
-    share = (before + parseLocator(book.position).offset) / total;
-  }
-  $("#progress").style.width = `${Math.min(100, share * 100)}%`;
+  const read = share();
+  $("#progress").style.width = `${read * 100}%`;
+  // The page edges on both sides of the sheet grow and shrink with it.
+  reader().style.setProperty("--read", read.toFixed(3));
 }
 
 function updateChrome() {
@@ -217,12 +285,23 @@ function updateChrome() {
   if (document.activeElement !== input) input.value = engine.label();
   if (engine instanceof PdfEngine) {
     $("#page-total").textContent = `/ ${engine.pages}`;
-    $("#zoom-level .select-value").textContent = typeof engine.fit === "number" ? `${engine.fit}%` : engine.fit === "width" ? t("fitWidth") : t("fitPage");
+    $("#zoom-level .select-value").textContent = `${engine.zoomPercent()}%`;
   } else {
     $("#page-total").textContent = engine.total() ? `/ ${engine.total()}` : "";
     $("#reader-sub").textContent = book.chapters[engine.chapter]?.title || t("chapterN", { n: engine.chapter + 1 });
   }
   /** @type {HTMLElement} */ ($(".pager")).hidden = engine instanceof FlowEngine && engine.layout === "scroll";
+  const scroll = engine.layout === "scroll";
+  $("#book").dataset.edges = String(engine instanceof FlowEngine && !scroll);
+  $("#folio").textContent = scroll || !engine.label()
+    ? `${Math.round(share() * 100)}%`
+    : `${engine.label()} / ${engine instanceof PdfEngine ? engine.pages : engine.total()}`;
+  if (engine instanceof PdfEngine) $("#reader-sub").textContent = book.title;
+  $("#sound-btn").innerHTML = icon(state.config.reader.sound ? "sound" : "soundOff");
+  $("#sound-btn").setAttribute("aria-pressed", String(state.config.reader.sound));
+  // Particles land on the top edge of the sheet.
+  const sheet = isPdf() ? page().querySelector(".pdf-spread") : scroll ? null : $("#frame");
+  particles.setEdge(sheet ? sheet.getBoundingClientRect() : null);
   $("#layout-btn").innerHTML = icon(engine.layout === "scroll" ? "scroll" : engine.layout === "spread" ? "pages" : "page");
   $("#mode-btn").innerHTML = icon(document.documentElement.dataset.mode === "dark" ? "sun" : "moon");
   const here = engine instanceof PdfEngine ? engine.page : engine.chapter;
@@ -310,6 +389,7 @@ async function lookMenu() {
 }
 
 export async function onModeChange() {
+  atmosphere.reset();
   if (book) atmosphere.apply(await lookAt(book.position ?? "ch:1:0"));
   if (engine instanceof PdfEngine) engine.invert(invertPdf());
   updateChrome();
@@ -327,11 +407,21 @@ export async function toggleFullscreen() {
   }
 }
 
+export function toggleSound() {
+  const r = state.config.reader;
+  r.sound = !r.sound;
+  /** @type {any} */ (window).vibe.saveConfig();
+  atmosphere.updateSound();
+  updateChrome();
+  toast(t(r.sound ? "soundOn" : "soundOffToast"));
+}
+
 function moreMenu() {
   menu($("#reader-more"), [
     { label: t("cmdBookmark"), icon: "bookmark", hint: "B", disabled: !book?.book, run: bookmark },
     { label: t("goToPage"), icon: "chevronRight", hint: "G", run: focusPageInput },
     { label: t("findInBook"), icon: "search", hint: "Ctrl+F", run: () => showTab("search") },
+    { label: t("translatePage"), icon: "translate", run: () => translator.open({ page: true }) },
     { separator: true },
     { label: t("readingSettings"), icon: "gear", run: () => /** @type {any} */ (window).vibe.openSettings(isPdf() ? "pdf" : "reading") },
   ], { align: "end" });
@@ -439,7 +529,7 @@ function showSelbar() {
   const rr = reader().getBoundingClientRect();
   bar.style.left = `${sel.rect.left + sel.rect.width / 2 - rr.left}px`;
   bar.style.top = `${sel.rect.top - rr.top - 8}px`;
-  for (const b of bar.querySelectorAll('[data-act="highlight"], [data-act="note"]')) /** @type {HTMLButtonElement} */ (b).disabled = !book?.book;
+  for (const b of bar.querySelectorAll('[data-act="highlight"], [data-act="note"], [data-act="agent"]')) /** @type {HTMLButtonElement} */ (b).disabled = !book?.book;
   bar.hidden = false;
 }
 
@@ -515,31 +605,35 @@ export async function bookmark() {
 
 // ---------- side panel ----------
 
+const sideOpen = () => $("#side").dataset.open === "true";
+
+function setSide(/** @type {boolean} */ open) {
+  $("#side").dataset.open = String(open);
+  $("#toggle-side").setAttribute("aria-pressed", String(open));
+}
+
 export function toggleSide(/** @type {string} */ to = tab) {
-  const side = $("#side");
-  if (!side.hidden && to === tab) side.hidden = true;
+  if (sideOpen() && to === tab) setSide(false);
   else {
     tab = to;
-    side.hidden = false;
+    setSide(true);
     renderSide();
   }
-  $("#toggle-side").setAttribute("aria-pressed", String(!side.hidden));
-  setTimeout(relayoutKeepingPlace, 20);
 }
 
 export function showTab(/** @type {string} */ to) {
   tab = to;
-  if ($("#side").hidden) toggleSide(to);
+  if (!sideOpen()) toggleSide(to);
   else renderSide();
   if (to === "search") setTimeout(() => /** @type {HTMLElement | null} */ ($("#find-input"))?.focus(), 30);
 }
 
 function renderSide() {
-  if (!book || $("#side").hidden) return;
+  if (!book || !sideOpen()) return;
   for (const b of $("#side-tabs").children) b.setAttribute("aria-selected", String(/** @type {HTMLElement} */ (b).dataset.tab === tab));
   const body = $("#side-body");
   body.replaceChildren();
-  ({ toc: renderToc, thumbs: renderThumbs, notes: renderNotes, search: renderFind })[tab]?.(body);
+  ({ toc: renderToc, thumbs: renderThumbs, notes: renderNotes, search: renderFind, agent: renderInbox })[tab]?.(body);
 }
 
 async function renderToc(/** @type {HTMLElement} */ body) {
@@ -719,6 +813,96 @@ function onLink(/** @type {MouseEvent} */ e) {
   }
 }
 
+// ---------- the agent ----------
+
+/** Where the reader is, in words an agent can repeat back. */
+function placeText() {
+  const pos = position();
+  const percent = `${Math.round(share() * 100)}%`;
+  if (engine instanceof PdfEngine) return t("placePdf", { n: pos.chapter + 1, total: engine.pages, percent });
+  const chapter = book.chapters[pos.chapter]?.title || t("chapterN", { n: pos.chapter + 1 });
+  return t("placeFlow", { chapter, n: engine.label() || 1, total: engine.total() || 1, percent });
+}
+
+/** Leaves something for the agent: it reads it with `vibe-reader context` or `memory list`. */
+async function sendToAgent(/** @type {"place" | "saved" | "message"} */ kind, /** @type {string} */ value, /** @type {string | null} */ at = null) {
+  if (!book?.book) return toast(t("agentNeedsLibrary"));
+  const pos = position();
+  try {
+    await call("send_to_agent", { kind, value, locator: at ?? locator(pos.chapter, pos.offset) });
+    toast(t(kind === "place" ? "placeSent" : "sentToAgent"));
+    if (tab === "agent") renderSide();
+  } catch (e) {
+    fail(e);
+  }
+}
+
+export const rememberPlace = () => sendToAgent("place", placeText());
+const sendPage = () => sendToAgent("saved", visibleText());
+
+async function messageAgent() {
+  const body = document.createElement("div");
+  body.innerHTML = `<p></p><textarea class="textarea"></textarea>`;
+  body.querySelector("p").textContent = t("messageHint");
+  const area = /** @type {HTMLTextAreaElement} */ (body.querySelector("textarea"));
+  area.placeholder = t("messagePlaceholder");
+  const { action } = await dialog({ title: t("messageAgent"), body, actions: [{ id: "send", label: t("send"), primary: true }] });
+  if (action === "send" && area.value.trim()) sendToAgent("message", area.value);
+}
+
+function agentMenu() {
+  const sel = engine?.selection();
+  menu($("#agent-btn"), [
+    { label: t("rememberPlace"), icon: "pin", disabled: !book?.book, run: rememberPlace },
+    { label: t("sendSelection"), icon: "marker", disabled: !book?.book || !sel, run: () => sel && sendToAgent("saved", sel.text, locator(sel.chapter, sel.start)) },
+    { label: t("sendPage"), icon: "page", disabled: !book?.book, run: sendPage },
+    { label: t("messageAgent"), icon: "message", disabled: !book?.book, run: messageAgent },
+    { separator: true },
+    { label: t("sentToAgentList"), icon: "agent", disabled: !book?.book, run: () => showTab("agent") },
+  ], { align: "end" });
+}
+
+const INBOX_ICONS = { place: "pin", saved: "marker", message: "message" };
+
+async function renderInbox(/** @type {HTMLElement} */ body) {
+  body.innerHTML = `<div class="side-actions"></div><p class="side-hint"></p><div class="inbox"></div>`;
+  const actions = body.querySelector(".side-actions");
+  for (const [label, iconName, run] of [["rememberPlace", "pin", rememberPlace], ["sendPage", "page", sendPage], ["messageAgent", "message", messageAgent]]) {
+    const b = document.createElement("button");
+    b.className = "btn";
+    b.innerHTML = `${icon(/** @type {any} */ (iconName), 15)}<span></span>`;
+    b.querySelector("span").textContent = t(/** @type {string} */ (label));
+    b.addEventListener("click", /** @type {() => void} */ (run));
+    actions.append(b);
+  }
+  body.querySelector(".side-hint").textContent = t("inboxHint");
+  const list = body.querySelector(".inbox");
+  const entries = await call("inbox").catch(() => []);
+  if (!entries.length) {
+    list.innerHTML = `<p class="side-empty">${escapeHtml(t("inboxEmpty"))}</p>`;
+    return;
+  }
+  for (const m of entries.sort((a, b) => b.created_at - a.created_at)) {
+    const kind = m.key.split(".")[1];
+    const el = document.createElement("div");
+    el.className = "note-item";
+    el.innerHTML = `<div class="note-head">${icon(INBOX_ICONS[kind] ?? "agent", 14)}<span class="where"></span>
+      <button class="icon-btn" title="${escapeHtml(t("delete"))}">${icon("trash", 14)}</button></div><div class="b"></div>`;
+    el.querySelector(".where").textContent = `${t(`inbox_${kind}`)}, ${new Date(m.created_at * 1000).toLocaleString()}`;
+    el.querySelector(".b").textContent = m.value.length > 600 ? `${m.value.slice(0, 600)}…` : m.value;
+    if (m.locator) el.addEventListener("click", () => goTo(parseLocator(m.locator)));
+    el.querySelector("button").addEventListener("click", async (e) => {
+      e.stopPropagation();
+      await call("forget", { id: m.id }).catch(fail);
+      renderSide();
+    });
+    list.append(el);
+  }
+}
+
+/** Text on the screen right now, for the translator and the agent. */
+const visibleText = () => engine?.visibleText() ?? "";
+
 export function relayoutKeepingPlace() {
   if (!book || !engine || state.view !== "reader") return;
   if (engine instanceof PdfEngine) engine.render();
@@ -736,12 +920,26 @@ export function closeOverlays() {
     $("#selbar").hidden = true;
     return true;
   }
+  if (translator.isOpen()) return translator.close(), true;
+  if (sideOpen()) return setSide(false), true;
   return false;
+}
+
+/** Leaving the reader: quiet the sound and the particles. */
+export function leave() {
+  closeOverlays();
+  translator.close();
+  atmosphere.apply(null);
+  document.title = "vibe-reader";
 }
 
 export function init(/** @type {{ goHome: () => void }} */ hooks) {
   goHome = hooks.goHome;
+  translator.init(visibleText);
   page().addEventListener("click", onLink);
+  reader().addEventListener("mousemove", wake);
+  $("#dock").addEventListener("focusin", wake);
+  $("#folio").addEventListener("click", focusPageInput);
   viewport().addEventListener("mouseup", () => setTimeout(showSelbar, 0));
   viewport().addEventListener("scroll", () => {
     $("#selbar").hidden = true;
@@ -766,6 +964,8 @@ export function init(/** @type {{ goHome: () => void }} */ hooks) {
       lastQuery = getSelection().toString().trim().slice(0, 80);
       showTab("search");
     }
+    if (act === "translate") translator.open({ text: sel.text });
+    if (act === "agent") await sendToAgent("saved", sel.text, locator(sel.chapter, sel.start));
     if (act !== "note") getSelection()?.removeAllRanges();
   });
   for (const b of $("#side-tabs").children) b.addEventListener("click", () => showTab(/** @type {HTMLElement} */ (b).dataset.tab));
@@ -791,6 +991,9 @@ export function init(/** @type {{ goHome: () => void }} */ hooks) {
   $("#layout-btn").addEventListener("click", layoutMenu);
   $("#search-btn").addEventListener("click", () => showTab("search"));
   $("#look-btn").addEventListener("click", lookMenu);
+  $("#translate-btn").addEventListener("click", () => translator.toggle());
+  $("#agent-btn").addEventListener("click", agentMenu);
+  $("#sound-btn").addEventListener("click", toggleSound);
   $("#mode-btn").addEventListener("click", () => /** @type {any} */ (window).vibe.toggleMode());
   $("#fullscreen-btn").addEventListener("click", toggleFullscreen);
   $("#reader-more").addEventListener("click", moreMenu);
@@ -840,4 +1043,9 @@ export function init(/** @type {{ goHome: () => void }} */ hooks) {
   commands.set("fullscreen", { label: () => t("fullscreen"), run: toggleFullscreen, when: inReader, key: "F11" });
   commands.set("zoom-in", { label: () => t("zoomIn"), run: () => zoom("in"), when: inReader, key: "+" });
   commands.set("zoom-out", { label: () => t("zoomOut"), run: () => zoom("out"), when: inReader, key: "−" });
+  commands.set("translate", { label: () => t("translator"), run: () => translator.toggle(), when: inReader, key: "Y" });
+  commands.set("translate-page", { label: () => t("translatePage"), run: () => translator.open({ page: true }), when: inReader });
+  commands.set("remember-place", { label: () => t("rememberPlace"), run: rememberPlace, when: () => inReader() && !!book.book, key: "R" });
+  commands.set("message-agent", { label: () => t("messageAgent"), run: messageAgent, when: () => inReader() && !!book.book });
+  commands.set("sound", { label: () => t("soundToggle"), run: toggleSound, when: inReader, key: "S" });
 }

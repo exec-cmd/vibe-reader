@@ -8,7 +8,8 @@
 import { normalize, offsetOf, rangeOf } from "./offsets.js";
 import { loadPdfjs } from "./pdfcover.js";
 
-const GAP = 18;
+/** Pages of a spread touch at the spine. */
+const GAP = 0;
 const PAD = 24;
 /** CSS pixels per PDF point at 100 %. */
 const UNIT = 96 / 72;
@@ -243,6 +244,12 @@ export class PdfEngine {
   }
 
   // ---------- text ----------
+
+  /** Text of the pages on the screen. */
+  visibleText() {
+    const pages = this.layout === "scroll" ? [this.page] : this.spreadOf(this.page);
+    return pages.map((i) => this.texts.get(i) ?? "").join("\n\n").trim();
+  }
 
   /** Normalized text of a page, from the cache or pdf.js. */
   async text(/** @type {number} */ i) {

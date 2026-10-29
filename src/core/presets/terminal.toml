@@ -38,3 +38,7 @@ illustration = "terminal"
 
 [effects]
 grain = 0.0
+
+[sound]
+kind = "hum"
+volume = 0.35

@@ -1,12 +1,13 @@
 // Applies a resolved atmosphere profile to the reader: tokens, background, effects, particles,
-// heading style and the chapter illustration.
+// sound, heading style and the chapter illustration.
 
 import { $, state } from "./core.js";
 import * as particles from "./particles.js";
+import * as sound from "./sound.js";
 
 /** @typedef {{ mode: "light" | "dark", preset: string, palette: Record<string, string>, type: {display?: string, body?: string},
  *   background: {kind?: string, image?: string, dim?: number}, particles: object, chapter: {heading?: string, illustration?: string},
- *   effects: {grain?: number, vignette?: number, glow?: number}, css: string | null }} Look */
+ *   effects: {grain?: number, vignette?: number, glow?: number}, sound: {kind?: string, volume?: number}, css: string | null }} Look */
 
 // The profile's paper is the sheet the text sits on; paper_2 is the desk around it.
 const TOKENS = { paper: "--page", paper_2: "--desk", ink: "--ink", muted: "--muted", rule: "--rule", accent: "--accent" };
@@ -14,6 +15,25 @@ let applied = "";
 
 /** Forgets the applied look so the next apply() redraws everything. */
 export const reset = () => (applied = "");
+
+/** The sound of the applied look, kept for the sound switch. @type {Look["sound"] | null} */
+let currentSound = null;
+
+/** Starts or stops the ambient sound after the reader flips the switch or the volume. */
+export function updateSound() {
+  const r = state.config.reader;
+  if (r.sound && currentSound && !state.lite && state.view === "reader") sound.play(currentSound, r.volume);
+  else sound.stop();
+}
+
+// Lightning lights the room and, with sound on, thunder follows.
+particles.setOnStrike(() => {
+  const flash = $("#flash");
+  flash.classList.remove("on");
+  void flash.offsetWidth;
+  flash.classList.add("on");
+  sound.thunder();
+});
 
 const rgb = (/** @type {string} */ hex) => {
   const h = hex.replace("#", "");
@@ -28,15 +48,19 @@ export function apply(look) {
   applied = key;
   const reader = $("#reader");
   const style = reader.style;
-  for (const token of [...Object.values(TOKENS), "--font-display", "--font-body", "--grain", "--vignette", "--glow"]) {
+  for (const token of [...Object.values(TOKENS), "--font-display", "--font-body", "--grain", "--vignette", "--glow", "--fx"]) {
     style.removeProperty(token);
   }
   $("#preset-css").textContent = "";
+  const strength = state.config.reader.effects ?? 1;
+  style.setProperty("--fx", String(strength));
   if (!look) {
     delete reader.dataset.mode;
     reader.dataset.preset = reader.dataset.bg = reader.dataset.heading = "";
     $("#bg").removeAttribute("style");
     particles.stop();
+    currentSound = null;
+    updateSound();
     return;
   }
   reader.dataset.mode = look.mode;
@@ -56,8 +80,10 @@ export function apply(look) {
     bg.style.backgroundImage = `url("/art/${encodeURIComponent(look.background.image)}")`;
   }
   $("#preset-css").textContent = look.css ?? "";
-  if (state.config.reader.particles) particles.start(look.particles, rgb(look.palette.ink ?? "#ffffff"));
+  if (state.config.reader.particles) particles.start(look.particles, rgb(look.palette.ink ?? "#ffffff"), strength);
   else particles.stop();
+  currentSound = look.sound ?? null;
+  updateSound();
 }
 
 /** Built-in chapter drawings, colored by the palette. */

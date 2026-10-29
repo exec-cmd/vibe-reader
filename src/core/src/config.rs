@@ -24,6 +24,7 @@ pub struct Config {
     pub typography: Typography,
     pub library: LibraryView,
     pub pdf: Pdf,
+    pub translate: Translate,
     pub agent: Agent,
 }
 
@@ -88,6 +89,18 @@ pub struct Reader {
     pub layout: String,
     /// Particles and light effects of atmospheres.
     pub particles: bool,
+    /// Strength of atmosphere effects: 0 is off, 1 as designed, up to 2.
+    pub effects: f32,
+    /// Ambient sound of the atmosphere, generated in the window.
+    pub sound: bool,
+    /// Sound volume, 0 to 1.
+    pub volume: f32,
+    /// Page turn animation: `curl`, `slide` or `none`.
+    pub page_turn: String,
+    /// Hide the reader controls while reading; they return when the mouse moves.
+    pub autohide: bool,
+    /// Window opacity: 1 is solid, lower values let the desktop show through.
+    pub opacity: f32,
 }
 
 impl Default for Reader {
@@ -100,6 +113,12 @@ impl Default for Reader {
             reduce_motion: false,
             layout: "spread".into(),
             particles: true,
+            effects: 1.0,
+            sound: false,
+            volume: 0.5,
+            page_turn: "curl".into(),
+            autohide: true,
+            opacity: 1.0,
         }
     }
 }
@@ -126,6 +145,34 @@ impl Default for Typography {
             line_height: 1.6,
             justify: true,
             hyphens: true,
+        }
+    }
+}
+
+/// The translator in the reader window. Keys are kept here and never shown to agents.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Translate {
+    /// `google`, `deepl` or `openrouter`.
+    pub provider: String,
+    /// Language code to translate into; `auto` uses the interface language.
+    pub target: String,
+    pub google_key: String,
+    pub deepl_key: String,
+    pub openrouter_key: String,
+    /// Any chat model available on OpenRouter.
+    pub openrouter_model: String,
+}
+
+impl Default for Translate {
+    fn default() -> Self {
+        Self {
+            provider: "deepl".into(),
+            target: "auto".into(),
+            google_key: String::new(),
+            deepl_key: String::new(),
+            openrouter_key: String::new(),
+            openrouter_model: "openai/gpt-4o-mini".into(),
         }
     }
 }
@@ -161,8 +208,27 @@ impl Config {
 
     pub fn save(&self, paths: &Paths) -> Result<()> {
         fs::create_dir_all(&paths.config)?;
-        fs::write(paths.config_file(), toml::to_string_pretty(self)?)?;
+        let file = paths.config_file();
+        fs::write(&file, toml::to_string_pretty(self)?)?;
+        // The file holds translator API keys.
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&file, fs::Permissions::from_mode(0o600))?;
+        }
         Ok(())
+    }
+
+    /// A copy safe to print: API keys are replaced by `set`.
+    pub fn redacted(&self) -> Self {
+        let mut copy = self.clone();
+        let t = &mut copy.translate;
+        for key in [&mut t.google_key, &mut t.deepl_key, &mut t.openrouter_key] {
+            if !key.is_empty() {
+                *key = "set".into();
+            }
+        }
+        copy
     }
 }
 
@@ -180,5 +246,22 @@ mod tests {
         let config = Config::load(&paths).unwrap();
         assert!(config.agent.consent.speed && !config.agent.consent.habits);
         assert_eq!(config.reader.preset, "study");
+    }
+
+    #[test]
+    fn keys_are_redacted_and_private() {
+        let dir = tempfile::tempdir().unwrap();
+        let paths = Paths::under(dir.path().into());
+        let mut config = Config::default();
+        config.translate.deepl_key = "secret".into();
+        config.save(&paths).unwrap();
+        assert_eq!(config.redacted().translate.deepl_key, "set");
+        assert_eq!(config.redacted().translate.google_key, "");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = std::fs::metadata(paths.config_file()).unwrap().permissions().mode();
+            assert_eq!(mode & 0o777, 0o600);
+        }
     }
 }

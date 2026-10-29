@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use anyhow::{Context, Result, bail};
 use serde_json::json;
 use vibe_reader_core::excerpt::{self, CHARS_PER_TOKEN};
-use vibe_reader_core::store::AnnotationKind;
+use vibe_reader_core::store::{AnnotationKind, FROM_READER, USER};
 use vibe_reader_core::{Book, Document, Locator, Span, Status};
 
 use crate::output::{Out, date, percent, untrusted};
@@ -177,6 +177,9 @@ pub fn context(ctx: &Ctx, query: Option<&str>, max_tokens: usize) -> Result<Out>
         .filter(|a| a.start.chapter == at.chapter && a.start <= at)
         .collect();
     let memory = ctx.lib.memories(book.id, None)?;
+    let (from_reader, memory): (Vec<_>, Vec<_>) = memory
+        .into_iter()
+        .partition(|m| m.author == USER && m.key.starts_with(FROM_READER));
     let selection = crate::look::live_selection(ctx.lib.paths(), book.id);
 
     let mut text = format!(
@@ -207,6 +210,19 @@ pub fn context(ctx: &Ctx, query: Option<&str>, max_tokens: usize) -> Result<Out>
             ));
         }
     }
+    if !from_reader.is_empty() {
+        text.push_str("\n## Sent by the reader from the window\n\n");
+        for m in &from_reader {
+            let at = m.locator.map(|l| format!(" `{l}`")).unwrap_or_default();
+            // Saved passages quote the book; messages and the place are the reader's own words.
+            let value = if m.key.starts_with("reader.saved") {
+                untrusted(&m.value)
+            } else {
+                m.value.clone()
+            };
+            text.push_str(&format!("- **{}**{at}: {value}\n", m.key));
+        }
+    }
     if !memory.is_empty() {
         text.push_str(&format!(
             "\nAgent memory has {} entries: `vibe-reader memory list --book {}`.\n",
@@ -224,6 +240,7 @@ pub fn context(ctx: &Ctx, query: Option<&str>, max_tokens: usize) -> Result<Out>
             "selection": selection,
             "notes": notes,
             "memory_entries": memory.len(),
+            "from_reader": from_reader,
             "untrusted": true,
             "recent_text": recent,
         }),

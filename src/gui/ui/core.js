@@ -65,6 +65,9 @@ export function applyConfig() {
   const dark = reader.mode === "dark" || (reader.mode === "auto" && matchMedia("(prefers-color-scheme: dark)").matches);
   root.dataset.mode = dark ? "dark" : "light";
   root.dataset.motion = reader.reduce_motion ? "off" : "on";
+  root.dataset.turn = reader.page_turn;
+  root.style.setProperty("--glass", String(reader.opacity));
+  root.dataset.glass = String(reader.opacity < 1);
   // "auto" leaves the body font to the theme and the atmosphere.
   if (ty.font === "auto") root.style.removeProperty("--font-body");
   else root.style.setProperty("--font-body", `${ty.font === "system" ? "system-ui" : `"${ty.font}"`}, Georgia, serif`);

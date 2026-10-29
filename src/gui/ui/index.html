@@ -30,21 +30,50 @@
     </header>
     <div class="library-body">
       <nav class="sidebar" id="sidebar" aria-label="Library"></nav>
-      <main class="stacks" id="shelves" tabindex="-1"></main>
+      <main class="room" id="room" tabindex="-1">
+        <section class="desk" id="desk" data-hide-mini></section>
+        <div class="stacks" id="shelves"></div>
+      </main>
       <aside class="details" id="card" aria-live="polite"></aside>
     </div>
   </section>
 
+  <!-- Reader: the window is the book. A sheet on a desk, a running head and a folio; the dock with
+       every control floats at the bottom and hides while reading. -->
   <section class="view reader" id="reader" data-layout="pages" data-bg="" hidden>
     <style id="preset-css"></style>
     <div class="bg" id="bg"></div>
     <canvas id="fx"></canvas>
     <div class="fx-overlay"></div>
     <div class="splash" id="splash"></div>
-    <header class="toolbar reader-bar" id="reader-bar">
+    <div class="lite-bar" id="lite-bar" hidden>
+      <span class="title" id="lite-title"></span>
+      <button class="btn" id="lite-add" data-i18n="addToLibrary"></button>
+    </div>
+    <div class="reader-body">
+      <aside class="side-panel" id="side" data-open="false">
+        <div class="tabs" role="tablist" id="side-tabs">
+          <button class="tab" data-tab="toc" data-i18n="contents"></button>
+          <button class="tab" data-tab="thumbs" data-i18n="pages"></button>
+          <button class="tab" data-tab="notes" data-i18n="notes"></button>
+          <button class="tab" data-tab="search" data-i18n="find"></button>
+          <button class="tab" data-tab="agent" data-i18n="agentTab"></button>
+        </div>
+        <div class="tab-body" id="side-body"></div>
+      </aside>
+      <div class="running-head"><span id="reader-sub"></span></div>
+      <div class="viewport" id="viewport">
+        <div class="book" id="book">
+          <div class="frame" id="frame"><article class="page" id="page"></article></div>
+          <div class="leaf" id="leaf" hidden></div>
+        </div>
+      </div>
+      <button class="folio" id="folio" data-i18n-title="goToPage"></button>
+    </div>
+    <nav class="dock" id="dock" aria-label="Reader">
       <button class="icon-btn" id="back" data-icon="back" data-i18n-title="backKey"></button>
       <button class="icon-btn" id="toggle-side" data-icon="toc" data-i18n-title="sidePanel"></button>
-      <div class="reader-title"><span id="reader-title"></span><small id="reader-sub"></small></div>
+      <span class="dock-sep"></span>
       <div class="pager">
         <button class="icon-btn" id="prev-page" data-icon="chevronLeft" data-i18n-title="prevPage"></button>
         <input class="page-input" id="page-input" inputmode="numeric" autocomplete="off" aria-label="Page">
@@ -56,39 +85,30 @@
         <button class="select-btn compact" id="zoom-level"><span class="select-value"></span><span data-icon="chevronDown" data-size="14"></span></button>
         <button class="icon-btn" id="zoom-in" data-icon="zoomIn" data-i18n-title="zoomIn"></button>
       </div>
+      <span class="dock-sep"></span>
       <button class="icon-btn" id="layout-btn" data-icon="pages" data-i18n-title="layout"></button>
       <button class="icon-btn" id="search-btn" data-icon="search" data-i18n-title="findInBook"></button>
+      <button class="icon-btn" id="translate-btn" data-icon="translate" data-i18n-title="translator"></button>
+      <button class="icon-btn" id="agent-btn" data-icon="agent" data-i18n-title="agentMenu"></button>
+      <span class="dock-sep"></span>
       <button class="icon-btn" id="look-btn" data-icon="sparkle" data-i18n-title="atmosphere"></button>
+      <button class="icon-btn" id="sound-btn" data-icon="sound" data-i18n-title="soundToggle"></button>
       <button class="icon-btn" id="mode-btn" data-icon="moon" data-i18n-title="cmdMode"></button>
       <button class="icon-btn" id="fullscreen-btn" data-icon="fullscreen" data-i18n-title="fullscreen"></button>
       <button class="icon-btn" id="reader-more" data-icon="more" data-i18n-title="more"></button>
-    </header>
-    <div class="lite-bar" id="lite-bar" hidden>
-      <span class="title" id="lite-title"></span>
-      <button class="btn" id="lite-add" data-i18n="addToLibrary"></button>
-    </div>
-    <div class="reader-body">
-      <aside class="side-panel" id="side" hidden>
-        <div class="tabs" role="tablist" id="side-tabs">
-          <button class="tab" data-tab="toc" data-i18n="contents"></button>
-          <button class="tab" data-tab="thumbs" data-i18n="pages"></button>
-          <button class="tab" data-tab="notes" data-i18n="notes"></button>
-          <button class="tab" data-tab="search" data-i18n="find"></button>
-        </div>
-        <div class="tab-body" id="side-body"></div>
-      </aside>
-      <div class="viewport" id="viewport">
-        <div class="frame" id="frame"><article class="page" id="page"></article></div>
-      </div>
-    </div>
+    </nav>
     <div class="progress"><i id="progress"></i></div>
+    <div class="flash" id="flash"></div>
     <div class="selbar" id="selbar" hidden>
       <button class="icon-btn" data-act="highlight" data-icon="marker" data-i18n-title="highlight"></button>
       <button class="icon-btn" data-act="note" data-icon="notes" data-i18n-title="note"></button>
+      <button class="icon-btn" data-act="translate" data-icon="translate" data-i18n-title="translate"></button>
+      <button class="icon-btn" data-act="agent" data-icon="agent" data-i18n-title="sendSelection"></button>
       <button class="icon-btn" data-act="copy" data-icon="copy" data-i18n-title="copy"></button>
       <button class="icon-btn" data-act="find" data-icon="search" data-i18n-title="findInBook"></button>
     </div>
     <div class="notepop" id="notepop" hidden></div>
+    <section class="translator" id="translator" hidden aria-labelledby="translator-title"></section>
   </section>
 
   <section class="view settings-view" id="settings-view" hidden></section>

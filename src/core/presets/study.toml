@@ -41,3 +41,7 @@ illustration = "hills"
 [effects]
 glow = 0.4
 vignette = 0.2
+
+[sound]
+kind = "fire"
+volume = 0.5

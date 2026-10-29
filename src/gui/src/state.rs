@@ -66,14 +66,24 @@ pub struct Boot {
     config: Config,
     lite: bool,
     initial: Option<PathBuf>,
+    version: &'static str,
+    paths: serde_json::Value,
 }
 
 #[tauri::command]
 pub fn boot(app: State<App>) -> Res<Boot> {
+    let p = &app.paths;
     Ok(Boot {
-        config: Config::load(&app.paths).map_err(err)?,
+        config: Config::load(p).map_err(err)?,
         lite: app.lite,
         initial: app.initial.clone(),
+        version: env!("CARGO_PKG_VERSION"),
+        paths: serde_json::json!({
+            "config": p.config_file(),
+            "data": p.data,
+            "ui": p.ui_overrides(),
+            "presets": p.presets(),
+        }),
     })
 }
 
@@ -505,6 +515,7 @@ pub fn delete_shelf(app: State<App>, name: String) -> Res<()> {
     app.lib.lock().unwrap().delete_shelf(&name).map_err(err)
 }
 
+/// A preset as the settings and menus show it: name, colors and what it brings.
 #[derive(Serialize)]
 pub struct PresetInfo {
     id: String,
@@ -512,6 +523,11 @@ pub struct PresetInfo {
     description: String,
     modes: Vec<vibe_reader_core::atmosphere::Mode>,
     spine: Option<String>,
+    palettes: std::collections::BTreeMap<vibe_reader_core::atmosphere::Mode, vibe_reader_core::atmosphere::Palette>,
+    background: Option<vibe_reader_core::atmosphere::BackgroundKind>,
+    particles: Option<vibe_reader_core::atmosphere::ParticleKind>,
+    sound: Option<vibe_reader_core::atmosphere::SoundKind>,
+    fonts: Option<vibe_reader_core::atmosphere::Typeface>,
 }
 
 #[tauri::command]
@@ -521,12 +537,12 @@ pub fn presets(app: State<App>) -> Res<Vec<PresetInfo>> {
     Ok(list
         .into_iter()
         .map(|p| {
-            let meta = p.profile.preset.clone().unwrap_or_default();
-            let spine = p
-                .profile
-                .palette
-                .as_ref()
-                .and_then(|pal| pal.get(&Mode::Dark).or(pal.get(&Mode::Light)))
+            let profile = p.profile;
+            let meta = profile.preset.clone().unwrap_or_default();
+            let palettes = profile.palette.unwrap_or_default();
+            let spine = palettes
+                .get(&Mode::Dark)
+                .or(palettes.get(&Mode::Light))
                 .and_then(|c| c.spine.clone());
             PresetInfo {
                 id: p.id,
@@ -534,6 +550,11 @@ pub fn presets(app: State<App>) -> Res<Vec<PresetInfo>> {
                 description: meta.description,
                 modes: meta.modes,
                 spine,
+                palettes,
+                background: profile.background.and_then(|b| b.kind),
+                particles: profile.particles.and_then(|b| b.kind),
+                sound: profile.sound.and_then(|s| s.kind),
+                fonts: profile.typeface,
             }
         })
         .collect())
@@ -614,6 +635,68 @@ pub fn cover_bytes(app: &App, id: i64) -> Option<Vec<u8>> {
     let _ = std::fs::create_dir_all(app.paths.covers());
     let _ = std::fs::write(&file, &bytes);
     Some(bytes)
+}
+
+// ---------- translator, agent inbox, reading log ----------
+
+/// Translates text with the provider chosen in the settings.
+#[tauri::command]
+pub async fn translate(app: State<'_, App>, text: String, target: String) -> Res<String> {
+    let config = Config::load(&app.paths).map_err(err)?;
+    crate::translate::translate(&config.translate, &text, &target).map_err(err)
+}
+
+/// What the reader sent to agents about the open book: memory under `reader.*` by the user.
+#[tauri::command]
+pub fn inbox(app: State<App>) -> Res<Vec<vibe_reader_core::store::MemoryEntry>> {
+    use vibe_reader_core::store::FROM_READER;
+    let book = current_book(&app)?;
+    let list = app.lib.lock().unwrap().memories(book.id, None).map_err(err)?;
+    Ok(list
+        .into_iter()
+        .filter(|m| m.author == USER && m.key.starts_with(FROM_READER))
+        .collect())
+}
+
+/// Leaves something for agents: `place` replaces the remembered page, `saved` and `message` add up.
+#[tauri::command]
+pub fn send_to_agent(app: State<App>, kind: String, value: String, locator: Option<Locator>) -> Res<i64> {
+    let key = match kind.as_str() {
+        "place" => "reader.place".to_owned(),
+        "saved" | "message" => format!(
+            "reader.{kind}.{}",
+            SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .map_err(err)?
+                .as_millis()
+        ),
+        _ => return Err(format!("unknown kind \"{kind}\"")),
+    };
+    let value: String = value.trim().chars().take(4000).collect();
+    if value.is_empty() {
+        return Err("nothing to send".into());
+    }
+    let book = current_book(&app)?;
+    app.lib
+        .lock()
+        .unwrap()
+        .remember(book.id, &key, &value, locator, USER)
+        .map_err(err)
+}
+
+#[tauri::command]
+pub fn forget(app: State<App>, id: i64) -> Res<()> {
+    app.lib.lock().unwrap().forget(id, USER).map_err(err)
+}
+
+/// Reading sessions of the last `days` days, for the reading log on the desk.
+#[tauri::command]
+pub fn sessions(app: State<App>, days: i64) -> Res<Vec<vibe_reader_core::store::Session>> {
+    app.lib
+        .lock()
+        .unwrap()
+        .sessions(now() - days * 86_400, None)
+        .map_err(err)
 }
 
 /// Full-text search in the open book (the reader may search everywhere, unlike agents).

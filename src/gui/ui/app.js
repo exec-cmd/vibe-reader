@@ -30,7 +30,7 @@ async function openPath(/** @type {string} */ path) {
 
 async function goHome() {
   if (state.lite) return;
-  reader.closeOverlays();
+  reader.leave();
   show("home");
   await library.refresh().catch(fail);
 }
@@ -99,6 +99,7 @@ function onKey(/** @type {KeyboardEvent} */ e) {
     closeMenus();
     if (state.view === "settings") settings.close();
     else if (state.view === "reader" && !reader.closeOverlays()) goHome();
+    else if (state.view === "home") library.onKey(e);
     return true;
   }
   if (state.view === "home") {
@@ -115,6 +116,7 @@ function onKey(/** @type {KeyboardEvent} */ e) {
     ArrowDown: () => reader.scrollBy(60), ArrowUp: () => reader.scrollBy(-60),
     Home: reader.chapterStart, End: reader.chapterEnd,
     t: () => reader.toggleSide(), n: () => reader.showTab("notes"),
+    y: () => commands.get("translate")?.run(), r: () => commands.get("remember-place")?.when?.() && reader.rememberPlace(), s: reader.toggleSound,
     "]": reader.nextChapter, "[": reader.prevChapter, l: reader.cycleLayout, b: reader.bookmark, d: toggleMode,
     g: reader.focusPageInput, "+": () => reader.zoom("in"), "=": () => reader.zoom("in"), "-": () => reader.zoom("out"), "0": () => reader.zoom("reset"),
   };
@@ -143,7 +145,10 @@ async function boot() {
   library.init();
   reader.init({ goHome });
   await settings.init();
-  settings.setOnReadingChange(() => reader.relayoutKeepingPlace());
+  settings.setOnReadingChange(() => {
+    reader.relayoutKeepingPlace();
+    if (state.view === "reader") reader.onModeChange();
+  });
   palette.init();
   commands.set("open", { label: () => t("addBooks"), run: pickFiles, when: () => !state.lite, key: "Ctrl+O" });
   commands.set("library", { label: () => t("library"), run: goHome, when: () => !state.lite && state.view !== "home" });

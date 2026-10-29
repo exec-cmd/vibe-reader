@@ -12,7 +12,9 @@ use rusqlite::{Connection, Row, params};
 use serde::Serialize;
 
 pub use reading::{Position, Session};
-pub use records::{Annotation, AnnotationKind, Art, Atmosphere, MemoryEntry, Placement, Scope, USER, Undone};
+pub use records::{
+    Annotation, AnnotationKind, Art, Atmosphere, FROM_READER, MemoryEntry, Placement, Scope, USER, Undone,
+};
 
 use crate::format::{self, Document, Format, Kind};
 use crate::{Locator, Paths};

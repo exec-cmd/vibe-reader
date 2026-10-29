@@ -41,3 +41,7 @@ illustration = "blinds"
 [effects]
 grain = 0.35
 vignette = 0.5
+
+[sound]
+kind = "rain"
+volume = 0.4

@@ -39,3 +39,7 @@ illustration = "orbs"
 
 [effects]
 glow = 0.3
+
+[sound]
+kind = "wind"
+volume = 0.3

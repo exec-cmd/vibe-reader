@@ -40,3 +40,7 @@ illustration = "ridge"
 
 [effects]
 vignette = 0.3
+
+[sound]
+kind = "wind"
+volume = 0.6
