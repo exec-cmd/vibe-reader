@@ -9,17 +9,18 @@ what is specific to PDF.
 
 | Layout | What you see |
 |---|---|
-| Spread | Two pages side by side. The first page stands alone, as in a printed book. In a tall, narrow window it shows one page. |
+| Spread | Two pages side by side. The first page stands alone, as in a printed book. In a tall, narrow window it shows one page. The two pages meet at the spine with no gap, and a shadow falls in the gutter. |
 | One page | One page at a time. |
 | Scroll | All pages in one continuous column. |
 
-Choose the layout with the layout button in the toolbar, or press `L` to cycle
+Choose the layout with the layout button in the dock, or press `L` to cycle
 through the layouts. The default comes from Settings → PDF.
 
 ## Zoom
 
-The zoom controls are in the toolbar: zoom out, a zoom menu, and zoom in. The
-menu has **Whole page**, **Page width** and a percentage from 50 to 300 %.
+The zoom controls are in the dock: zoom out, a zoom button that shows the current
+zoom in percent, and zoom in. Click the percentage to open a menu with **Whole
+page**, **Page width** and fixed sizes from 50 to 300 %.
 
 You can also zoom with:
 
@@ -51,7 +52,8 @@ without a text layer have no text to select.
 ## Notes and highlights
 
 Highlights, notes and bookmarks work as in other books. See
-[reading](reading.md).
+[reading](reading.md). Page edges on the sides of the sheet show how far you
+have read, for PDF pages and spreads too.
 
 Notes that an AI agent leaves on a PDF appear in the window. The window finds
 each note by the text it quotes.

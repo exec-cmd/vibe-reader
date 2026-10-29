@@ -12,14 +12,17 @@ the GUI crate (or drop the file into `<config>/ui/`), and reload.
 | `app.js` | Boot, view switching, global keys (Ctrl+O, M), opening files and drops. |
 | `core.js` | `state`, `call()` for Tauri commands, `commands` registry for the palette, `applyConfig()` and `saveConfig()`. |
 | `ui.js` | Shared widgets: `icon`, `menu`, `select`, `dialog`, `ask`, `confirmAction`, `toast`, `progress`. |
-| `library.js` | Sidebar, shelves of spines, details panel, book menu, mini mode, library keys. |
-| `reader.js` | Reader shell: toolbar, pager, zoom, side panel tabs, annotations, find. It creates one engine per open book. |
+| `library.js` | Catalog drawers, the desk, the bookcase, the catalog card, book menu, mini mode, library keys. |
+| `reader.js` | Reader shell: dock, running head, folio, page turns, idle state, side panel tabs, annotations, find. It creates one engine per open book. |
 | `flow.js` | `FlowEngine` for EPUB, FB2, Markdown, TXT and HTML. |
 | `pdfview.js` | `PdfEngine` for PDF, drawn with pdf.js. |
 | `pdfcover.js` | `loadPdfjs()` (lazy pdf.js loader) and PDF covers. |
 | `offsets.js` | DOM point ↔ offset (`offsetOf`, `rangeOf`, `pointAt`), and `normalize()` for PDF text pieces. |
 | `enhance.js` | Code highlighting, copy buttons, KaTeX, table wrappers, image zoom in chapter content. |
-| `atmosphere.js`, `particles.js` | Apply an atmosphere look to the reader; particle and light effects. |
+| `atmosphere.js` | Apply an atmosphere look; `updateSound()` follows its sound. |
+| `particles.js` | Particles and light: `start(p, rgb, strength)`, `setEdge(rect)` (snow and rain meet the page), `blow(dir)` (page-turn gust), `setOnStrike(fn)` (lightning). |
+| `sound.js` | Ambient sound from Web Audio, no files: `play(sound, level)`, `stop()`, `thunder()`. |
+| `translator.js` | The translator card: `init(visibleText)`, `open()`, `toggle()`, `target()`. |
 | `settings.js` | The settings page: sections built from `row`, `segmented`, `dropdown`, `toggle`, `slider`. |
 | `palette.js` | Command palette (Ctrl+Shift+P) over the `commands` registry and the books. |
 | `i18n.js`, `i18n/*.json` | Strings. `t(key)`; English is the fallback. |
@@ -42,6 +45,15 @@ Types are written in JSDoc so editors can check them without a compiler.
 Animations use the `--fast` and `--slow` tokens. They drop to zero for reduced
 motion and in lite mode.
 
+| Token | Set by | Meaning |
+|---|---|---|
+| `--case`, `--board`, `--card`, `--card-rule` | `theme.css`, both modes | Bookcase interior, shelf boards, catalog card and its rules. |
+| `--turn` | `theme.css` | Page turn duration. |
+| `--glass` | `core.js`, from `[reader] opacity` | Window opacity; `:root[data-glass]` makes the background transparent. |
+| `:root[data-turn]` | `core.js`, from `[reader] page_turn` | Chooses the turn: `curl`, `slide` or `none`. |
+| `--read` | `reader.js` | Share of the book read; drives the page edges. |
+| `--fx` | `atmosphere.js`, from `[reader] effects` | Effect strength; scales background, glow, grain, particles and lightning. |
+
 ## Engines
 
 The reader shell holds one engine per open book. Both engines expose the same
@@ -55,6 +67,18 @@ methods, so `reader.js` drives either one the same way:
 | `selection()` | The current text selection as `{chapter, start, end, text, rect}`, or `null`. For PDF, `chapter` is the page index. |
 | `range(chapter, start, end)` | A DOM `Range` for an offset span on what is drawn, or `null`. Used to paint highlights and find hits. |
 | `setLayout(layout)` | Switch spread, one page or scroll, keeping the place. |
+| `visibleText()` | The text on screen, for Translate this page and Send this page. |
+
+## Reader chrome
+
+`#dock` is the only permanent control. `#reader-sub` (running head) and `#folio`
+(page number, a button) print around the book. `reader.js` sets `data-idle` on
+`#reader` after the mouse rests (`[reader] autohide`); mouse movement and focus
+clear it. The side panel `#side` opens with `data-open="true"` or `"false"`, not
+`hidden`. `#book` holds `#frame` and `#leaf`, the sheet that swings over the
+spine in `turn()`.
+
+The library's `#room` holds `#desk` (books being read) and `#shelves` (`.stacks`).
 
 Engine-specific calls stay behind `instanceof PdfEngine` checks in `reader.js`
 (for example `chapterStart()` and `chapterEnd()`). Keep format branches there,

@@ -9,12 +9,14 @@ The settings page has these sections:
 
 | Section | What it holds |
 |---|---|
-| Appearance | Theme (Auto, Light, Dark), Language (Auto, English, Русский), Reduce motion. |
-| Reading | Books layout, font, size, line length, line spacing, justification, hyphenation, and a live preview. |
+| Appearance | Theme (Auto, Light, Dark), Language (Auto, English, Русский), Reduce motion, Window opacity (40 to 100 %). |
+| Reading | Books layout, page turn (Leaf, Slide, None), hide controls while reading, font, size, line length, line spacing, justification, hyphenation, and a live preview. |
 | PDF | Layout (Spread, One page, Scroll), Page size (Whole page, Page width), Dark pages in dark mode. |
-| Library | Start in the mini library, Keep copies of added files, Group, Sort. |
-| Atmosphere | Default preset cards, Particles and light effects, the path of `user.css`, and the presets folder. |
-| AI agents | What agents may see: reading habits, reading speed and tastes. All are off by default. Also how to install Skills. |
+| Library | Start in the mini library, Keep copies of added files, Group, Sort, and a list of shelves to rename, delete or create. |
+| Atmosphere | Default preset cards, Effect strength (0 to 200 %), Particles, the path of `user.css`, and the presets folder. |
+| Sound | Ambient sound on or off, Volume, and the list of sounds (rain, storm, fire, wind, hum) with a Listen button for each. |
+| Translator | The provider (DeepL, Google, OpenRouter), your key for each, the target language, and a Check button. |
+| AI agents | What agents may see: reading habits, reading speed and tastes. All are off by default. Also how to install Skills, and what the reader sends to agents. |
 | Keyboard | Vim keys, and the list of shortcuts. |
 | About | Version, and the paths of the settings file, library folder, design overrides folder and presets folder. Click a path to copy it. |
 
@@ -53,6 +55,12 @@ vim = false
 reduce_motion = false
 layout = "spread"      # spread, pages, scroll
 particles = true
+effects = 1.0          # effect strength, 0 to 2
+sound = false          # ambient sound
+volume = 0.5           # 0 to 1
+page_turn = "curl"     # curl (leaf), slide, none
+autohide = true        # hide the dock while reading
+opacity = 1.0          # window opacity, 0.4 to 1 in the settings
 
 [typography]
 font = "auto"          # auto (from the atmosphere), a bundled font, "system", any installed family
@@ -73,6 +81,14 @@ layout = "spread"      # spread, single, scroll
 fit = "page"           # page, width
 invert_dark = true
 
+[translate]
+provider = "deepl"     # deepl, google, openrouter
+target = "auto"        # auto = interface language, or a language code
+google_key = ""
+deepl_key = ""
+openrouter_key = ""
+openrouter_model = "openai/gpt-4o-mini"
+
 [agent.consent]
 habits = false
 genres = false
@@ -80,6 +96,13 @@ speed = false
 ```
 
 The `preset` key sets the atmosphere for books that have no atmosphere of their own.
+
+## API keys
+
+The translator sends text to the service you choose, with your own key. The keys
+are stored in `config.toml`, which is written with permissions 0600, so only your
+user can read it. `vibe-reader config` prints each key as `set` (or empty) and
+never shows its value. Agents never get the keys. See [translator](translator.md).
 
 ## What agents may see
 

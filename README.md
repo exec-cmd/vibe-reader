@@ -46,15 +46,18 @@ AppImage are attached to each [GitHub release](https://github.com/exec-cmd/vibe-
   Notes by an agent are marked differently from yours.
 - **Typography.** Six bundled fonts with Cyrillic, size, line length and
   spacing, justification and hyphenation, light and dark.
+- **Translator.** Translate a passage or the page with your own DeepL, Google
+  Cloud or OpenRouter key.
 - **Keyboard first.** `Ctrl+Shift+P` palette, single-key commands, optional Vim keys.
 - **Quick view.** `vibe-reader open notes.md --lite` opens one file without the
   library; Markdown reloads when you save it.
 
 More: [getting started](docs/user/getting-started.md),
 [library](docs/user/library.md), [reading](docs/user/reading.md),
-[PDF](docs/user/pdf.md), [keyboard](docs/user/keyboard.md).
+[PDF](docs/user/pdf.md), [keyboard](docs/user/keyboard.md),
+[translator](docs/user/translator.md).
 
-## Atmosphere
+## Atmosphere and sound
 
 ```bash
 vibe-reader atmosphere set --book 3 --preset rain
@@ -67,6 +70,10 @@ mountain. Profiles are declarative TOML or JSON with a checked schema: only
 bundled fonts, and no profile can make the text hard to read. Everything else in
 the interface can be restyled live with `~/.config/vibe-reader/ui/user.css`.
 See [atmosphere](docs/user/atmosphere.md).
+
+Each preset has an ambient sound: rain, storm, fire, wind or hum. The sound is
+generated in the window, is off by default, and turns on with `S`. See
+[sound](docs/user/sound.md).
 
 ## AI agents
 
@@ -82,6 +89,9 @@ Then ask your agent about your book. The Skills teach it to:
 | `reader-analyze` | Analyze a book or your reading: characters, themes, glossary, pace. |
 | `reader-discuss` | Talk about the place you are reading, without spoilers. |
 | `reader-atmosphere` | Pick presets, style chapters and scenes, add illustrations. |
+| `books-helper` | For fiction: retell the story so far, gather critics' views, check your understanding. |
+
+The ✦ button in the reader sends the agent your place, a passage or a message.
 
 Agents read only up to your position unless you ask otherwise, sign everything
 they write, can undo it, cannot remove books, and see your reading habits only

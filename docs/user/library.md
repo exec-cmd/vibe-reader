@@ -3,13 +3,13 @@
 # Library
 
 The library is the main view of the window. It shows your books, groups them,
-and shows the details of the book you select.
+and shows the card of the book you select.
 
 ## Toolbar
 
 | Control | What it does |
 |---|---|
-| Sidebar button | Shows or hides the sidebar. |
+| Sidebar button | Shows or hides the catalog. |
 | Search field | Filters books by title or author. Press Enter to open the first match. |
 | Group | Groups books by shelf, author, format, status, or not at all. |
 | Sort | Sorts books by recently read, title, author, progress, or date added. |
@@ -17,34 +17,55 @@ and shows the details of the book you select.
 | Mini library (`M`) | Switches to the small window. See [Mini library](#mini-library). |
 | Settings (`Ctrl+,`) | Opens the settings. See [configuration](configuration.md). |
 
-## Sidebar
+## Catalog
 
-- **Library** shows the number of books in All books, Reading, Unread, Finished
-  and Dropped.
-- **Shelves** lists your shelves. Click **+** to create a shelf. Right-click a
-  shelf to rename or delete it. Deleting a shelf keeps its books. Drag a spine
-  onto a shelf to put the book there.
-- **Authors** lists the top 10 authors. Click **Show all** to see the rest.
+The left side is the catalog. Every filter (All books, Reading, Unread, Finished
+and Dropped), every shelf and every author is a drawer with a label holder. The
+selected drawer is pulled out.
+
+- Click **+** to create a shelf.
+- Right-click a shelf drawer to rename or delete it. Deleting a shelf keeps its
+  books.
+- Drag a spine onto a shelf drawer to put the book there.
+
+## The desk and the reading log
+
+Above the bookcase, the desk holds up to four books with the status reading.
+They stand with their covers out and show the title, authors and progress. Click
+one to open it, or right-click it to open the book menu.
+
+Next to the desk, the reading log shows the minutes you read in the last seven
+days as seven small bars. Today's bar is highlighted. When you have read on two
+or more days in a row, the log also shows "N days in a row". The log is hidden
+when nothing has been read yet.
 
 ## Books on shelves
 
+The bookcase is a dark case. Each group is a shelf: a shelf, an author, a format
+or a status, depending on the Group dropdown. A brass plate on each shelf shows
+the name of the group and the number of books in it. A lamp glow sits above each
+shelf.
+
 Books stand as bound spines on shelf boards. Each spine has a bookcloth color, a
 gilt title and the author's surname. The height of a spine follows the length of
-the book. The books are arranged by the grouping you chose.
+the book. The last book of a short row leans on its neighbour.
 
-A gilt ribbon on a spine marks a book you are reading.
+A gilt ribbon on a spine marks a book you are reading. The selected spine is
+pulled up and outlined in gilt.
 
 - Click a spine to select it. Double-click it, or press Enter, to open the book.
 - Use the arrow keys to move between spines.
 - Press F2 to edit the selected book.
 - Press Delete to remove the selected book. The window asks you to confirm.
 
-## Book details
+## Catalog card
 
-The right panel shows the details of the selected book:
+The right side shows the catalog card of the selected book. The cover sits at
+the top, and the details are on a ruled index card below it:
 
 - **Cover.** EPUB and FB2 use their own cover. For PDF, the first page is drawn
   as the cover. You can choose any image.
+- **Call number.** The format and the book's id, with the date added.
 - **Title, authors and progress.** The progress bar shows the percentage read.
 - **Buttons.** **Continue** or **Read** opens the book. **Edit** changes the
   details. **More** (…) opens the book menu.
@@ -55,10 +76,17 @@ The right panel shows the details of the selected book:
 - **Facts.** Format, number of pages or chapters, length in words, date added,
   last opened date, and file path.
 
+## Narrow windows
+
+In a window narrower than about 1180 pixels, the card slides over the bookcase,
+and only when a book is selected. Close it with the close button or with `Esc`.
+In a wide window the card stays on the right. When the library opens, it shows
+the last book you read.
+
 ## Book menu
 
-Right-click a spine, or click **More** (…) in the details panel, to open the
-book menu.
+Right-click a spine, or click **More** (…) in the catalog card, to open the book
+menu.
 
 | Item | What it does |
 |---|---|
@@ -88,7 +116,7 @@ shelves does not change its file. You can also manage shelves from a terminal
 with `vibe-reader shelf`.
 
 Opening a book marks it as reading. You can set the status to finished or
-dropped in the details panel or in the book menu. Group can sort the library by
+dropped in the catalog card or in the book menu. Group can sort the library by
 status.
 
 ## Adding many books

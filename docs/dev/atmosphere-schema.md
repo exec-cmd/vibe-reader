@@ -14,7 +14,6 @@ a profile states only what it changes.
 | `base` | string | Start over from this preset before applying the rest. |
 | `mode` | `"light"` \| `"dark"` | Force a mode instead of following the reader's setting. |
 | `preset` | table | Only in preset files: `name`, `description`, `modes` (at least one). |
-| `sound` | any | Reserved for ambient sound; accepted and ignored. |
 
 ## `[palette.light]`, `[palette.dark]`
 
@@ -54,6 +53,17 @@ Mono. The reader's own font setting wins over `body` unless it is `auto`.
 ## `[effects]`
 
 `grain`, `vignette`, `glow`: each 0–1.
+
+## `[sound]`
+
+| Field | Values |
+|---|---|
+| `kind` | `none`, `rain`, `storm`, `fire`, `wind`, `hum` |
+| `volume` | 0–1, relative to the reader's volume |
+
+Unknown kinds and volumes outside 0–1 fail validation. `resolve` returns it as
+`Resolved.sound`; the window generates the sound (`sound.js`) and plays it only
+while the reader's sound setting is on.
 
 ## Resolution
 

@@ -46,3 +46,17 @@ size or mtime changed.
 
 Books and shelves are not records: removing them is permanent, which is why the
 CLI allows it only at an interactive terminal.
+
+## Reader inbox
+
+What the window sends to agents is memory by author `user` for the open book,
+under the `reader.` prefix (`store::FROM_READER`):
+
+| Key | Sent by | Note |
+|---|---|---|
+| `reader.place` | Remember this page | Same key replaces the live row. |
+| `reader.saved.<ms>` | Send the selection or the page | Book text: `context` wraps it as untrusted. |
+| `reader.message.<ms>` | Message to the agent | Free text from the reader. |
+
+`context` lists them under "Sent by the reader from the window" (`from_reader`).
+Agents cannot delete them: only the author can.

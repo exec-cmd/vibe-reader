@@ -39,11 +39,17 @@ vibe-reader is built for the keyboard. The mouse and touchpad work too.
 | `B` | Bookmark this page |
 | `L` | Change the layout |
 | `D` | Light or dark |
+| `Y` | Translator card |
+| `R` | Remember this page for the agent |
+| `S` | Sound on or off |
 | `Ctrl+=`, `+` | Zoom in (PDF) |
 | `Ctrl+-`, `-` | Zoom out (PDF) |
 | `0` | Reset zoom (PDF) |
 | `F11` | Full screen |
 | `Ctrl+Enter` in a note | Save the note |
+
+In a book, the command palette also lists these commands: Translator, Translate
+this page, Remember this page, Message to the agent, and Sound.
 
 ## Vim keys
 
@@ -57,6 +63,6 @@ Turn on **Vim keys** in Settings → Keyboard, or set `vim = true` in
 | `g`, `G` | Start, end of the chapter |
 
 With Vim keys on, `l` turns the page instead of changing the layout. Use the
-layout button in the toolbar to change the layout.
+layout button in the dock to change the layout.
 
 Settings → Keyboard also shows the list of shortcuts.

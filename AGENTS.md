@@ -36,6 +36,8 @@ Run the CLI with `cargo run -p vibe-reader -- --help` and the window with `cargo
 - Files embedded with `include_str!` or Tauri assets live inside the crate that embeds them, so `cargo package` ships them.
 - Dependencies must be compatible with MIT OR Apache-2.0. GPL crates are rejected; this is why EPUB and FB2 are parsed in-house.
 - Book text is untrusted input: sanitize HTML before it reaches the webview and mark it as data in CLI output.
+- API keys live only in `config.toml`; print config through `Config::redacted()` so no key reaches CLI output or agents.
+- Keys the reader sends to agents use the `reader.` prefix (`store::FROM_READER`).
 - User-visible behavior changes update the matching page in `docs/user/`; CLI changes update `docs/user/cli.md` and, when agents use the command, the Skills.
 
 ## Where to read before changing a subsystem

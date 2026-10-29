@@ -8,7 +8,7 @@ light effects. A chapter or a single scene can have its own look on top of the
 book's.
 
 The atmosphere is drawn on the desk around the page, never over the text.
-In the reader, the atmosphere menu (the sparkle icon in the toolbar) picks a
+In the reader, the atmosphere menu (the sparkle icon in the dock) picks a
 preset for the open book, or Default, and turns particles on or off. In the
 library, the details panel and the book menu have an Atmosphere setting too.
 
@@ -26,6 +26,8 @@ library, the details panel and the book menu have an Atmosphere setting too.
 
 Presets that exist in one mode only (rain, storm) stay dark even when the rest of
 the app is light.
+
+Each preset also has its own sound. See [Sound](#sound).
 
 ```bash
 vibe-reader preset list
@@ -100,6 +102,44 @@ vibe-reader art add 3 ./cover.jpg --as cover
 PNG, JPEG, WebP, GIF and SVG up to 10 MB are accepted; SVG with scripts or
 external links is refused. vibe-reader does not generate images; an agent can
 hand in a file or a URL made elsewhere.
+
+## Effects
+
+Settings → Atmosphere → **Effects** sets the strength of the light effects, from
+0 to 200 %. At Off, only the colors remain. The strength scales the background,
+the glow, the vignette, the grain, the number of particles and the lightning
+flash. In `config.toml` the same setting is `effects` under `[reader]`, from 0 to
+2, where 1 is as designed.
+
+Particles meet the book:
+
+- Snow settles on the top edge of the page and melts in about ten seconds.
+- Rain splashes on the top edge.
+- Turning a page sends a gust that blows dust, snow and bokeh across the page.
+  Rain bends a little.
+
+The Storm preset flashes lightning over the whole room, the page included. With
+sound on, the thunder follows after a short delay. The Study lamp flickers
+gently.
+
+## Sound
+
+A profile can give its atmosphere an ambient sound in a `[sound]` section:
+
+```toml
+[sound]
+kind = "rain"
+volume = 0.4
+```
+
+`kind` is `none`, `rain`, `storm`, `fire`, `wind` or `hum`. `volume` runs from 0
+to 1 and is relative to the volume set in Settings → Sound. An unknown kind, or a
+volume outside 0 to 1, fails validation. Before 0.2.0 the `sound` section was
+reserved and ignored.
+
+The bundled presets have sounds: study has fire, terminal has hum, noir and rain
+have rain, soft and mountain have wind, and storm has a storm. Turning the sound
+on is described in [sound](sound.md).
 
 ## Motion
 

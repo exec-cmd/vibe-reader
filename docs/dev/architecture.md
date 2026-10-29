@@ -10,7 +10,7 @@ page explains how the parts fit and why they are built this way.
 |---|---|---|
 | `vibe-reader-core` | `src/core` | Synchronous library without GUI or async runtime. Parses books, keeps the SQLite library, locators, atmosphere profiles, statistics and the IPC link; returns sanitized HTML and plain text. |
 | `vibe-reader` | `src/cli` | The `vibe-reader` binary for people and AI agents. Embeds the Skills. |
-| `vibe-reader-gui` | `src/gui` | Tauri window. Embeds the UI, fonts and vendored libraries. |
+| `vibe-reader-gui` | `src/gui` | Tauri window. Embeds the UI, fonts and vendored libraries. The only crate that makes network calls (the translator, `ureq`). |
 
 ```
             ┌───────────── vibe-reader-core ─────────────┐
@@ -63,7 +63,10 @@ page explains how the parts fit and why they are built this way.
   [atmosphere schema](atmosphere-schema.md)). Presets may add CSS; profiles
   set by agents may not.
 - **Local only.** One SQLite file, no telemetry, no network port; the live
-  link is a Unix socket only the owner can open (see [IPC](ipc.md)).
+  link is a Unix socket only the owner can open (see [IPC](ipc.md)). The window
+  sends text to a translation provider only when the reader presses Translate.
+  Provider keys sit in `config.toml` (mode 0600), which only the window reads
+  and `vibe-reader config` prints through `Config::redacted()`.
 
 ## Where things live
 
@@ -80,6 +83,7 @@ page explains how the parts fit and why they are built this way.
 | Live link | `src/core/src/ipc.rs` |
 | CLI commands | `src/cli/src/` (`library`, `reading`, `notes`, `look`, `service`) |
 | Window state and commands | `src/gui/src/state.rs` |
+| Translator | `src/gui/src/translate.rs` |
 | `vr://` scheme and live reload | `src/gui/src/assets.rs` |
 | UI | `src/gui/ui/` (see [UI](ui.md)) |
 

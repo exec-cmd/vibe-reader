@@ -4,21 +4,52 @@
 
 ## The reader
 
-Open a book to switch the window to the reader. The reader has these controls:
+Open a book to switch the window to the reader. The window is the book: there is
+no toolbar on top. The chapter title (or the book title, for PDF) is printed
+above the page as a running head. The page number is printed below it as a
+folio: "3 / 10", "121 / 530", or a percent in the scroll layout. Click the folio
+to type a page number.
+
+The controls are in the dock, a strip that floats at the bottom of the window:
 
 | Control | What it does |
 |---|---|
 | Back to library (`Esc`) | Returns to the library. |
 | Side panel (`T`) | Shows or hides the side panel. |
-| Title, author and chapter | Shows where you are. |
 | Pager | Previous page, a page number field, the total number of pages, and next page. Type a number and press Enter to go to that page. |
-| Zoom | PDF only. See [PDF](pdf.md). |
+| Zoom | PDF only. Shows the zoom in percent. See [PDF](pdf.md). |
 | Layout (`L`) | Chooses the layout. |
 | Find (`Ctrl+F`) | Searches the book. The results are in the Find tab of the side panel. |
+| Translator (`Y`) | Opens the translator card. See [translator](translator.md). |
+| For the agent (✦) | Remembers this page, sends a passage or this page, or writes a message to the agent. See [agents](agents.md). |
 | Atmosphere (sparkle icon) | Picks the atmosphere for this book. |
+| Sound (`S`) | Turns the ambient sound on or off. See [sound](sound.md). |
 | Light or dark (`D`) | Switches the color mode. |
-| Full screen (`F11`) | Hides the toolbar. The toolbar comes back when the mouse moves to the top. |
-| More (…) | Bookmark this page, go to page, find in book, and reading settings. |
+| Full screen (`F11`) | Switches the window to full screen. |
+| More (…) | Bookmark this page, go to page, find in book, translate this page, and reading settings. |
+
+The dock hides after about 2.6 seconds without mouse movement, and the cursor
+hides with it. It comes back when the mouse moves. To keep it visible, turn off
+**Hide controls while reading** in Settings → Reading.
+
+## Page edges
+
+A stack of page edges runs along both sides of the sheet. The left edge grows as
+you read, and the right edge shrinks. PDF pages and spreads show page edges too.
+
+## Turning pages
+
+Settings → Reading → **Page turn** chooses the animation:
+
+- **Leaf** (the default): a sheet swings over the spine.
+- **Slide**: the columns slide.
+- **None**: the page changes without motion.
+
+Reduced motion turns the animations off.
+
+## Chapter titles
+
+When you reach a new chapter, its title appears over the desk for about a second.
 
 ## Layouts
 
@@ -42,7 +73,8 @@ Technical books get:
 
 ## Side panel
 
-Press `T` to open the side panel. It has these tabs:
+Press `T` to open the side panel. It is a drawer over the desk, so the page does
+not move. Press `Esc` to close it. It has these tabs:
 
 - **Contents** lists the chapters, with nested chapters shown inside their
   parents. For PDF, it shows the PDF's own bookmarks. See [PDF](pdf.md).
@@ -51,11 +83,15 @@ Press `T` to open the side panel. It has these tabs:
   item to go to it. Right-click an item to delete it, if you wrote it.
 - **Find** runs a full-text search. Click a result to jump to it. The match
   stays marked for a few seconds.
+- **Agent** lists what you sent to your agent from the window and your messages,
+  newest first. Click an item to go to its place. Use its delete button to remove
+  it. See [agents](agents.md).
 
 ## Notes, highlights and bookmarks
 
-Select text to see a small bar with **Highlight**, **Note**, **Copy** and **Find
-in book**. Click **Note** to write a note. Press `Ctrl+Enter` to save it.
+Select text to see a small bar with **Highlight**, **Note**, **Translate**,
+**Send the selection**, **Copy** and **Find in book**. Click **Note** to write a
+note. Press `Ctrl+Enter` to save it.
 
 Press `B` to bookmark the current page. Press `N` to open the notes.
 
