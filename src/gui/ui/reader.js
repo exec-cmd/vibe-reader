@@ -148,18 +148,28 @@ async function turn(/** @type {number} */ dir) {
   const where = () => `${engine instanceof FlowEngine ? engine.chapter : ""}:${engine.label()}`;
   const before = where();
   const chapter = engine instanceof FlowEngine ? engine.chapter : -1;
-  const shot = engine.layout === "scroll" || state.config.reader.page_turn === "none" || calm() ? null : snapshot();
-  await (dir > 0 ? engine.next() : engine.prev());
-  if (where() === before) return;
+  // A turn that starts while the last one still loads its page would copy a half-drawn sheet.
+  const shot = turning || engine.layout === "scroll" || state.config.reader.page_turn === "none" || calm() ? null : snapshot();
+  // The old sheet covers the live one while the next page loads, so nothing flashes before the turn.
+  if (shot) cover(shot);
+  turning++;
+  try {
+    await (dir > 0 ? engine.next() : engine.prev());
+  } finally {
+    turning--;
+  }
+  if (where() === before || engine.layout === "scroll") return void (shot && clearTurn());
   if (engine instanceof FlowEngine && engine.chapter !== chapter) {
     paintFlow();
     splash(book.chapters[engine.chapter]?.title);
   }
-  if (engine.layout === "scroll") return;
   // A page turned toward the left pushes the air left.
   particles.blow(-dir);
   if (shot) animateTurn(dir, shot);
 }
+
+/** Turns whose next page is still loading. */
+let turning = 0;
 
 /** The sheet: the flow frame or the PDF spread. */
 const sheet = () => /** @type {HTMLElement | null} */ (isPdf() ? page().querySelector(".pdf-spread") : $("#frame"));
@@ -215,27 +225,44 @@ function piece(/** @type {Shot} */ shot, /** @type {number} */ left, /** @type {
 }
 
 let turnTimer = 0;
+
+/** Holds the old sheet over the live one, still, until the turn starts. */
+function cover(/** @type {Shot} */ old) {
+  const box = $("#leaf");
+  clearTimeout(turnTimer);
+  box.replaceChildren(piece(old, 0, old.w));
+  box.hidden = false;
+}
+
+function clearTurn() {
+  const box = $("#leaf");
+  box.replaceChildren();
+  box.hidden = true;
+}
+
 /**
  * Plays the page turn from the old sheet `old` to the sheet now on screen. A leaf hinged at the
  * spine turns over: forward it carries the old page away, back it brings the new one in.
- * A spread turns its right half and shows the next left page on the back of the leaf.
+ * A spread turns its right half and shows the next left page on the back of the leaf;
+ * a single page folds toward its spine until it stands edge-on.
  */
 function animateTurn(/** @type {number} */ dir, /** @type {Shot} */ old) {
   const box = $("#leaf");
   clearTimeout(turnTimer);
-  box.replaceChildren();
   const r = sheet()?.getBoundingClientRect();
-  if (!r || Math.abs(r.width - old.w) > 2 || Math.abs(r.height - old.h) > 2) return;
+  const base = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--turn"));
+  if (!r || !base || Math.abs(r.width - old.w) > 2 || Math.abs(r.height - old.h) > 2) return clearTurn();
   const slide = state.config.reader.page_turn === "slide";
   const now = !slide && (old.spread || dir < 0) ? snapshot() : null;
-  box.hidden = false;
-  const ms = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--turn")) || 520) * (old.spread ? 1.2 : 1);
+  // Built off-screen and swapped in at once, so the cover never blinks out.
+  const parts = [];
+  const ms = base * (old.spread ? 1.2 : 1);
   box.style.setProperty("--dir", String(dir));
   box.style.setProperty("--ms", `${ms}ms`);
   if (slide || (!now && (old.spread || dir < 0))) {
     const out = piece(old, 0, old.w);
     out.classList.add("turn-slide");
-    box.append(out);
+    parts.push(out);
   } else {
     const half = old.spread ? old.w / 2 : old.w;
     const hinge = old.spread ? half : 0;
@@ -248,18 +275,18 @@ function animateTurn(/** @type {number} */ dir, /** @type {Shot} */ old) {
     const back = old.spread ? piece(dir > 0 ? /** @type {Shot} */ (now) : old, 0, half) : document.createElement("div");
     for (const [face, side] of [[front, "front"], [back, "back"]]) {
       face.className = `face ${side}`;
-      face.style.cssText = face.style.cssText.replace(/left:[^;]+;top:[^;]+;/, "");
+      // A face sits at the leaf's own origin, not where its piece sat on the sheet.
+      face.style.left = face.style.top = "";
       leaf.append(face);
     }
     // What the leaf has not covered yet still shows the old sheet.
-    if (old.spread && dir > 0) box.append(piece(old, 0, half));
-    if (dir < 0) box.append(piece(old, hinge, half));
-    box.append(leaf);
+    if (old.spread && dir > 0) parts.push(piece(old, 0, half));
+    if (dir < 0) parts.push(piece(old, hinge, half));
+    parts.push(leaf);
   }
-  turnTimer = setTimeout(() => {
-    box.replaceChildren();
-    box.hidden = true;
-  }, ms + 40);
+  box.replaceChildren(...parts);
+  box.hidden = false;
+  turnTimer = setTimeout(clearTurn, ms + 40);
 }
 
 let splashTimer = 0;
@@ -640,7 +667,7 @@ function openNote(/** @type {Annotation | null} */ a, /** @type {DOMRect} */ rec
     <blockquote class="q"></blockquote>
     ${own ? `<textarea class="textarea"></textarea>` : `<div class="b"></div>`}
     <div class="row">
-      ${a && own ? `<button class="btn quiet danger" data-act="delete">${icon("trash", 15)}${t("delete")}</button>` : ""}
+      ${a ? `<button class="btn quiet danger" data-act="delete">${icon("trash", 15)}${t("delete")}</button>` : ""}
       <span class="grow"></span>
       <button class="btn" data-act="cancel">${t(own ? "cancel" : "close")}</button>
       ${own ? `<button class="btn primary" data-act="save">${t("save")}</button>` : ""}
@@ -794,22 +821,28 @@ function renderNotes(/** @type {HTMLElement} */ body) {
     const where = isPdf() ? t("pageN", { n: at.chapter + 1 }) : book.chapters[at.chapter]?.title || t("chapterN", { n: at.chapter + 1 });
     const el = document.createElement("div");
     el.className = `note-item ${isAgent(a.author) ? "agent" : ""}`;
-    el.innerHTML = `<div class="note-head">${icon(a.kind === "bookmark" ? "bookmark" : a.kind === "highlight" ? "marker" : "notes", 14)}<span class="where"></span><span class="who"></span></div>
+    el.innerHTML = `<div class="note-head">${icon(a.kind === "bookmark" ? "bookmark" : a.kind === "highlight" ? "marker" : "notes", 14)}<span class="where"></span><span class="who"></span>
+      <button class="icon-btn" data-act="delete" title="${escapeHtml(t("delete"))}">${icon("trash", 14)}</button></div>
       ${a.quote && a.kind !== "bookmark" ? `<div class="q"></div>` : ""}${a.body ? `<div class="b"></div>` : ""}`;
     el.querySelector(".where").textContent = where;
     el.querySelector(".who").textContent = isAgent(a.author) ? a.author : "";
     el.querySelector(".q") && (el.querySelector(".q").textContent = a.quote.slice(0, 220));
     el.querySelector(".b") && (el.querySelector(".b").textContent = a.body);
+    const remove = async () => {
+      await call("delete_annotation", { id: a.id }).catch(fail);
+      book.annotations = book.annotations.filter((x) => x.id !== a.id);
+      repaint();
+    };
     el.addEventListener("click", () => goTo(at));
+    el.querySelector('[data-act="delete"]').addEventListener("click", (e) => {
+      e.stopPropagation();
+      remove();
+    });
     el.addEventListener("contextmenu", (e) => {
       e.preventDefault();
       menu({ x: e.clientX, y: e.clientY }, [
         { label: t("goThere"), icon: "chevronRight", run: () => goTo(at) },
-        { label: t("delete"), icon: "trash", danger: true, disabled: isAgent(a.author), run: async () => {
-          await call("delete_annotation", { id: a.id }).catch(fail);
-          book.annotations = book.annotations.filter((x) => x.id !== a.id);
-          repaint();
-        } },
+        { label: t("delete"), icon: "trash", danger: true, run: remove },
       ]);
     });
     body.append(el);
@@ -884,6 +917,17 @@ async function reveal(/** @type {number} */ chapter, /** @type {number} */ offse
   // A PDF page draws its text layer asynchronously.
   for (let i = 0; i < 30 && !mark(); i++) await new Promise((r) => setTimeout(r, 100));
   setTimeout(() => CSS.highlights?.delete("found"), 6000);
+}
+
+/** A click on highlighted text opens its note, so a highlight (an agent's too) can be edited or removed. */
+function onMarkClick(/** @type {MouseEvent} */ e) {
+  if (!book || /** @type {Element} */ (e.target).closest("a[href], .mark") || !getSelection()?.isCollapsed) return;
+  const inside = (/** @type {DOMRect} */ r) => e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+  for (const [id, range] of [...marks.user, ...marks.agent]) {
+    const rect = [...range.getClientRects()].find(inside);
+    const a = rect && book.annotations.find((x) => x.id === id);
+    if (a) return openNote(a, rect);
+  }
 }
 
 /** Follows links inside the book; external links are only shown. */
@@ -1018,13 +1062,13 @@ async function renderInbox(/** @type {HTMLElement} */ body) {
     const el = document.createElement("div");
     el.className = `bubble ${mine ? "mine" : "agent"} ${kind}`;
     el.innerHTML = `<div class="note-head">${icon(mine ? INBOX_ICONS[kind] ?? "message" : "agent", 14)}<span class="where"></span>
-      ${mine ? `<button class="icon-btn" title="${escapeHtml(t("delete"))}">${icon("trash", 14)}</button>` : ""}</div><div class="b"></div>`;
+      <button class="icon-btn" title="${escapeHtml(t("delete"))}">${icon("trash", 14)}</button></div><div class="b"></div>`;
     const when = new Date(m.created_at * 1000).toLocaleString([], { dateStyle: "short", timeStyle: "short" });
     el.querySelector(".where").textContent = `${mine ? t(`inbox_${kind}`) : `${m.author} · ${m.key}`}, ${when}`;
     const cap = kind === "saved" ? 320 : 1200;
     el.querySelector(".b").textContent = m.value.length > cap ? `${m.value.slice(0, cap)}…` : m.value;
     if (m.locator) el.addEventListener("click", () => goTo(parseLocator(m.locator)));
-    el.querySelector("button")?.addEventListener("click", async (e) => {
+    el.querySelector("button").addEventListener("click", async (e) => {
       e.stopPropagation();
       await call("forget", { id: m.id }).catch(fail);
       renderSide();
@@ -1070,6 +1114,7 @@ export function init(/** @type {{ goHome: () => void }} */ hooks) {
   goHome = hooks.goHome;
   translator.init(visibleText);
   page().addEventListener("click", onLink);
+  page().addEventListener("click", onMarkClick);
   reader().addEventListener("mousemove", wake);
   // The cursor lights the desk, moves the far background and stirs the particles.
   let aim = 0;

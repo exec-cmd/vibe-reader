@@ -76,9 +76,11 @@ methods, so `reader.js` drives either one the same way:
 `#reader` after the mouse rests (`[reader] autohide`); mouse movement and focus
 clear it. The side panel `#side` opens with `data-open="true"` or `"false"`, not
 `hidden`. `#book` holds `#frame` and `#leaf`, the sheet that swings over the
-spine in `turn()`.
+spine in `turn()`. `turn()` copies the sheet before it navigates and keeps the
+copy over the live sheet until the next page is drawn, so nothing flashes.
 
-The library's `#room` holds `#desk` (books being read) and `#shelves` (`.stacks`).
+The library's `#room` holds `#desk` (books being read), `#filters` (the sticky
+filter strip) and `#shelves` (`.stacks`).
 
 Engine-specific calls stay behind `instanceof PdfEngine` checks in `reader.js`
 (for example `chapterStart()` and `chapterEnd()`). Keep format branches there,

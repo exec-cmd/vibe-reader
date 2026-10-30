@@ -41,7 +41,8 @@ you read, and the right edge shrinks. PDF pages and spreads show page edges too.
 
 Settings → Reading → **Page turn** chooses the animation:
 
-- **Leaf** (the default): a sheet swings over the spine.
+- **Leaf** (the default): in a spread, the right page turns over the spine. A
+  single page folds toward its spine.
 - **Slide**: the columns slide.
 - **None**: the page changes without motion.
 
@@ -80,12 +81,13 @@ not move. Press `Esc` to close it. It has these tabs:
   parents. For PDF, it shows the PDF's own bookmarks. See [PDF](pdf.md).
 - **Pages** shows page thumbnails. Click one to jump to it. This tab is for PDF.
 - **Notes** lists all highlights, notes and bookmarks in the book. Click an
-  item to go to it. Right-click an item to delete it, if you wrote it.
+  item to go to it. Use its delete button, or right-click it, to delete it.
+  This works for notes written by an agent too.
 - **Find** runs a full-text search. Click a result to jump to it. The match
   stays marked for a few seconds.
 - **Agent** lists what you sent to your agent from the window and your messages,
-  newest first. Click an item to go to its place. Use its delete button to remove
-  it. See [agents](agents.md).
+  newest first, with the agent's replies. Click an item to go to its place. Use
+  its delete button to remove it. See [agents](agents.md).
 
 ## Notes, highlights and bookmarks
 
@@ -98,6 +100,8 @@ Press `B` to bookmark the current page. Press `N` to open the notes.
 - Your highlights are underlined with a gilt line.
 - Notes and highlights written by an AI agent are blue, with a dotted underline.
   They also have a ✦ mark in the margin. Click the mark to read the note.
+- Click highlighted text to open its note. There you can edit your own note or
+  delete any highlight or note, an agent's included.
 
 Export all notes, highlights and bookmarks from a terminal with
 `vibe-reader export notes`.

@@ -72,9 +72,10 @@
 .turn-leaf { transform-style: preserve-3d; transform-origin: left center; animation: var(--ms) cubic-bezier(0.42, 0.08, 0.24, 1) forwards; }
 .turn-leaf.forward { animation-name: turn-forward; }
 .turn-leaf.backward { animation-name: turn-backward; }
-/* A single page has no left page to land on: it fades as it leaves or arrives. */
-.turn-leaf.single.forward { animation-name: turn-forward, fade-late; }
-.turn-leaf.single.backward { animation-name: turn-backward, fade-early; }
+/* A single page has no left page to land on: it folds toward the spine until it stands edge-on. */
+.turn-leaf.single.forward { animation-name: fold-away; animation-timing-function: cubic-bezier(0.5, 0, 0.75, 0.6); }
+.turn-leaf.single.backward { animation-name: fold-in; animation-timing-function: cubic-bezier(0.25, 0.4, 0.5, 1); }
+.turn-leaf.single .face::after { animation-name: fold-shade; }
 .turn-leaf .face { position: absolute; inset: 0; overflow: hidden; background: var(--page); backface-visibility: hidden; -webkit-backface-visibility: hidden; }
 .turn-leaf .face.back { transform: rotateY(180deg); }
 /* The leaf darkens as it stands up from the page. */
@@ -83,9 +84,12 @@
 .turn-leaf .face.back::after { background: linear-gradient(270deg, rgba(0, 0, 0, 0.32), rgba(0, 0, 0, 0.12) 40%, rgba(255, 255, 255, 0.08)); }
 @keyframes turn-forward { from { transform: rotateY(0); } to { transform: rotateY(-180deg); } }
 @keyframes turn-backward { from { transform: rotateY(-180deg); } to { transform: rotateY(0); } }
-@keyframes fade-late { 0%, 62% { opacity: 1; } 100% { opacity: 0; } }
-@keyframes fade-early { 0% { opacity: 0; } 38%, 100% { opacity: 1; } }
+@keyframes fold-away { from { transform: rotateY(0); } to { transform: rotateY(-90deg); } }
+@keyframes fold-in { from { transform: rotateY(-90deg); } to { transform: rotateY(0); } }
 @keyframes turn-shade { 0%, 100% { opacity: 0; } 50% { opacity: 1; } }
+/* The folding page darkens as it stands up and lightens as it lies down. */
+.turn-leaf.single.backward .face::after { animation-direction: reverse; }
+@keyframes fold-shade { from { opacity: 0; } to { opacity: 1; } }
 /* Slide: the old sheet moves off and fades over the new one. */
 .turn-slide { animation: slide-out var(--ms) var(--ease) forwards; }
 @keyframes slide-out { to { transform: translateX(calc(var(--dir) * -80px)); opacity: 0; } }
@@ -236,7 +240,8 @@ body[data-fullscreen="1"] .dock { bottom: 24px; }
 .note-item .q { font: italic 14px/1.45 var(--font-body); color: color-mix(in srgb, var(--ink) 80%, var(--muted)); border-left: 2px solid var(--gilt); padding-left: 8px; }
 .note-item.agent .q { border-left-color: var(--agent); }
 .note-item .b { margin-top: 4px; white-space: pre-wrap; }
-.note-item .icon-btn { width: 24px; height: 24px; }
+.note-item .icon-btn { width: 24px; height: 24px; opacity: 0; transition: opacity var(--fast); }
+.note-item:is(:hover, :focus-within) .icon-btn { opacity: 1; }
 .side-hint { margin: 4px 10px 10px; color: var(--muted); font-size: 12.5px; }
 .find-box { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; margin: 2px 2px 6px; border: 1px solid var(--rule); border-radius: var(--radius-m); background: var(--page); color: var(--muted); }
 .find-box:focus-within { border-color: var(--accent); }
