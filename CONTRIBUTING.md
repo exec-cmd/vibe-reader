@@ -27,10 +27,10 @@ cargo test --workspace
 - Add tests for new behavior in the core and the CLI.
 - Keep the core synchronous and free of GUI dependencies.
 - Keep the UI build-free: plain HTML, CSS and ES modules, types in JSDoc.
-- New dependencies must be compatible with MIT OR Apache-2.0.
+- New dependencies must be compatible with the MIT license.
 - Update the matching page in `docs/user/` or `docs/dev/` when behavior changes.
 
 ## License
 
-By contributing, you agree that your contributions are dual-licensed under the
-MIT and Apache-2.0 licenses, as the rest of the project.
+By contributing, you agree that your contributions are licensed under the
+MIT license, as the rest of the project.

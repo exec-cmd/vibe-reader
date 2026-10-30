@@ -6,7 +6,7 @@ resolver = "3"
 version = "0.2.0"
 edition = "2024"
 rust-version = "1.90"
-license = "MIT OR Apache-2.0"
+license = "MIT"
 authors = ["cmd.exe"]
 repository = "https://github.com/exec-cmd/vibe-reader"
 

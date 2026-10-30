@@ -123,4 +123,4 @@ Rust и [Tauri](https://tauri.app/) с системным webview. Книги р
 
 ## Лицензия
 
-На ваш выбор: [Apache License 2.0](LICENSE-APACHE) или [MIT](LICENSE-MIT).
+Лицензия [MIT](LICENSE).

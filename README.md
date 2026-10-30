@@ -120,5 +120,4 @@ License.
 
 ## License
 
-Licensed under either of [Apache License 2.0](LICENSE-APACHE) or
-[MIT license](LICENSE-MIT) at your option.
+Licensed under the [MIT license](LICENSE).

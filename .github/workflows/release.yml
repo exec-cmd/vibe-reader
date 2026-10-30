@@ -42,7 +42,7 @@ jobs:
           version="${GITHUB_REF_NAME#v}"
           name="vibe-reader-${version}-x86_64-linux"
           mkdir -p "dist/${name}"
-          cp target/release/vibe-reader target/release/vibe-reader-gui README.md README_RU.md LICENSE-MIT LICENSE-APACHE "dist/${name}/"
+          cp target/release/vibe-reader target/release/vibe-reader-gui README.md README_RU.md LICENSE "dist/${name}/"
           tar -C dist -czf "dist/${name}.tar.gz" "${name}"
           cp target/release/bundle/appimage/*.AppImage "dist/vibe-reader-${version}-x86_64.AppImage"
           cd dist && sha256sum *.tar.gz *.AppImage > SHA256SUMS
