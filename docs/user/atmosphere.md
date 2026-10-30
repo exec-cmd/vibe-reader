@@ -17,12 +17,12 @@ library, the details panel and the book menu have an Atmosphere setting too.
 | Preset | Modes | Mood |
 |---|---|---|
 | `study` | light, dark | A warm desk lamp, bookshelves, slow dust. The default. |
-| `terminal` | light, dark | Monospace, a faint grid, and an ASCII band along the top that ripples under the cursor. For code and technical books. |
+| `terminal` | light, dark | Monospace, and the whole desk becomes a field of ASCII ripples that part under the cursor; a click beside the page sends a ring. For code and technical books. |
 | `noir` | light, dark | Light through blinds, grain, high contrast. |
 | `soft` | light, dark | Pastel gradient and slow bokeh. |
 | `rain` | dark | Fog and rain on the glass. |
 | `storm` | dark | Heavy clouds, a downpour, rare faint lightning. |
-| `mountain` | light, dark | Cold ridges and slow snow. |
+| `mountain` | light, dark | A drawn mountain scene: snowy peaks under a moon, a pine ridge, mist and falling snow. |
 
 Presets that exist in one mode only (rain, storm) stay dark even when the rest of
 the app is light.

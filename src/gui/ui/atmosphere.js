@@ -78,17 +78,48 @@ export function apply(look) {
   style.setProperty("--glow", String(look.effects.glow ?? 0));
   const bg = $("#bg");
   bg.removeAttribute("style");
+  bg.innerHTML = look.background.kind === "ridges" ? MOUNTAINS : "";
   if (look.background.kind === "image" && look.background.image) {
     bg.style.backgroundImage = `url("/art/${encodeURIComponent(look.background.image)}")`;
   }
   $("#preset-css").textContent = look.css ?? "";
   // The grid desk (Terminal) wears the ASCII band along its top.
   band.toggle(look.background.kind === "grid" && strength > 0 && !state.lite);
-  if (state.config.reader.particles) particles.start(look.particles, rgb(look.palette.ink ?? "#ffffff"), strength);
+  // Snow is white whatever the ink; the mountain sky behind it is dark enough to show it.
+  const flakes = /** @type {{kind?: string}} */ (look.particles).kind === "snow" ? "255,255,255" : rgb(look.palette.ink ?? "#ffffff");
+  if (state.config.reader.particles) particles.start(look.particles, flakes, strength);
   else particles.stop();
   currentSound = look.sound ?? null;
   updateSound();
 }
+
+/** A pine on a hill: `x` its left foot, `base` the ground, `h` its height. */
+const pine = (/** @type {number} */ x, /** @type {number} */ base, /** @type {number} */ h) =>
+  `M${x} ${base}L${x + h * 0.22} ${base - h * 0.55}L${x + h * 0.12} ${base - h * 0.55}L${x + h * 0.3} ${base - h}L${x + h * 0.48} ${base - h * 0.55}L${x + h * 0.38} ${base - h * 0.55}L${x + h * 0.6} ${base}Z`;
+
+/**
+ * The mountain desk (background "ridges"): a sky in the accent, a moon, a far range, two snow-capped
+ * peaks at the sides where the sheet does not cover them, a forested ridge and mist. Inline SVG, so
+ * every color comes from the look's palette.
+ */
+const MOUNTAINS = `<svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color: color-mix(in srgb, var(--accent) 42%, var(--desk))"/><stop offset="0.7" style="stop-color: var(--desk)"/></linearGradient>
+    <linearGradient id="mist" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color: var(--desk); stop-opacity: 0"/><stop offset="1" style="stop-color: var(--desk)"/></linearGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#sky)"/>
+  <circle cx="1240" cy="150" r="130" style="fill: color-mix(in srgb, var(--page) 60%, #fff)" opacity=".07"/>
+  <circle cx="1240" cy="150" r="44" style="fill: color-mix(in srgb, var(--page) 60%, #fff)" opacity=".55"/>
+  <path d="M0 560L120 470L210 520L330 420L450 500L560 440L700 520L820 450L940 510L1060 430L1180 500L1300 440L1440 520L1600 460V900H0Z" style="fill: color-mix(in srgb, var(--ink) 12%, var(--desk))"/>
+  <path d="M-50 900L120 560L210 480L300 330L360 410L420 380L540 560L700 900Z" style="fill: color-mix(in srgb, var(--ink) 26%, var(--desk))"/>
+  <path d="M300 330L263 392L281 384L297 401L315 386L336 396L349 397Z" style="fill: color-mix(in srgb, var(--page) 55%, #fff)" opacity=".9"/>
+  <path d="M900 900L1080 600L1180 470L1260 360L1320 300L1390 380L1440 350L1560 520L1700 900Z" style="fill: color-mix(in srgb, var(--ink) 30%, var(--desk))"/>
+  <path d="M1320 300L1276 344L1294 338L1310 356L1328 340L1345 350L1358 344Z" style="fill: color-mix(in srgb, var(--page) 55%, #fff)" opacity=".9"/>
+  <path d="M1440 350L1418 380L1432 376L1446 390L1462 372Z" style="fill: color-mix(in srgb, var(--page) 55%, #fff)" opacity=".75"/>
+  <path d="M0 900V705Q200 640 400 690T800 700T1200 680T1600 700V900Z" style="fill: color-mix(in srgb, var(--ink) 40%, var(--desk))"/>
+  <path d="${Array.from({ length: 64 }, (_, i) => pine(i * 25 + ((i * 37) % 11), 712 + ((i * 53) % 19), 34 + ((i * 29) % 30))).join("")}" style="fill: color-mix(in srgb, var(--ink) 55%, var(--desk))"/>
+  <rect y="560" width="1600" height="340" fill="url(#mist)" opacity=".85"/>
+</svg>`;
 
 /** Built-in chapter drawings, colored by the palette. */
 const ILLUSTRATIONS = {

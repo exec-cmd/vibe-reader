@@ -1159,10 +1159,11 @@ export function init(/** @type {{ goHome: () => void }} */ hooks) {
     particles.setPointer(null);
     band.setPointer(null);
   });
-  $("#band").addEventListener("click", (e) => band.ring(e.clientX, e.clientY));
-  // A click on the desk, beside the book, scatters the particles.
+  // A click on the desk, beside the book, scatters the particles and rings the ASCII field.
   viewport().addEventListener("click", (e) => {
-    if (!/** @type {Element} */ (e.target).closest(".frame, .pdf-page")) particles.burst(e.clientX, e.clientY);
+    if (/** @type {Element} */ (e.target).closest(".frame, .pdf-page")) return;
+    particles.burst(e.clientX, e.clientY);
+    band.ring(e.clientX, e.clientY);
   });
   $("#dock").addEventListener("focusin", wake);
   $("#folio").addEventListener("click", focusPageInput);

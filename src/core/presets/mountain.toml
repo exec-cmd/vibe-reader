@@ -1,6 +1,6 @@
 [preset]
 name = "Mountain noir"
-description = "Cold ridges, thin air and slow snow."
+description = "Snowy peaks under a cold moon, a pine ridge and falling snow."
 modes = ["light", "dark"]
 
 [palette.light]
@@ -31,8 +31,8 @@ dim = 0.2
 
 [particles]
 kind = "snow"
-density = 0.4
-speed = 0.4
+density = 0.8
+speed = 0.45
 
 [chapter]
 heading = "centered"
