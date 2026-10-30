@@ -13,6 +13,8 @@ const GAP = 0;
 const PAD = 24;
 /** CSS pixels per PDF point at 100 %. */
 const UNIT = 96 / 72;
+/** Canvas pixels per page; more makes zoomed pages slow and heavy. */
+const MAX_PIXELS = 24e6;
 
 /** @typedef {{ start: number, end: number, kind: string, author: string, quote: string, id: number, body: string }} PageMark */
 
@@ -170,12 +172,16 @@ export class PdfEngine {
       this.sizes[i] = { width: base.width, height: base.height };
     }
     const vp = page.getViewport({ scale });
-    holder.style.width = `${vp.width}px`;
-    holder.style.height = `${vp.height}px`;
-    const dpr = Math.min(devicePixelRatio || 1, 2);
+    // Whole CSS pixels: a fractional size makes the browser resample the whole page, blurring it.
+    const w = Math.round(vp.width), h = Math.round(vp.height);
+    holder.style.width = `${w}px`;
+    holder.style.height = `${h}px`;
+    // At least twice the screen density: pdf.js draws text without hinting, and on a 1x screen
+    // the browser's 2:1 downscale smooths it far better than drawing at 1x.
+    const ss = Math.min(Math.max(devicePixelRatio || 1, 2), 3, Math.sqrt(MAX_PIXELS / (w * h)));
     const canvas = document.createElement("canvas");
-    canvas.width = Math.floor(vp.width * dpr);
-    canvas.height = Math.floor(vp.height * dpr);
+    canvas.width = Math.round(w * ss);
+    canvas.height = Math.round(h * ss);
     holder.append(canvas);
     const layer = document.createElement("div");
     layer.className = "textLayer";
@@ -185,7 +191,7 @@ export class PdfEngine {
     layer.style.setProperty("--total-scale-factor", String(scale));
     holder.append(layer);
     const ctx = canvas.getContext("2d");
-    await page.render({ canvasContext: ctx, viewport: page.getViewport({ scale: scale * dpr }) }).promise.catch(() => {});
+    await page.render({ canvasContext: ctx, viewport: page.getViewport({ scale: scale * ss }) }).promise.catch(() => {});
     if (token !== this.renderToken) return;
     const text = await page.getTextContent();
     this.texts.set(i, pageText(text));
