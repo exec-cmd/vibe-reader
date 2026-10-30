@@ -1,4 +1,4 @@
-// One canvas of particles behind the book, at most 30 frames per second. Particles live at
+// One canvas of particles behind the book, at 12 to 24 frames per second by kind. Particles live at
 // different depths and meet the reader and the book: they drift with the cursor's parallax,
 // part around it (rain breaks on it like on an umbrella), scatter from a click, catch the light
 // near the cursor; snow settles on the sheet and the floor, rain splashes and runs down the glass,
@@ -11,7 +11,12 @@ import { calm } from "./core.js";
 /** @typedef {{x: number, y: number, vx: number, vy: number, r: number, a: number, life: number, still: boolean}} Bit */
 
 const canvas = () => /** @type {HTMLCanvasElement} */ (document.getElementById("fx"));
-const FRAME = 1000 / 30;
+/** Motion is in steps of a 30 fps frame, whatever the frame rate. */
+const STEP = 1000 / 30;
+/** Frames per second by kind. Every frame repaints the window under the canvas (without GPU
+ * compositing, the backgrounds too), so slow kinds take few: dust and bokeh barely move between them. */
+const FPS = { dust: 12, bokeh: 12, snow: 20, rain: 24, downpour: 24 };
+let frameMs = STEP;
 /** Particles per million square pixels at density 1. */
 const BASE = { dust: 70, rain: 260, downpour: 520, snow: 170, bokeh: 24 };
 /** How much a gust moves each kind; heavy rain barely bends. */
@@ -155,8 +160,8 @@ function makeBolt(/** @type {number} */ w, /** @type {number} */ h) {
 
 function frame(t) {
   raf = requestAnimationFrame(frame);
-  if (t - last < FRAME) return;
-  const dt = Math.min(3, (t - last) / FRAME);
+  if (t - last < frameMs) return;
+  const dt = Math.min(3, (t - last) / STEP);
   last = t;
   const c = canvas();
   const ctx = c.getContext("2d");
@@ -314,6 +319,7 @@ export function start(p, rgb, fx = 1) {
   kind = p.kind ?? "none";
   if (kind === "none" || calm() || !(kind in BASE) || fx <= 0) return;
   speed = p.speed ?? 1;
+  frameMs = 1000 / FPS[kind];
   strength = fx;
   lightning = !!p.lightning;
   color = rgb;

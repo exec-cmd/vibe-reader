@@ -60,7 +60,7 @@ export function apply(look) {
     reader.dataset.preset = reader.dataset.bg = reader.dataset.heading = "";
     $("#bg").removeAttribute("style");
     particles.stop();
-    band.toggle(false);
+    band.toggle(null);
     currentSound = null;
     updateSound();
     return;
@@ -83,8 +83,8 @@ export function apply(look) {
     bg.style.backgroundImage = `url("/art/${encodeURIComponent(look.background.image)}")`;
   }
   $("#preset-css").textContent = look.css ?? "";
-  // The grid desk (Terminal) wears the ASCII band along its top.
-  band.toggle(look.background.kind === "grid" && strength > 0 && !state.lite);
+  // Each built-in desk has its field: ASCII ripples on the grid, stars over the ridges...
+  band.toggle(strength > 0 && !state.lite ? look.background.kind ?? null : null);
   // Snow is white whatever the ink; the mountain sky behind it is dark enough to show it.
   const flakes = /** @type {{kind?: string}} */ (look.particles).kind === "snow" ? "255,255,255" : rgb(look.palette.ink ?? "#ffffff");
   if (state.config.reader.particles) particles.start(look.particles, flakes, strength);

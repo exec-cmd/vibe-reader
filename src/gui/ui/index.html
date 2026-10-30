@@ -15,7 +15,7 @@
   <link rel="stylesheet" href="user.css">
 </head>
 <body>
-  <!-- Library: the desk, a filter strip, shelves of spines, book details. In mini mode only the toolbar and one shelf remain. -->
+  <!-- Library: the desk, a filter strip, shelves of spines, the catalog card of the selected book. In mini mode only the toolbar and one shelf remain. -->
   <section class="view library" id="home" hidden>
     <header class="toolbar">
       <span class="brand">vibe-reader</span>
@@ -43,8 +43,8 @@
     <style id="preset-css"></style>
     <div class="bg" id="bg"></div>
     <canvas id="fx"></canvas>
-    <!-- The terminal look's ASCII field; band.js draws it. -->
-    <pre class="band" id="band" aria-hidden="true" hidden></pre>
+    <!-- The look's desk field (ASCII ripples, lamplight, stars...); band.js draws it. -->
+    <canvas class="band" id="band" aria-hidden="true" hidden></canvas>
     <div class="fx-overlay"></div>
     <div class="splash" id="splash"></div>
     <div class="lite-bar" id="lite-bar" hidden>

@@ -10,19 +10,24 @@ book's.
 The atmosphere is drawn on the desk around the page, never over the text.
 In the reader, the atmosphere menu (the sparkle icon in the dock) picks a
 preset for the open book, or Default, and turns particles on or off. In the
-library, the details panel and the book menu have an Atmosphere setting too.
+library, the catalog card and the book menu have an Atmosphere setting too.
 
 ## Presets
 
 | Preset | Modes | Mood |
 |---|---|---|
-| `study` | light, dark | A warm desk lamp, bookshelves, slow dust. The default. |
-| `terminal` | light, dark | Monospace, and the whole desk becomes a field of ASCII ripples that part under the cursor; a click beside the page sends a ring. For code and technical books. |
-| `noir` | light, dark | Light through blinds, grain, high contrast. |
-| `soft` | light, dark | Pastel gradient and slow bokeh. |
-| `rain` | dark | Fog and rain on the glass. |
-| `storm` | dark | Heavy clouds, a downpour, rare faint lightning. |
-| `mountain` | light, dark | A drawn mountain scene: snowy peaks under a moon, a pine ridge, mist and falling snow. |
+| `study` | light, dark | A warm desk lamp, bookshelves, slow dust. The lamplight is a halftone pool of dots; the cursor is a second lamp. The default. |
+| `terminal` | light, dark | Monospace, and the whole desk becomes a field of ASCII ripples that part under the cursor. For code and technical books. |
+| `noir` | light, dark | Light through blinds drawn as hatching, grain, high contrast; the cursor casts a shadow. |
+| `soft` | light, dark | Pastel gradient, slow bokeh and rings of pearls. |
+| `rain` | dark | Fog and rain on the glass; the cursor wipes the fogged glass, which fogs back. |
+| `storm` | dark | Heavy clouds, a downpour with sheets of rain blown across, rare faint lightning. |
+| `mountain` | light, dark | A drawn mountain scene: snowy peaks under a moon, twinkling stars, a pine ridge, mist and falling snow; the cursor brings out faint stars. |
+
+Each preset's desk field moves for a few seconds after you move the pointer and
+then stands still, so a resting reader costs no CPU. A click beside the page
+sends a ring through it. The Effects strength in Settings scales it, and it is
+off in lite mode and with reduced motion it stands still.
 
 Presets that exist in one mode only (rain, storm) stay dark even when the rest of
 the app is light.
@@ -97,7 +102,7 @@ vibe-reader art add 3 ./cover.jpg --as cover
 | `chapter` | At the start of the chapter, instead of the preset's drawing. |
 | `margin` | Beside the paragraph at the locator. |
 | `page` | A whole page inserted at the locator. |
-| `cover` | The book's cover, shown in the details panel. |
+| `cover` | The book's cover, shown in the library. |
 
 PNG, JPEG, WebP, GIF and SVG up to 10 MB are accepted; SVG with scripts or
 external links is refused. vibe-reader does not generate images; an agent can
@@ -119,8 +124,7 @@ Particles meet the book:
   Rain bends a little.
 
 The Storm preset flashes lightning over the whole room, the page included. With
-sound on, the thunder follows after a short delay. The Study lamp flickers
-gently.
+sound on, the thunder follows after a short delay.
 
 ## Sound
 

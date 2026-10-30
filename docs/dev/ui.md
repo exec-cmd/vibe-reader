@@ -12,8 +12,7 @@ the GUI crate (or drop the file into `<config>/ui/`), and reload.
 | `app.js` | Boot, view switching, global keys (Ctrl+O, M), opening files and drops. |
 | `core.js` | `state`, `call()` for Tauri commands, `commands` registry for the palette, `applyConfig()` and `saveConfig()`. |
 | `ui.js` | Shared widgets: `icon`, `menu`, `select`, `dialog`, `ask`, `confirmAction`, `toast`, `progress`. |
-| `library.js` | The desk, the filter strip, the bookcase, the catalog card, book menu, mini mode, library keys. |
-| `globe.js` | The year of reading on the desk, a ball of 365 days: `mount(canvas, {pick, open, label})`, `setDays(days)`. Canvas 2D, about 900 glyphs at 30 fps; it turns only for 4 s after the pointer moves over the library (`nudge()`), so an idle library costs no CPU. |
+| `library.js` | The desk, the filter strip, the bookcase, the catalog card of the selected book (`#card`), book menu, mini mode, library keys. |
 | `reader.js` | Reader shell: dock, running head, folio, page turns, idle state, side panel tabs, annotations, find. It creates one engine per open book. |
 | `flow.js` | `FlowEngine` for EPUB, FB2, Markdown, TXT and HTML. |
 | `pdfview.js` | `PdfEngine` for PDF, drawn with pdf.js at least at 2x. `releaseCanvases(root)` frees canvas pixels at once; call it before removing pages or page-turn copies, or WebKit holds tens of megabytes per page until a garbage collection. |
@@ -21,8 +20,8 @@ the GUI crate (or drop the file into `<config>/ui/`), and reload.
 | `offsets.js` | DOM point ↔ offset (`offsetOf`, `rangeOf`, `pointAt`), and `normalize()` for PDF text pieces. |
 | `enhance.js` | Code highlighting, copy buttons, KaTeX, table wrappers, image zoom in chapter content. |
 | `atmosphere.js` | Apply an atmosphere look; `updateSound()` follows its sound. |
-| `band.js` | The full-desk ASCII field of the grid (Terminal) look: `toggle(on)`, `setPointer(x, y)`, `ring(x, y)`. Text in a `<pre>` at 25 fps for 3 s after the pointer moves, then it stands still: redrawing the field costs most of a CPU core. |
-| `particles.js` | Particles and light: `start(p, rgb, strength)`, `setEdge(rect)` (snow and rain meet the page), `blow(dir)` (page-turn gust), `setOnStrike(fn)` (lightning). |
+| `band.js` | The desk field of each built-in background (`grid`, `lamp`, `blinds`, `fog`, `clouds`, `ridges`, `gradient`): `toggle(kind \| null)`, `setPointer(x, y)`, `ring(x, y)`. A canvas of cells whose marks (glyphs, dots, dashes) are copied from an atlas of ten levels; a frame redraws only the cells whose level changed, since every canvas call is expensive in WebKitGTK. 20 fps for 2 s after the pointer moves, then it stands still. |
+| `particles.js` | Particles at 12 to 24 fps by kind (`FPS`); motion is in 30 fps steps whatever the rate. Without GPU compositing each frame repaints the backgrounds under the canvas, so keep rates low and backgrounds free of looping animations: `start(p, rgb, strength)`, `setEdge(rect)` (snow and rain meet the page), `blow(dir)` (page-turn gust), `setOnStrike(fn)` (lightning). |
 | `sound.js` | Ambient sound from Web Audio, no files: `play(sound, level)`, `stop()`, `thunder()`. The context is suspended when nothing plays or the window is hidden, since a running one keeps an audio thread busy. |
 | `translator.js` | The translator card: `init(visibleText)`, `open()`, `toggle()`, `target()`. |
 | `settings.js` | The settings page: a numbered index with search, sections built from `row`, `segmented`, `dropdown`, `toggle`, `slider`, `themeCards`. Search builds every section and hides rows that do not match. |
@@ -77,9 +76,16 @@ methods, so `reader.js` drives either one the same way:
 (page number, a button) print around the book. `reader.js` sets `data-idle` on
 `#reader` after the mouse rests (`[reader] autohide`); mouse movement and focus
 clear it. The side panel `#side` opens with `data-open="true"` or `"false"`, not
-`hidden`. `#book` holds `#frame` and `#leaf`, the sheet that swings over the
-spine in `turn()`. `turn()` copies the sheet before it navigates and keeps the
+`hidden`. `#book` holds `#frame` and `#leaf`, which holds the copy of the old
+sheet during `turn()`: Leaf animates its `clip-path` from one edge with a shadow
+strip (`.turn-edge`) on the moving edge, Slide moves and fades it. `turn()` copies the sheet before it navigates and keeps the
 copy over the live sheet until the next page is drawn, so nothing flashes.
+
+Values that follow the pointer never go on an element that holds a page or the
+shelves: a custom property inherits, so changing it restyles every descendant (a
+long chapter took 2.3 ms a move in WebKitGTK). `reader.js` sets `--px`/`--py` on
+`.fx-overlay` and `--tx`/`--ty` on `#bg`; `#room` registers `--mx`/`--my` with
+`@property { inherits: false }`.
 
 The library's `#room` holds `#desk` (books being read), `#filters` (the sticky
 filter strip) and `#shelves` (`.stacks`).

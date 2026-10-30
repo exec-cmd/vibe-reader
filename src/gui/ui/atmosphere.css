@@ -11,13 +11,8 @@
   transition: transform 1600ms var(--ease);
 }
 #fx { z-index: 1; width: 100%; height: 100%; }
-/* The ASCII field of the terminal look: the whole desk is characters in the accent; the sheet
-   lies on top of it. */
-.band {
-  position: absolute; inset: 0; z-index: 1; margin: 0; overflow: hidden; pointer-events: none;
-  font: 600 17px/20px var(--font-mono); letter-spacing: 0; white-space: pre; color: var(--accent);
-  opacity: calc(0.38 * min(var(--fx), 1.5));
-}
+/* The look's desk field (band.js); the sheet lies on top of it. */
+.band { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; pointer-events: none; }
 .reader .reader-body { position: relative; z-index: 2; }
 .fx-overlay { z-index: 1; }
 .reader-bar { position: relative; z-index: 4; }
@@ -44,14 +39,12 @@
   background:
     radial-gradient(ellipse 70% 40% at 20% 85%, color-mix(in srgb, var(--muted) 18%, transparent), transparent 70%),
     radial-gradient(ellipse 60% 35% at 80% 70%, color-mix(in srgb, var(--muted) 14%, transparent), transparent 70%);
-  animation: drift 40s var(--ease) infinite alternate;
 }
 .reader[data-bg="clouds"] .bg {
   background:
     radial-gradient(ellipse 50% 22% at 15% 0%, color-mix(in srgb, var(--muted) 26%, transparent), transparent 70%),
     radial-gradient(ellipse 55% 25% at 70% 2%, color-mix(in srgb, var(--muted) 22%, transparent), transparent 70%),
     radial-gradient(ellipse 40% 18% at 45% 6%, color-mix(in srgb, var(--ink) 10%, transparent), transparent 70%);
-  animation: drift 60s linear infinite alternate;
 }
 /* Ridges: the mountain scene that atmosphere.js draws into the background. */
 .bg svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
@@ -60,7 +53,6 @@
 }
 .reader[data-bg="gradient"] .bg { background: linear-gradient(160deg, var(--paper-2), var(--paper) 55%, color-mix(in srgb, var(--accent) 10%, var(--paper))); }
 .reader[data-bg="image"] .bg::after { content: ""; position: absolute; inset: 0; background: var(--paper); opacity: 0.55; }
-@keyframes drift { to { transform: translateX(4%); } }
 
 /* Effects */
 .fx-overlay {
@@ -71,13 +63,12 @@
 /* A light that follows the cursor over the desk; it goes out while the reader reads. */
 .fx-overlay::before {
   content: ""; position: absolute; inset: 0;
-  background: radial-gradient(circle 380px at var(--px, -999px) var(--py, -999px), color-mix(in srgb, color-mix(in srgb, var(--accent) 45%, #fff) calc(7% * min(var(--fx), 1.6)), transparent), transparent 72%);
+  background: radial-gradient(circle 380px at var(--px, -999px) var(--py, -999px), color-mix(in srgb, color-mix(in srgb, var(--accent) 45%, #fff) calc(2.5% * min(var(--fx), 1.6)), transparent), transparent 72%);
   transition: opacity 1.2s var(--ease);
 }
 .reader[data-idle="true"] .fx-overlay::before { opacity: 0; }
-/* A lamp breathes a little. */
-.reader[data-bg="lamp"] .fx-overlay { animation: flicker 7s ease-in-out infinite; }
-@keyframes flicker { 0%, 100% { opacity: 1; } 42% { opacity: 0.86; } 47% { opacity: 0.97; } 70% { opacity: 0.9; } }
+/* Backgrounds hold still: without GPU compositing WebKitGTK repaints the whole window for every
+   frame of a looping animation, a full CPU core. */
 /* Lightning lights the whole room, the page too. */
 .flash { z-index: 8; background: radial-gradient(ellipse at 50% 0%, rgba(235, 242, 255, 0.9), rgba(200, 215, 240, 0.35) 70%); opacity: 0; }
 .flash.on { animation: lightning 900ms ease-out; }

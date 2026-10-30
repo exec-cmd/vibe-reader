@@ -193,33 +193,21 @@ let turning = 0;
 /** The sheet: the flow frame or the PDF spread. */
 const sheet = () => /** @type {HTMLElement | null} */ (isPdf() ? page().querySelector(".pdf-spread") : $("#frame"));
 
-/** @typedef {{x: number, y: number, w: number, h: number, spread: boolean, copy: () => HTMLElement}} Shot */
+/** @typedef {{x: number, y: number, w: number, h: number, copy: HTMLElement}} Shot */
 
-/** The sheet as it looks now, placed in #book coordinates; `copy()` makes a fresh copy of it. */
+/** A copy of the sheet as it looks now, placed in #book coordinates. */
 function snapshot() {
   const el = sheet();
   if (!el) return null;
   const br = $("#book").getBoundingClientRect();
   const r = el.getBoundingClientRect();
-  const template = /** @type {HTMLElement} */ (el.cloneNode(true));
-  template.removeAttribute("id");
-  for (const x of template.querySelectorAll("[id]")) x.removeAttribute("id");
+  const copy = /** @type {HTMLElement} */ (el.cloneNode(true));
+  copy.removeAttribute("id");
+  for (const x of copy.querySelectorAll("[id]")) x.removeAttribute("id");
   // Canvases are copied by pixels now: pdf.js redraws the live ones for the next page.
   const live = el.querySelectorAll("canvas");
-  template.querySelectorAll("canvas").forEach((c, i) => paintCopy(live[i], c));
-  const spread = isPdf() ? el.childElementCount > 1 : el.dataset.spread === "true";
-  let used = 0;
-  return /** @type {Shot} */ ({
-    x: r.left - br.left, y: r.top - br.top, w: r.width, h: r.height, spread,
-    // The first copy is the template itself; a spread needs a second one.
-    copy: () => {
-      if (!used++) return template;
-      const c = /** @type {HTMLElement} */ (template.cloneNode(true));
-      const from = template.querySelectorAll("canvas");
-      c.querySelectorAll("canvas").forEach((x, i) => paintCopy(from[i], x));
-      return c;
-    },
-  });
+  copy.querySelectorAll("canvas").forEach((c, i) => paintCopy(live[i], c));
+  return /** @type {Shot} */ ({ x: r.left - br.left, y: r.top - br.top, w: r.width, h: r.height, copy });
 }
 
 function paintCopy(/** @type {HTMLCanvasElement} */ from, /** @type {HTMLCanvasElement} */ to) {
@@ -229,16 +217,15 @@ function paintCopy(/** @type {HTMLCanvasElement} */ from, /** @type {HTMLCanvasE
   to.getContext("2d").drawImage(from, 0, 0);
 }
 
-/** A window onto part of a sheet copy: `left` and `width` in sheet pixels. */
-function piece(/** @type {Shot} */ shot, /** @type {number} */ left, /** @type {number} */ width) {
+/** The sheet copy in a box where the sheet stands. */
+function piece(/** @type {Shot} */ shot) {
   const box = document.createElement("div");
   box.className = "turn-piece";
-  box.style.cssText = `left:${shot.x + left}px;top:${shot.y}px;width:${width}px;height:${shot.h}px`;
-  const c = shot.copy();
+  box.style.cssText = `left:${shot.x}px;top:${shot.y}px;width:${shot.w}px;height:${shot.h}px`;
+  const c = shot.copy;
   c.style.position = "absolute";
   c.style.margin = "0";
-  c.style.left = `${-left}px`;
-  c.style.top = "0";
+  c.style.left = c.style.top = "0";
   box.append(c);
   return box;
 }
@@ -250,7 +237,7 @@ function cover(/** @type {Shot} */ old) {
   const box = $("#leaf");
   clearTimeout(turnTimer);
   releaseCanvases(box);
-  box.replaceChildren(piece(old, 0, old.w));
+  box.replaceChildren(piece(old));
   box.hidden = false;
 }
 
@@ -262,53 +249,31 @@ function clearTurn() {
 }
 
 /**
- * Plays the page turn from the old sheet `old` to the sheet now on screen. A leaf hinged at the
- * spine turns over: forward it carries the old page away, back it brings the new one in.
- * A spread turns its right half and shows the next left page on the back of the leaf;
- * a single page folds toward its spine until it stands edge-on.
+ * Plays the page turn from the old sheet `old` to the sheet now on screen. Leaf: the old page is
+ * drawn back from the outer edge (forward) or the spine (back) and a soft shadow runs along the
+ * moving edge, so the new page shows from under it. Slide: the old page moves off and fades.
+ * Only the copy of the old sheet moves; nothing is cloned again and nothing turns in 3D.
  */
 function animateTurn(/** @type {number} */ dir, /** @type {Shot} */ old) {
   const box = $("#leaf");
   clearTimeout(turnTimer);
   const r = sheet()?.getBoundingClientRect();
-  const base = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--turn"));
-  if (!r || !base || Math.abs(r.width - old.w) > 2 || Math.abs(r.height - old.h) > 2) return clearTurn();
+  const ms = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--turn"));
+  if (!r || !ms || Math.abs(r.width - old.w) > 2 || Math.abs(r.height - old.h) > 2) return clearTurn();
   const slide = state.config.reader.page_turn === "slide";
-  const now = !slide && (old.spread || dir < 0) ? snapshot() : null;
-  // Built off-screen and swapped in at once, so the cover never blinks out.
-  const parts = [];
-  const ms = base * (old.spread ? 1.2 : 1);
   box.style.setProperty("--dir", String(dir));
   box.style.setProperty("--ms", `${ms}ms`);
-  if (slide || (!now && (old.spread || dir < 0))) {
-    const out = piece(old, 0, old.w);
-    out.classList.add("turn-slide");
-    parts.push(out);
-  } else {
-    const half = old.spread ? old.w / 2 : old.w;
-    const hinge = old.spread ? half : 0;
-    box.style.perspectiveOrigin = `${old.x + hinge}px 50%`;
-    const leaf = document.createElement("div");
-    leaf.className = `turn-leaf ${dir > 0 ? "forward" : "backward"}${old.spread ? "" : " single"}`;
-    leaf.style.cssText = `left:${old.x + hinge}px;top:${old.y}px;width:${half}px;height:${old.h}px`;
-    // Forward the leaf leaves with the old page; back it arrives with the new one.
-    const front = piece(dir > 0 ? old : /** @type {Shot} */ (now), hinge, half);
-    const back = old.spread ? piece(dir > 0 ? /** @type {Shot} */ (now) : old, 0, half) : document.createElement("div");
-    for (const [face, side] of [[front, "front"], [back, "back"]]) {
-      face.className = `face ${side}`;
-      // A face sits at the leaf's own origin, not where its piece sat on the sheet.
-      face.style.left = face.style.top = "";
-      leaf.append(face);
-    }
-    // What the leaf has not covered yet still shows the old sheet.
-    if (old.spread && dir > 0) parts.push(piece(old, 0, half));
-    if (dir < 0) parts.push(piece(old, hinge, half));
-    parts.push(leaf);
+  box.style.setProperty("--w", `${old.w}px`);
+  box.dataset.dir = dir > 0 ? "next" : "prev";
+  // The cover already holds the old sheet: it becomes the moving piece.
+  const out = /** @type {HTMLElement} */ (box.firstElementChild);
+  out.classList.add(slide ? "turn-slide" : "turn-wipe");
+  if (!slide) {
+    const edge = document.createElement("div");
+    edge.className = "turn-edge";
+    edge.style.cssText = `left:${old.x}px;top:${old.y}px;width:${old.w}px;height:${old.h}px`;
+    box.append(edge);
   }
-  // The cover's copies are spent: the pieces above were copied from it already.
-  releaseCanvases(box);
-  box.replaceChildren(...parts);
-  box.hidden = false;
   turnTimer = setTimeout(clearTurn, ms + 40);
 }
 
@@ -1150,11 +1115,12 @@ export function init(/** @type {{ goHome: () => void }} */ hooks) {
     aim = requestAnimationFrame(() => {
       aim = 0;
       const r = reader().getBoundingClientRect();
-      const style = reader().style;
-      style.setProperty("--px", `${e.clientX - r.left}px`);
-      style.setProperty("--py", `${e.clientY - r.top}px`);
-      style.setProperty("--tx", ((e.clientX - r.left) / r.width - 0.5).toFixed(3));
-      style.setProperty("--ty", ((e.clientY - r.top) / r.height - 0.5).toFixed(3));
+      // Set on the two layers that use them: on #reader they would restyle the whole page of text.
+      const light = $(".fx-overlay").style, wall = $("#bg").style;
+      light.setProperty("--px", `${e.clientX - r.left}px`);
+      light.setProperty("--py", `${e.clientY - r.top}px`);
+      wall.setProperty("--tx", ((e.clientX - r.left) / r.width - 0.5).toFixed(3));
+      wall.setProperty("--ty", ((e.clientY - r.top) / r.height - 0.5).toFixed(3));
       particles.setPointer(e.clientX, e.clientY);
       band.setPointer(e.clientX, e.clientY);
     });
@@ -1163,7 +1129,7 @@ export function init(/** @type {{ goHome: () => void }} */ hooks) {
     particles.setPointer(null);
     band.setPointer(null);
   });
-  // A click on the desk, beside the book, scatters the particles and rings the ASCII field.
+  // A click on the desk, beside the book, scatters the particles and rings the desk field.
   viewport().addEventListener("click", (e) => {
     if (/** @type {Element} */ (e.target).closest(".frame, .pdf-page")) return;
     particles.burst(e.clientX, e.clientY);

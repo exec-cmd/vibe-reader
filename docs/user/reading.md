@@ -41,9 +41,9 @@ you read, and the right edge shrinks. PDF pages and spreads show page edges too.
 
 Settings → Reading → **Page turn** chooses the animation:
 
-- **Leaf** (the default): in a spread, the right page turns over the spine. A
-  single page folds toward its spine.
-- **Slide**: the columns slide.
+- **Leaf** (the default): the old page draws back from its outer edge (or from
+  the spine when you go back), and a soft shadow runs along the edge.
+- **Slide**: the old page moves aside and fades.
 - **None**: the page changes without motion.
 
 Reduced motion turns the animations off.
