@@ -15,19 +15,27 @@ let playing = { kind: "", stop: () => {} };
 let volume = 0;
 /** Stereo noise loops by color: white, pink (rain, fans), brown (rumble, fire). */
 const buffers = {};
+/** Full volume is background level: the sound sits under reading, never over it. */
+const HEADROOM = 0.5;
 
 function audio() {
   if (!ctx) {
     ctx = new AudioContext();
     master = ctx.createGain();
     master.gain.value = 0;
-    // Thunder and crackles must not clip.
+    // Hiss above 5 kHz tires the ear; noise beds keep their body without it.
+    const soft = ctx.createBiquadFilter();
+    soft.type = "lowpass";
+    soft.frequency.value = 5000;
+    soft.Q.value = 0.5;
+    // Thunder and crackles must not jump out: peaks are squeezed early and hard.
     const limit = ctx.createDynamicsCompressor();
-    limit.threshold.value = -10;
-    limit.ratio.value = 6;
-    master.connect(limit).connect(ctx.destination);
+    limit.threshold.value = -24;
+    limit.knee.value = 12;
+    limit.ratio.value = 8;
+    master.connect(soft).connect(limit).connect(ctx.destination);
     room = ctx.createGain();
-    room.gain.value = 0.35;
+    room.gain.value = 0.18;
     const verb = ctx.createConvolver();
     verb.buffer = impulse(ctx, 2.2);
     room.connect(verb).connect(master);
@@ -149,42 +157,42 @@ function build(/** @type {Kind} */ kind, /** @type {AudioNode} */ out) {
   if (kind === "rain" || kind === "storm") {
     const heavy = kind === "storm";
     // The rain on the roof, its hiss on the glass, and the gutter.
-    const roof = layer(bed("pink", "bandpass", heavy ? 1400 : 1800, 0.5, heavy ? 0.9 : 0.6, out));
-    const hiss = layer(bed("white", "highpass", 6000, 0.4, heavy ? 0.08 : 0.05, out));
-    layer(bed("brown", "lowpass", 300, 0.6, heavy ? 0.5 : 0.25, out));
-    timers.push(wander(roof.g.gain, heavy ? 0.7 : 0.4, heavy ? 1.1 : 0.75, 5000, 2));
-    timers.push(wander(hiss.filter.frequency, 4500, 7500, 4000, 1.5));
-    // Drops on the sill and the glass, some close and loud.
-    timers.push(repeat(() => tick(out, 1800 + r() * 4500, 0.015 + r() * 0.04, 0.08 + r() * (r() < 0.1 ? 0.5 : 0.18)), heavy ? 10 : 25, heavy ? 60 : 160));
+    const roof = layer(bed("pink", "bandpass", heavy ? 1100 : 1300, 0.6, heavy ? 0.55 : 0.4, out));
+    const hiss = layer(bed("white", "highpass", 4500, 0.4, heavy ? 0.02 : 0.012, out));
+    layer(bed("brown", "lowpass", 300, 0.6, heavy ? 0.4 : 0.22, out));
+    timers.push(wander(roof.g.gain, heavy ? 0.45 : 0.3, heavy ? 0.65 : 0.45, 5000, 2.5));
+    timers.push(wander(hiss.filter.frequency, 3500, 5000, 4000, 2));
+    // Drops on the sill and the glass, now and then a closer one.
+    timers.push(repeat(() => tick(out, 1500 + r() * 2500, 0.02 + r() * 0.04, 0.025 + r() * (r() < 0.1 ? 0.1 : 0.04), "pink", 2), heavy ? 40 : 90, heavy ? 160 : 380));
     if (heavy) {
-      const wind = layer(bed("pink", "bandpass", 380, 1.4, 0.3, out));
-      timers.push(wander(wind.filter.frequency, 220, 700, 3500, 1.8));
-      timers.push(wander(wind.g.gain, 0.1, 0.5, 4000, 1.5));
+      const wind = layer(bed("pink", "bandpass", 380, 1.2, 0.2, out));
+      timers.push(wander(wind.filter.frequency, 220, 600, 3500, 2));
+      timers.push(wander(wind.g.gain, 0.06, 0.3, 4000, 2));
     }
   } else if (kind === "fire") {
     // The roar of the flames breathes; wood crackles in clusters and hisses now and then.
-    const roar = layer(bed("brown", "lowpass", 380, 0.7, 0.7, out));
-    timers.push(wander(roar.g.gain, 0.45, 0.95, 900, 0.3));
-    timers.push(wander(roar.filter.frequency, 250, 520, 1200, 0.4));
+    const roar = layer(bed("brown", "lowpass", 340, 0.7, 0.5, out));
+    timers.push(wander(roar.g.gain, 0.35, 0.6, 1400, 0.6));
+    timers.push(wander(roar.filter.frequency, 240, 440, 1600, 0.6));
     timers.push(repeat(() => {
-      for (let i = 0, n = 1 + Math.floor(r() * 4); i < n; i++) {
-        setTimeout(() => tick(out, 2500 + r() * 5000, 0.004 + r() * 0.02, 0.3 + r() * 0.6, "white", 1.2), i * (15 + r() * 60));
+      for (let i = 0, n = 1 + Math.floor(r() * 3); i < n; i++) {
+        setTimeout(() => tick(out, 1600 + r() * 2600, 0.006 + r() * 0.015, 0.06 + r() * 0.14, "pink", 1.5), i * (20 + r() * 70));
       }
-    }, 90, 700));
-    timers.push(repeat(() => tick(out, 180 + r() * 220, 0.3, 0.3, "brown", 1), 2500, 8000));
-    const hiss = layer(bed("pink", "bandpass", 3200, 1.5, 0, out));
-    timers.push(wander(hiss.g.gain, 0, 0.12, 3000, 0.8));
+    }, 300, 1600));
+    timers.push(repeat(() => tick(out, 180 + r() * 220, 0.3, 0.15, "brown", 1), 3000, 9000));
+    const hiss = layer(bed("pink", "bandpass", 2800, 1.5, 0, out));
+    timers.push(wander(hiss.g.gain, 0, 0.04, 3000, 1.2));
   } else if (kind === "wind") {
     // Two bodies of air and a whistle in a gap; gusts come at random.
-    const low = layer(bed("pink", "bandpass", 420, 0.9, 0.6, out));
-    const high = layer(bed("pink", "bandpass", 900, 1.6, 0.25, out));
-    const whistle = layer(bed("white", "bandpass", 1300, 18, 0.08, out));
-    timers.push(wander(low.filter.frequency, 250, 650, 3500, 1.6));
-    timers.push(wander(low.g.gain, 0.4, 1.4, 3000, 1.2));
-    timers.push(wander(high.filter.frequency, 700, 1500, 2500, 1));
-    timers.push(wander(high.g.gain, 0.1, 0.6, 2500, 0.9));
-    timers.push(wander(whistle.filter.frequency, 900, 1900, 2000, 0.8));
-    timers.push(wander(whistle.g.gain, 0, 0.12, 4000, 1));
+    const low = layer(bed("pink", "bandpass", 420, 0.9, 0.45, out));
+    const high = layer(bed("pink", "bandpass", 850, 1.4, 0.15, out));
+    const whistle = layer(bed("white", "bandpass", 1200, 18, 0.03, out));
+    timers.push(wander(low.filter.frequency, 250, 600, 4000, 2));
+    timers.push(wander(low.g.gain, 0.3, 0.75, 3500, 1.8));
+    timers.push(wander(high.filter.frequency, 650, 1200, 3000, 1.5));
+    timers.push(wander(high.g.gain, 0.06, 0.3, 3000, 1.4));
+    timers.push(wander(whistle.filter.frequency, 900, 1500, 2500, 1.2));
+    timers.push(wander(whistle.g.gain, 0, 0.035, 5000, 1.5));
   } else if (kind === "hum") {
     // Mains hum with a slow beat, and a fan in a computer case.
     for (const [freq, level] of [[50, 0.1], [100.4, 0.045], [150, 0.02], [200.3, 0.008]]) {
@@ -197,9 +205,9 @@ function build(/** @type {Kind} */ kind, /** @type {AudioNode} */ out) {
       sources.push(o);
     }
     const fan = layer(bed("pink", "lowpass", 1100, 0.6, 0.25, out));
-    layer(bed("white", "bandpass", 3200, 6, 0.015, out));
-    timers.push(wander(fan.g.gain, 0.18, 0.3, 6000, 2));
-    timers.push(repeat(() => tick(out, 900 + r() * 600, 0.03, 0.04, "white", 4), 4000, 15000));
+    layer(bed("pink", "bandpass", 2400, 4, 0.006, out));
+    timers.push(wander(fan.g.gain, 0.15, 0.24, 6000, 2));
+    timers.push(repeat(() => tick(out, 900 + r() * 600, 0.03, 0.02, "pink", 4), 6000, 18000));
   }
   return () => {
     timers.forEach((stop) => stop());
@@ -214,7 +222,7 @@ function build(/** @type {Kind} */ kind, /** @type {AudioNode} */ out) {
  */
 export function play(sound, level) {
   const kind = sound?.kind && sound.kind !== "none" ? /** @type {Kind} */ (sound.kind) : null;
-  volume = kind ? level * (sound.volume ?? 0.6) : 0;
+  volume = kind ? level * (sound.volume ?? 0.6) * HEADROOM : 0;
   if (!kind) return fadeOut();
   const a = audio();
   if (a.state === "suspended") a.resume();
@@ -225,7 +233,7 @@ export function play(sound, level) {
     out.connect(/** @type {GainNode} */ (master));
     // A little of every bed goes to the room too.
     const send = a.createGain();
-    send.gain.value = 0.25;
+    send.gain.value = 0.15;
     out.connect(send).connect(/** @type {GainNode} */ (room));
     ramp(out.gain, 1, 2.5);
     const stop = build(kind, out);
@@ -258,7 +266,7 @@ export function thunder() {
   const src = noise("brown");
   const filter = a.createBiquadFilter();
   filter.type = "lowpass";
-  filter.frequency.setValueAtTime(near ? 1800 : 700, t);
+  filter.frequency.setValueAtTime(near ? 1000 : 500, t);
   filter.frequency.exponentialRampToValueAtTime(70, t + length * 0.8);
   const pan = a.createStereoPanner();
   pan.pan.setValueAtTime(Math.random() - 0.5, t);
@@ -266,16 +274,16 @@ export function thunder() {
   const g = a.createGain();
   g.gain.setValueAtTime(0.0001, a.currentTime);
   g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(near ? 2.2 : 1.2, t + (near ? 0.03 : 0.25));
+  g.gain.exponentialRampToValueAtTime(near ? 0.9 : 0.55, t + (near ? 0.08 : 0.4));
   // The roll swells once or twice before it fades.
-  let at = t + 0.4;
-  for (let i = 0; i < 2; i++, at += 0.5 + Math.random()) g.gain.exponentialRampToValueAtTime(0.5 + Math.random() * (near ? 1.4 : 0.8), at);
+  let at = t + 0.6;
+  for (let i = 0; i < 2; i++, at += 0.5 + Math.random()) g.gain.exponentialRampToValueAtTime(0.25 + Math.random() * (near ? 0.5 : 0.3), at);
   g.gain.exponentialRampToValueAtTime(0.0001, t + length);
   src.connect(filter).connect(g).connect(pan);
   pan.connect(/** @type {GainNode} */ (master));
   pan.connect(/** @type {GainNode} */ (room));
   src.stop(t + length + 0.1);
-  if (near) for (let i = 0; i < 6; i++) setTimeout(() => tick(/** @type {GainNode} */ (master), 2000 + Math.random() * 3000, 0.04, 0.6, "white", 0.8), (t - a.currentTime) * 1000 + i * 25);
+  if (near) for (let i = 0; i < 3; i++) setTimeout(() => tick(/** @type {GainNode} */ (master), 1500 + Math.random() * 1500, 0.04, 0.15, "pink", 0.8), (t - a.currentTime) * 1000 + i * 30);
 }
 
 // Quiet while the window is hidden.
