@@ -158,6 +158,18 @@ function makeBolt(/** @type {number} */ w, /** @type {number} */ h) {
   return { points, life: 1 };
 }
 
+/** Alpha steps of a frame's batches; finer steps cannot be told apart. */
+const STEPS = 32;
+
+/** The path of a frame batch for alpha `a`, with the line width of the first mark in it. Marks of one
+ * color give the same picture in any order, so a frame strokes a few paths, not one per particle. */
+function mark(/** @type {Map<number, [Path2D, number]>} */ batch, /** @type {number} */ a, width = 0) {
+  const k = Math.round(a * STEPS);
+  let entry = batch.get(k);
+  if (!entry) batch.set(k, (entry = [new Path2D(), width]));
+  return entry[0];
+}
+
 function frame(t) {
   raf = requestAnimationFrame(frame);
   if (t - last < frameMs) return;
@@ -180,6 +192,8 @@ function frame(t) {
   pointer.py = pointer.y;
   const reach = 70 * Math.min(1.5, 0.5 + strength / 2);
   const rain = kind === "rain" || kind === "downpour";
+  /** @type {Map<number, [Path2D, number]>} */
+  const strokes = new Map(), fills = new Map();
 
   for (let i = 0; i < parts.length; i++) {
     const p = parts[i];
@@ -216,18 +230,21 @@ function frame(t) {
       continue;
     }
     const a = Math.min(1, p.a * (1 + glint * 0.8));
+    const r = p.r * (1 + glint * 0.15);
     if (p.len) {
-      ctx.strokeStyle = `rgba(${color},${a})`;
-      ctx.lineWidth = p.r;
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(x + (p.vx + push) * p.len * 0.12, y - p.len);
-      ctx.stroke();
-    } else {
+      const path = mark(strokes, a, p.r);
+      path.moveTo(x, y);
+      path.lineTo(x + (p.vx + push) * p.len * 0.12, y - p.len);
+    } else if (kind === "bokeh") {
+      // Bokeh discs brighten where they overlap, which one path would not do.
       ctx.fillStyle = `rgba(${color},${a})`;
       ctx.beginPath();
-      ctx.arc(x, y, p.r * (1 + glint * 0.15), 0, Math.PI * 2);
+      ctx.arc(x, y, r, 0, Math.PI * 2);
       ctx.fill();
+    } else {
+      const path = mark(fills, a);
+      path.moveTo(x + r, y);
+      path.arc(x, y, r, 0, Math.PI * 2);
     }
   }
 
@@ -239,10 +256,9 @@ function frame(t) {
       b.x += b.vx * dt;
       b.y += b.vy * dt;
     }
-    ctx.fillStyle = `rgba(${color},${b.a * Math.min(1, b.life * 3)})`;
-    ctx.beginPath();
-    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-    ctx.fill();
+    const path = mark(fills, b.a * Math.min(1, b.life * 3));
+    path.moveTo(b.x + b.r, b.y);
+    path.arc(b.x, b.y, b.r, 0, Math.PI * 2);
   }
 
   // Rain runs down the glass beside the book: a drop holds, then slips.
@@ -258,15 +274,22 @@ function frame(t) {
         if (Math.random() < 0.02) d.hold = 10 + Math.random() * 40;
       } else d.v *= 0.8;
       d.y += d.v * dt;
-      ctx.fillStyle = `rgba(${color},0.16)`;
-      ctx.beginPath();
-      ctx.ellipse(d.x, d.y, d.r * 0.8, d.r, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = `rgba(${color},0.35)`;
-      ctx.beginPath();
-      ctx.arc(d.x - d.r * 0.3, d.y - d.r * 0.3, d.r * 0.25, 0, Math.PI * 2);
-      ctx.fill();
+      const body = mark(fills, 0.16), shine = mark(fills, 0.35);
+      body.moveTo(d.x + d.r * 0.8, d.y);
+      body.ellipse(d.x, d.y, d.r * 0.8, d.r, 0, 0, Math.PI * 2);
+      shine.moveTo(d.x - d.r * 0.05, d.y - d.r * 0.3);
+      shine.arc(d.x - d.r * 0.3, d.y - d.r * 0.3, d.r * 0.25, 0, Math.PI * 2);
     }
+  }
+
+  for (const [k, [path, width]] of strokes) {
+    ctx.strokeStyle = `rgba(${color},${k / STEPS})`;
+    ctx.lineWidth = width;
+    ctx.stroke(path);
+  }
+  for (const [k, [path]] of fills) {
+    ctx.fillStyle = `rgba(${color},${k / STEPS})`;
+    ctx.fill(path);
   }
 
   rings = rings.filter((r) => (r.life -= dt / 22) > 0);

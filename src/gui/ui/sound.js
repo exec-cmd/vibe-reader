@@ -20,7 +20,9 @@ const HEADROOM = 0.5;
 
 function audio() {
   if (!ctx) {
-    ctx = new AudioContext();
+    // Everything passes the 5 kHz low-pass below, so 24 kHz loses nothing and halves the work of
+    // every node, the reverb most.
+    ctx = new AudioContext({ sampleRate: 24000 });
     master = ctx.createGain();
     master.gain.value = 0;
     // Hiss above 5 kHz tires the ear; noise beds keep their body without it.
