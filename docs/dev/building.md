@@ -77,4 +77,5 @@ cargo test --workspace
 ```
 
 CI runs the same commands and also fails when the release binaries plus the
-UI files exceed 100 MB.
+UI files exceed 100 MB. CI is paused for now: it runs only when started by
+hand from the Actions tab, so run the checks above before you push.

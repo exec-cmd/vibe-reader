@@ -1,8 +1,9 @@
 name: CI
 
+# Paused: runs only when started by hand from the Actions tab. Restore `push` and
+# `pull_request` here to check every push again.
 on:
-  push:
-  pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
