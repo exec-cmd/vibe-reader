@@ -102,7 +102,6 @@ Measured on 2026-10-28, Arch Linux (CachyOS), niri compositor, WebKitGTK
 | Empty prototype window, for comparison | 216–220 ms | |
 | Resident memory, GUI + WebKit processes (prototype) | ≈ 200 + 230 + 65 MB RSS, shared libraries counted in each | measured only |
 | Adding a 1.3-million-character EPUB (debug build) | 0.22 s | |
-| Reader CPU with the cursor still, Storm, all processes (2026-10-30) | ≈ 7 %, ≈ 15 % with sound | measured only |
 
 CSS multi-column layout with `column-fill: auto` paginates correctly in
 WebKitGTK, including `hyphens: auto` for Russian. The CSS Custom Highlight API
