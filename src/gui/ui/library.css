@@ -1,25 +1,22 @@
-/* Library: the desk, a filter strip and the shelves in the middle, the selected book on the
-   right. In mini mode only the toolbar and one shelf remain. */
+/* Library: the desk, a filter strip and the shelves in the middle, the selected book's catalog
+   card on the right. In mini mode only the toolbar and one shelf remain. */
 
 .library-body { flex: 1; min-height: 0; display: flex; }
 
-/* The room: the desk on top, then the shelves. A soft light follows the cursor (--mx, --my). */
+/* The room: the desk on top, then the shelves. A soft light follows the cursor (--mx, --my).
+   The two do not inherit, so moving the light restyles the room alone, not every spine in it. */
+@property --mx { syntax: "<length-percentage>"; inherits: false; initial-value: 50%; }
+@property --my { syntax: "<length-percentage>"; inherits: false; initial-value: -200px; }
 .room {
   flex: 1; min-width: 0; overflow: auto; outline: none; display: flex; flex-direction: column; position: relative;
   background:
-    radial-gradient(520px circle at var(--mx, 50%) var(--my, -200px), color-mix(in srgb, var(--accent) 5%, transparent), transparent 70%),
+    radial-gradient(520px circle at var(--mx, 50%) var(--my, -200px), color-mix(in srgb, var(--accent) 2.5%, transparent), transparent 70%),
     var(--case);
 }
 
 /* Desk: the book to continue, the other books being read, and the reading log. */
 .desk { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; padding: 24px 28px 8px; }
 .desk-empty { color: var(--muted); max-width: 32em; margin: 0; }
-.desk-main { display: grid; grid-template-columns: minmax(0, 1fr) 250px; align-items: center; gap: 12px; }
-/* The year of reading (globe.js): 365 days wound into a ball of glyphs. */
-.globe { display: grid; justify-items: center; width: 250px; margin: -14px 0; }
-.globe canvas { display: block; width: 250px; height: 230px; touch-action: none; }
-.globe-caption { margin-top: -6px; color: var(--muted); font-size: 12px; text-align: center; }
-@media (max-width: 960px) { .desk-main { grid-template-columns: minmax(0, 1fr); } .globe { display: none; } }
 .hero {
   position: relative; isolation: isolate; overflow: hidden;
   display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 22px; align-items: center;
@@ -174,38 +171,37 @@
 .peek-text .by { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .peek-text .meter { margin-top: 5px; }
 
-/* The selected book: a head in the cover's colors, then a library catalog card on ruled stock with
-   a call number, a rubber stamp for the status (click it to change) and a punched hole. */
+/* The selected book: one library catalog card on ruled stock lying in the panel, its cover clipped
+   to the top like a photo in a file, a status stamp and the facts on the ruling. */
 .details {
-  position: relative; width: 340px; flex: none; overflow: auto; padding: 0 0 26px;
-  background: var(--paper); border-left: 1px solid color-mix(in srgb, var(--rule) 70%, transparent);
+  position: relative; width: 320px; flex: none; overflow: auto; padding: 34px 18px 26px;
+  background: var(--case); border-left: 1px solid color-mix(in srgb, var(--rule) 60%, transparent);
 }
-.library[data-details="off"] .details { display: none; }
-.card-head { position: relative; isolation: isolate; overflow: hidden; padding: 30px 24px 20px; text-align: center; }
-.card-head .glow { position: absolute; inset: -60px -40px 30%; z-index: -1; filter: blur(50px) saturate(1.5); opacity: 0.4; }
-.card-head::after { content: ""; position: absolute; inset: auto 0 0; height: 60%; z-index: -1; background: linear-gradient(transparent, var(--paper)); }
-.details .cover-slot { width: 148px; margin: 0 auto 20px; perspective: 900px; }
-/* The cover stands turned a little, like a book pulled from the shelf; it faces you on hover. */
-.details .cover {
-  transform: rotateY(-14deg) rotateX(2deg); transform-origin: left center;
-  box-shadow: 18px 26px 40px -18px color-mix(in srgb, var(--cloth, var(--accent)) 60%, #000), 0 2px 6px rgba(0, 0, 0, 0.25), inset 4px 0 0 rgba(0, 0, 0, 0.2);
-}
-.details .cover-slot:hover .cover { transform: none; }
-.details h2 { margin: 0; font: 600 23px/1.2 var(--font-display); user-select: text; text-wrap: balance; }
-.details .by { margin: 6px 0 14px; color: var(--muted); user-select: text; }
-.details .meter { margin: 0 auto 16px; max-width: 240px; }
-.details .actions { display: flex; gap: 6px; }
-.details .actions .btn.primary { flex: 1; justify-content: center; height: 38px; border-radius: 12px; }
-.details .actions .btn:not(.primary) { width: 38px; height: 38px; padding: 0; justify-content: center; border-radius: 12px; }
-
+.details-empty { color: var(--muted); text-align: center; margin-top: 40%; }
+.card-close { display: none; position: absolute; z-index: 2; top: 8px; right: 8px; }
 .catalog {
   --stock: color-mix(in srgb, var(--surface) 82%, #f1dfae);
   --ruling: color-mix(in srgb, #4d7cc9 20%, transparent);
-  position: relative; margin: 4px 18px 0; padding: 14px 16px 34px;
+  position: relative; padding: 14px 16px 34px; transform: rotate(-0.8deg);
   border-radius: 6px; background: var(--stock); color: var(--ink);
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.4) inset, 0 14px 30px -18px rgba(0, 0, 0, 0.55), 0 1px 2px rgba(0, 0, 0, 0.15);
 }
 :root[data-mode="dark"] .catalog { --stock: color-mix(in srgb, var(--surface) 88%, #f1dfae); --ruling: color-mix(in srgb, #7ea4e6 16%, transparent); }
+/* The cover, held to the card by a paper clip; it straightens under the pointer. */
+.catalog .cover-slot { position: relative; width: 112px; margin: -40px auto 16px; transform: rotate(3deg); transition: transform var(--slow) var(--ease); }
+.catalog .cover-slot:hover { transform: none; }
+.catalog .cover-slot::after {
+  content: ""; position: absolute; z-index: 1; top: -12px; left: 18px; width: 12px; height: 40px;
+  border: 2px solid color-mix(in srgb, var(--muted) 70%, var(--ink)); border-radius: 7px; border-bottom-color: transparent;
+}
+.catalog h2 { margin: 0; font: 600 21px/1.2 var(--font-display); text-align: center; user-select: text; text-wrap: balance; }
+.catalog .by { margin: 4px 0 0; color: var(--muted); text-align: center; user-select: text; }
+.catalog .where { margin: 8px 0 0; font-size: 12.5px; text-align: center; color: color-mix(in srgb, var(--ink) 70%, var(--muted)); }
+.catalog .where:empty { display: none; }
+.catalog .meter { margin: 12px 0 14px; }
+.catalog .actions { display: flex; gap: 6px; margin-bottom: 16px; }
+.catalog .actions .btn.primary { flex: 1; justify-content: center; height: 36px; border-radius: 10px; }
+.catalog .actions .btn:not(.primary) { width: 36px; height: 36px; padding: 0; justify-content: center; border-radius: 10px; background: transparent; }
 .catalog header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 8px; border-bottom: 2px solid color-mix(in srgb, #c8483e 55%, transparent); }
 .catalog .call { font: 600 12px var(--font-mono); letter-spacing: 0.08em; color: var(--muted); }
 .stamp {
@@ -230,23 +226,21 @@
 .details .select-btn.boxed { width: auto; max-width: 100%; height: 26px; margin: 2px 0 0 auto; padding: 0 6px 0 10px; border: 0; background: color-mix(in srgb, var(--ink) 7%, transparent); font-size: 12.5px; }
 .catalog .path { margin-top: 10px; font: 10.5px/1.45 var(--font-mono); color: var(--muted); word-break: break-all; user-select: text; opacity: 0.8; }
 /* The hole the catalog drawer's rod went through. */
-.catalog .hole { position: absolute; left: 50%; bottom: 10px; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: var(--paper); box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.35); }
+.catalog .hole { position: absolute; left: 50%; bottom: 10px; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: var(--case); box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.35); }
 .chips { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; padding: 3px 0; line-height: normal; }
 .chip { display: inline-flex; align-items: center; gap: 2px; height: 24px; padding: 0 2px 0 9px; border-radius: 24px; background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--ink); font-size: 12px; }
 .chip button { display: grid; place-items: center; width: 20px; height: 20px; border: 0; padding: 0; border-radius: 50%; background: transparent; color: var(--muted); cursor: pointer; }
 .chip button:hover { background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--ink); }
 .chip.add { padding: 0 10px; background: transparent; border: 1px dashed var(--rule); color: var(--muted); cursor: pointer; }
 .chip.add:hover { border-color: var(--accent); color: var(--accent); }
-.details-empty { color: var(--muted); text-align: center; margin-top: 40%; }
-.card-close { display: none; position: absolute; z-index: 1; top: 10px; right: 10px; }
 
-/* Narrow windows: the selected book slides over the room only while one is selected. */
+/* Narrow windows: the card slides over the room only while a book is selected. */
 @media (max-width: 1180px) {
   .library-body { position: relative; }
   .desk { grid-template-columns: 1fr; }
   .desk-side { width: auto; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
   .details {
-    position: absolute; z-index: 6; top: 0; right: 0; bottom: 0; background: var(--surface);
+    position: absolute; z-index: 6; top: 0; right: 0; bottom: 0;
     box-shadow: -18px 0 40px -20px rgba(0, 0, 0, 0.6);
     transition: transform var(--slow) var(--ease), visibility var(--slow);
   }

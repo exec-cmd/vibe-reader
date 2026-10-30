@@ -160,7 +160,6 @@
   "save": "Save",
   "search": "Search the library",
   "searching": "Searching…",
-  "selectBook": "Select a book to see its details.",
   "set_about": "About",
   "set_agents": "AI agents",
   "set_appearance": "Appearance",
@@ -306,7 +305,5 @@
   "agentConversation": "Conversation with the agent",
   "searchSettings": "Find a setting",
   "noSettingFound": "No setting matches. Try another word.",
-  "libraryGlobe": "A year of reading as a ball of yarn: each glyph on the spiral is a day, read days glow. Point at a day to see it, click it to select that day's book, drag to turn the ball.",
-  "yearOfReading": "A year of reading · {n} days with a book",
-  "noReadingDay": "no reading"
+  "selectBook": "Select a book to see its card."
 }
