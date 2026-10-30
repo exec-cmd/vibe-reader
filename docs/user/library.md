@@ -36,6 +36,15 @@ Above the bookcase, the desk holds up to four books with the status reading.
 They stand with their covers out and show the title, authors and progress. Click
 one to open it, or right-click it to open the book menu.
 
+Beside the book you are reading turns the globe of your library: a sphere of
+small glyphs where your most recent books are the bright diamonds, in their
+cover colors. Thin threads join books that share a shelf or an author.
+
+- Point at a diamond to see the title. Click it to select the book,
+  double-click to open it.
+- Drag the globe to turn it. Click elsewhere on it to send a wave around.
+- With reduced motion the globe stands still until you drag it.
+
 Next to the desk, the reading log shows the minutes you read in the last seven
 days as seven small bars. Today's bar is highlighted. When you have read on two
 or more days in a row, the log also shows "N days in a row". The log is hidden

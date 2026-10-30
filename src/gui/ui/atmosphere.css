@@ -11,6 +11,13 @@
   transition: transform 1600ms var(--ease);
 }
 #fx { z-index: 1; width: 100%; height: 100%; }
+/* The ASCII band of the terminal look: characters in the accent, fading into the desk. */
+.band {
+  position: relative; z-index: 2; flex: none; height: 104px; margin: 0; overflow: hidden;
+  font: 11px/12px var(--font-mono); letter-spacing: 0; white-space: pre; color: var(--accent);
+  opacity: calc(0.7 * min(var(--fx), 1)); cursor: crosshair;
+  mask-image: linear-gradient(#000 55%, transparent);
+}
 .reader .reader-body { position: relative; z-index: 2; }
 .fx-overlay { z-index: 1; }
 .reader-bar { position: relative; z-index: 4; }

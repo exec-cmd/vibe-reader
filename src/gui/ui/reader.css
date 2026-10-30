@@ -156,7 +156,7 @@
 }
 .pdf-page canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .pdf-page.invert { background: #1b1d1c; }
-.pdf-page.invert canvas { filter: invert(0.92) hue-rotate(180deg) brightness(0.95) contrast(0.92); }
+.pdf-page.invert canvas { filter: invert(0.9) hue-rotate(180deg); }
 /* pdf.js text layer: invisible text over the canvas, for selection and search. */
 .textLayer { position: absolute; inset: 0; overflow: clip; line-height: 1; text-align: initial; -webkit-text-size-adjust: none; forced-color-adjust: none; transform-origin: 0 0; z-index: 1; }
 .textLayer :is(span, br) { color: transparent; position: absolute; white-space: pre; cursor: text; transform-origin: 0% 0%; }
@@ -196,34 +196,70 @@
 .zoom { display: flex; align-items: center; }
 body[data-fullscreen="1"] .dock { bottom: 24px; }
 
-/* Side panel: a drawer over the desk; the page does not move. The book on top, tabs as icons. */
+/* Side panel: a floating card over the desk; the page does not move. A rail of tabs on the left,
+   the book on top with its cover's colors behind it, then the open tab. */
 .side-panel {
-  position: absolute; z-index: 7; top: 0; bottom: 0; left: 0; width: 344px;
-  display: flex; flex-direction: column; min-height: 0;
-  border-right: 1px solid color-mix(in srgb, var(--rule) 80%, transparent);
-  border-radius: 0 var(--radius-l) var(--radius-l) 0;
-  background: color-mix(in srgb, var(--page) 97%, var(--ink)); color: var(--ink);
-  box-shadow: 24px 0 50px -24px rgba(0, 0, 0, 0.55);
-  transition: transform var(--slow) var(--ease), visibility var(--slow);
+  position: absolute; z-index: 7; top: 12px; bottom: 12px; left: 12px; width: min(392px, calc(100% - 24px));
+  display: grid; grid-template-columns: 52px minmax(0, 1fr); min-height: 0; overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--rule) 80%, transparent); border-radius: 18px;
+  background: color-mix(in srgb, var(--page) 90%, transparent); color: var(--ink);
+  backdrop-filter: blur(18px) saturate(1.2);
+  box-shadow: 0 30px 60px -28px rgba(0, 0, 0, 0.6), 0 0 0 1px color-mix(in srgb, #fff 4%, transparent) inset;
+  transition: transform var(--slow) var(--ease), opacity var(--slow) var(--ease), visibility var(--slow);
 }
-.side-panel[data-open="false"] { transform: translateX(calc(-100% - 30px)); visibility: hidden; }
-.side-book { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; padding: 18px 12px 12px 18px; }
-.side-book b { font: 600 16px/1.25 var(--font-body); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.side-book small { grid-column: 1; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.side-book .icon-btn { grid-row: 1; grid-column: 2; width: 28px; height: 28px; }
+.side-panel[data-open="false"] { transform: translateX(-24px) scale(0.98); opacity: 0; visibility: hidden; }
+
+/* The rail: icons only; the open tab hangs a ribbon from the rail's edge. */
+.side-rail {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 0;
+  background: color-mix(in srgb, var(--ink) 4%, transparent); border-right: 1px solid color-mix(in srgb, var(--rule) 70%, transparent);
+}
+.side-rail .tab {
+  position: relative; display: grid; place-items: center; width: 38px; height: 38px; padding: 0;
+  border: 0; border-radius: 11px; background: transparent; color: var(--muted); cursor: pointer;
+  transition: background var(--fast), color var(--fast);
+}
+.side-rail .tab > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.side-rail .tab:hover { background: var(--hover); color: var(--ink); }
+.side-rail .tab[aria-selected="true"] { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+.side-rail .tab::before {
+  content: ""; position: absolute; left: -7px; top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0;
+  background: var(--accent); transform: scaleY(0); transition: transform var(--slow) var(--ease);
+}
+.side-rail .tab[aria-selected="true"]::before { transform: none; }
+.side-rail #side-close { margin-top: auto; width: 34px; height: 34px; }
+
+.side-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.side-book {
+  position: relative; isolation: isolate; overflow: hidden;
+  display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 4px 14px; padding: 18px 18px 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--rule) 60%, transparent);
+}
+.side-book::before { content: ""; position: absolute; inset: -30px; z-index: -1; background: var(--cover, none) center / cover; filter: blur(30px) saturate(1.4); opacity: 0.28; }
+.side-cover { width: 46px; aspect-ratio: 2 / 3; border-radius: 3px 5px 5px 3px; overflow: hidden; box-shadow: inset 3px 0 0 rgba(0, 0, 0, 0.18), 0 8px 18px -8px rgba(0, 0, 0, 0.6); }
+.side-cover:not([style*="background"]):empty { display: none; }
+.side-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.side-names { display: grid; gap: 3px; min-width: 0; }
+.side-names b { font: 600 18px/1.2 var(--font-display); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.side-names small { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .side-book .meter { grid-column: 1 / -1; margin-top: 10px; }
-.tabs { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 2px; margin: 0 10px; padding: 3px; border-radius: var(--radius-m); background: color-mix(in srgb, var(--ink) 6%, transparent); }
-.tab { display: grid; justify-items: center; gap: 2px; padding: 6px 2px 5px; border: 0; border-radius: var(--radius-s); background: transparent; color: var(--muted); cursor: pointer; font-size: 11px; line-height: 1.1; white-space: nowrap; transition: background var(--fast), color var(--fast); }
-.tab:hover { color: var(--ink); }
-.tab[aria-selected="true"] { background: var(--page); color: var(--accent); box-shadow: var(--shadow-s); }
-.tab-body { flex: 1; overflow: auto; padding: 10px 8px 16px; }
+.side-heading { margin: 14px 18px 4px; font: 600 11px/1 var(--font-ui); letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+.tab-body { flex: 1; overflow: auto; padding: 6px 10px 16px; }
 .side-empty { color: var(--muted); padding: 16px 10px; margin: 0; }
-/* Contents: chapters behind the reader are quieter; the current one has an accent bar. */
+
+/* Contents: a timeline. Read chapters are filled dots, the current one glows, the rest are rings. */
+.toc-list { position: relative; }
+.toc-list::before { content: ""; position: absolute; left: 13px; top: 14px; bottom: 14px; width: 1px; background: color-mix(in srgb, var(--rule) 90%, transparent); }
 .toc-item { position: relative; display: flex; align-items: baseline; gap: 8px; width: 100%; padding: 7px 10px; border: 0; border-radius: var(--radius-s); background: transparent; text-align: left; cursor: pointer; line-height: 1.3; color: var(--ink); }
+.toc-item::before {
+  content: ""; position: absolute; left: 10px; top: 12px; width: 7px; height: 7px; border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--muted) 70%, transparent); background: var(--page);
+}
 .toc-item:hover { background: var(--hover); }
 .toc-item.past { color: var(--muted); }
-.toc-item.current { background: color-mix(in srgb, var(--accent) 13%, transparent); color: var(--ink); font-weight: 500; }
-.toc-item.current::before { content: ""; position: absolute; left: 0; top: 7px; bottom: 7px; width: 3px; border-radius: 3px; background: var(--accent); }
+.toc-item.past::before { background: color-mix(in srgb, var(--accent) 55%, var(--muted)); border-color: transparent; }
+.toc-item.current { background: color-mix(in srgb, var(--accent) 12%, transparent); font-weight: 600; }
+.toc-item.current::before { left: 9px; top: 11px; width: 9px; height: 9px; background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent); }
 .toc-item .name { flex: 1; }
 .toc-item .pg { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 .thumbs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 10px; padding: 6px; }
@@ -232,13 +268,13 @@ body[data-fullscreen="1"] .dock { bottom: 24px; }
 .thumb:hover { background: var(--hover); }
 .thumb.current { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
 .thumb.current canvas { outline: 2px solid var(--accent); }
-.note-item { padding: 10px 12px; margin-bottom: 6px; border-radius: var(--radius-m); background: color-mix(in srgb, var(--ink) 4%, transparent); cursor: pointer; transition: background var(--fast); }
+.note-item { padding: 10px 12px; margin-bottom: 8px; border-radius: 12px; border-left: 3px solid var(--gilt); background: color-mix(in srgb, var(--ink) 4%, transparent); cursor: pointer; transition: background var(--fast); }
 .note-item:hover { background: var(--hover); }
 .note-head { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
 .note-head .where { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .note-item.agent .note-head { color: var(--agent); }
-.note-item .q { font: italic 14px/1.45 var(--font-body); color: color-mix(in srgb, var(--ink) 80%, var(--muted)); border-left: 2px solid var(--gilt); padding-left: 8px; }
-.note-item.agent .q { border-left-color: var(--agent); }
+.note-item .q { font: italic 14px/1.45 var(--font-body); color: color-mix(in srgb, var(--ink) 80%, var(--muted)); }
+.note-item.agent { border-left-color: var(--agent); }
 .note-item .b { margin-top: 4px; white-space: pre-wrap; }
 .note-item .icon-btn { width: 24px; height: 24px; opacity: 0; transition: opacity var(--fast); }
 .note-item:is(:hover, :focus-within) .icon-btn { opacity: 1; }

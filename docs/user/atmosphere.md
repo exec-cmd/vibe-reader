@@ -17,7 +17,7 @@ library, the details panel and the book menu have an Atmosphere setting too.
 | Preset | Modes | Mood |
 |---|---|---|
 | `study` | light, dark | A warm desk lamp, bookshelves, slow dust. The default. |
-| `terminal` | light, dark | Monospace, a faint grid. For code and technical books. |
+| `terminal` | light, dark | Monospace, a faint grid, and an ASCII band along the top that ripples under the cursor. For code and technical books. |
 | `noir` | light, dark | Light through blinds, grain, high contrast. |
 | `soft` | light, dark | Pastel gradient and slow bokeh. |
 | `rain` | dark | Fog and rain on the glass. |

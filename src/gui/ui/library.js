@@ -2,6 +2,7 @@
 // bookcase of spines, the catalog card of the selected book, book menus and dialogs, and the mini window.
 
 import { $, call, commands, escapeHtml, fail, saveConfig, state } from "./core.js";
+import * as globe from "./globe.js";
 import { t } from "./i18n.js";
 import { pdfCover } from "./pdfcover.js";
 import { ask, confirmAction, dialog, icon, menu, paintIcons, select, toast } from "./ui.js";
@@ -26,6 +27,11 @@ export const setOnOpen = (/** @type {(id: number) => void} */ fn) => (onOpen = f
 export const allBooks = () => books;
 
 const home = () => $("#home");
+
+/** The globe of the desk; one element kept across renders, so it does not gather again on each refresh. */
+const globeBox = document.createElement("div");
+globeBox.className = "globe";
+globeBox.innerHTML = `<canvas role="img"></canvas>`;
 
 export async function refresh() {
   ({ books, shelves } = await call("library"));
@@ -158,6 +164,8 @@ function renderDesk() {
     side.insertBefore(b, side.querySelector(".log"));
     loadCover(book, /** @type {HTMLElement} */ (b.querySelector(".cover-slot")));
   }
+  main.append(globeBox);
+  globe.setBooks(books);
   renderLog(/** @type {HTMLElement} */ (desk.querySelector(".log")));
 }
 
@@ -727,6 +735,9 @@ export function init() {
   bindSelects();
   $("#mini-toggle").addEventListener("click", toggleMini);
   new ResizeObserver(() => shelveRows()).observe($("#shelves"));
+  const canvas = /** @type {HTMLCanvasElement} */ (globeBox.firstElementChild);
+  canvas.setAttribute("aria-label", t("libraryGlobe"));
+  globe.mount(canvas, { pick: selectBook, open: (id) => onOpen(id) });
   // A soft light follows the cursor over the room.
   const room = $("#room");
   let frame = 0;

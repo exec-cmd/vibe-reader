@@ -74,11 +74,14 @@ Technical books get:
 
 ## Side panel
 
-Press `T` to open the side panel. It is a drawer over the desk, so the page does
-not move. Press `Esc` to close it. It has these tabs:
+Press `T` to open the side panel. It is a card that floats over the desk, so the
+page does not move. Press `Esc` to close it. The tabs are icons on its left
+edge; point at one to see its name. The book, its cover and your progress are
+at the top. It has these tabs:
 
-- **Contents** lists the chapters, with nested chapters shown inside their
-  parents. For PDF, it shows the PDF's own bookmarks. See [PDF](pdf.md).
+- **Contents** lists the chapters as a timeline, with nested chapters shown
+  inside their parents. Chapters you have read have filled dots, and the
+  current chapter glows. For PDF, it shows the PDF's own bookmarks. See [PDF](pdf.md).
 - **Pages** shows page thumbnails. Click one to jump to it. This tab is for PDF.
 - **Notes** lists all highlights, notes and bookmarks in the book. Click an
   item to go to it. Use its delete button, or right-click it, to delete it.

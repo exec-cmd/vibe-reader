@@ -12,7 +12,8 @@ the GUI crate (or drop the file into `<config>/ui/`), and reload.
 | `app.js` | Boot, view switching, global keys (Ctrl+O, M), opening files and drops. |
 | `core.js` | `state`, `call()` for Tauri commands, `commands` registry for the palette, `applyConfig()` and `saveConfig()`. |
 | `ui.js` | Shared widgets: `icon`, `menu`, `select`, `dialog`, `ask`, `confirmAction`, `toast`, `progress`. |
-| `library.js` | Catalog drawers, the desk, the bookcase, the catalog card, book menu, mini mode, library keys. |
+| `library.js` | The desk, the filter strip, the bookcase, the catalog card, book menu, mini mode, library keys. |
+| `globe.js` | The library globe on the desk: `mount(canvas, {pick, open})`, `setBooks(books)`. Canvas 2D, about 900 glyphs at 30 fps, still with reduced motion. |
 | `reader.js` | Reader shell: dock, running head, folio, page turns, idle state, side panel tabs, annotations, find. It creates one engine per open book. |
 | `flow.js` | `FlowEngine` for EPUB, FB2, Markdown, TXT and HTML. |
 | `pdfview.js` | `PdfEngine` for PDF, drawn with pdf.js. |
@@ -20,10 +21,11 @@ the GUI crate (or drop the file into `<config>/ui/`), and reload.
 | `offsets.js` | DOM point ↔ offset (`offsetOf`, `rangeOf`, `pointAt`), and `normalize()` for PDF text pieces. |
 | `enhance.js` | Code highlighting, copy buttons, KaTeX, table wrappers, image zoom in chapter content. |
 | `atmosphere.js` | Apply an atmosphere look; `updateSound()` follows its sound. |
+| `band.js` | The ASCII band of the grid (Terminal) look: `toggle(on)`, `setPointer(x, y)`, `ring(x, y)`. Text in a `<pre>`, 30 fps while the cursor is near, fewer otherwise. |
 | `particles.js` | Particles and light: `start(p, rgb, strength)`, `setEdge(rect)` (snow and rain meet the page), `blow(dir)` (page-turn gust), `setOnStrike(fn)` (lightning). |
 | `sound.js` | Ambient sound from Web Audio, no files: `play(sound, level)`, `stop()`, `thunder()`. |
 | `translator.js` | The translator card: `init(visibleText)`, `open()`, `toggle()`, `target()`. |
-| `settings.js` | The settings page: sections built from `row`, `segmented`, `dropdown`, `toggle`, `slider`. |
+| `settings.js` | The settings page: a numbered index with search, sections built from `row`, `segmented`, `dropdown`, `toggle`, `slider`, `themeCards`. Search builds every section and hides rows that do not match. |
 | `palette.js` | Command palette (Ctrl+Shift+P) over the `commands` registry and the books. |
 | `i18n.js`, `i18n/*.json` | Strings. `t(key)`; English is the fallback. |
 | `fonts/`, `vendor/` | Fonts (OFL), KaTeX, highlight.js, pdf.js. Refresh with `python3 scripts/vendor.py`. |

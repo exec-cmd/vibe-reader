@@ -14,6 +14,11 @@
 /* Desk: the book to continue, the other books being read, and the reading log. */
 .desk { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; padding: 24px 28px 8px; }
 .desk-empty { color: var(--muted); max-width: 32em; margin: 0; }
+.desk-main { display: grid; grid-template-columns: minmax(0, 1fr) 250px; align-items: center; gap: 12px; }
+/* The globe of the library (globe.js): books as bright nodes on a sphere of glyphs. */
+.globe { width: 250px; height: 250px; margin: -14px 0; }
+.globe canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+@media (max-width: 960px) { .desk-main { grid-template-columns: minmax(0, 1fr); } .globe { display: none; } }
 .hero {
   position: relative; isolation: isolate; overflow: hidden;
   display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 22px; align-items: center;

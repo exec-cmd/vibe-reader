@@ -1,6 +1,7 @@
 // Applies a resolved atmosphere profile to the reader: tokens, background, effects, particles,
 // sound, heading style and the chapter illustration.
 
+import * as band from "./band.js";
 import { $, state } from "./core.js";
 import * as particles from "./particles.js";
 import * as sound from "./sound.js";
@@ -59,6 +60,7 @@ export function apply(look) {
     reader.dataset.preset = reader.dataset.bg = reader.dataset.heading = "";
     $("#bg").removeAttribute("style");
     particles.stop();
+    band.toggle(false);
     currentSound = null;
     updateSound();
     return;
@@ -80,6 +82,8 @@ export function apply(look) {
     bg.style.backgroundImage = `url("/art/${encodeURIComponent(look.background.image)}")`;
   }
   $("#preset-css").textContent = look.css ?? "";
+  // The grid desk (Terminal) wears the ASCII band along its top.
+  band.toggle(look.background.kind === "grid" && strength > 0 && !state.lite);
   if (state.config.reader.particles) particles.start(look.particles, rgb(look.palette.ink ?? "#ffffff"), strength);
   else particles.stop();
   currentSound = look.sound ?? null;

@@ -49,22 +49,28 @@
       <span class="title" id="lite-title"></span>
       <button class="btn" id="lite-add" data-i18n="addToLibrary"></button>
     </div>
+    <!-- The terminal look's ASCII band; band.js draws it. -->
+    <pre class="band" id="band" aria-hidden="true" hidden></pre>
     <div class="reader-body">
+      <!-- Side panel: a floating card with a rail of tabs and the book on top. -->
       <aside class="side-panel" id="side" data-open="false">
-        <div class="side-book">
-          <b id="side-title"></b>
+        <div class="side-rail" role="tablist" id="side-tabs">
+          <button class="tab" data-tab="toc" data-icon="toc" data-i18n-title="contents"><span data-i18n="contents"></span></button>
+          <button class="tab" data-tab="thumbs" data-icon="thumbs" data-i18n-title="pages"><span data-i18n="pages"></span></button>
+          <button class="tab" data-tab="notes" data-icon="notes" data-i18n-title="notes"><span data-i18n="notes"></span></button>
+          <button class="tab" data-tab="search" data-icon="search" data-i18n-title="find"><span data-i18n="find"></span></button>
+          <button class="tab" data-tab="agent" data-icon="agent" data-i18n-title="agentTab"><span data-i18n="agentTab"></span></button>
           <button class="icon-btn" id="side-close" data-icon="close" data-size="16" data-i18n-title="close"></button>
-          <small id="side-author"></small>
-          <span class="meter"><span class="bar"><i id="side-progress"></i></span><span id="side-percent"></span></span>
         </div>
-        <div class="tabs" role="tablist" id="side-tabs">
-          <button class="tab" data-tab="toc" data-icon="toc"><span data-i18n="contents"></span></button>
-          <button class="tab" data-tab="thumbs" data-icon="thumbs"><span data-i18n="pages"></span></button>
-          <button class="tab" data-tab="notes" data-icon="notes"><span data-i18n="notes"></span></button>
-          <button class="tab" data-tab="search" data-icon="search"><span data-i18n="find"></span></button>
-          <button class="tab" data-tab="agent" data-icon="agent"><span data-i18n="agentTab"></span></button>
+        <div class="side-main">
+          <div class="side-book" id="side-book">
+            <div class="side-cover" id="side-cover"></div>
+            <div class="side-names"><b id="side-title"></b><small id="side-author"></small></div>
+            <span class="meter"><span class="bar"><i id="side-progress"></i></span><span id="side-percent"></span></span>
+          </div>
+          <h3 class="side-heading" id="side-heading"></h3>
+          <div class="tab-body" id="side-body"></div>
         </div>
-        <div class="tab-body" id="side-body"></div>
       </aside>
       <div class="running-head"><span id="reader-sub"></span></div>
       <div class="viewport" id="viewport">

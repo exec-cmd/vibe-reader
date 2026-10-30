@@ -3,6 +3,7 @@
 // The page itself is drawn by an engine: FlowEngine for reflowable books, PdfEngine for PDF.
 
 import * as atmosphere from "./atmosphere.js";
+import * as band from "./band.js";
 import { $, calm, call, commands, debounce, escapeHtml, fail, isAgent, locator, on, parseLocator, state } from "./core.js";
 import { FlowEngine } from "./flow.js";
 import { t } from "./i18n.js";
@@ -53,6 +54,7 @@ export async function open(/** @type {Opened} */ opened) {
   $("#reader-sub").textContent = opened.authors.join(", ");
   $("#side-title").textContent = opened.title;
   $("#side-author").textContent = opened.authors.join(", ");
+  sideCover(opened.book);
   $("#lite-bar").hidden = !state.lite;
   $("#lite-title").textContent = opened.title;
   $("#lite-add").hidden = !!opened.book;
@@ -103,6 +105,23 @@ export async function open(/** @type {Opened} */ opened) {
   renderSide();
   updateChrome();
   wake();
+}
+
+/** The cover at the top of the side panel; its blur tints the panel's head. */
+function sideCover(/** @type {import("./core.js").Book | null} */ b) {
+  const slot = $("#side-cover");
+  const head = $("#side-book");
+  slot.replaceChildren();
+  slot.style.background = b?.color ?? "";
+  head.style.removeProperty("--cover");
+  if (!b) return;
+  const img = new Image();
+  img.alt = "";
+  img.onload = () => {
+    slot.append(img);
+    head.style.setProperty("--cover", `url("${img.src}")`);
+  };
+  img.src = `/cover/${b.id}?v=${b.opened_at ?? 0}`;
 }
 
 const invertPdf = () => state.config.pdf.invert_dark && (reader().dataset.mode || document.documentElement.dataset.mode) === "dark";
@@ -746,9 +765,13 @@ export function showTab(/** @type {string} */ to) {
   if (to === "search") setTimeout(() => /** @type {HTMLElement | null} */ ($("#find-input"))?.focus(), 30);
 }
 
+/** The i18n key of each side panel tab's name. */
+const SIDE_TABS = { toc: "contents", thumbs: "pages", notes: "notes", search: "find", agent: "agentTab" };
+
 function renderSide() {
   if (!book || !sideOpen()) return;
-  for (const b of $("#side-tabs").children) b.setAttribute("aria-selected", String(/** @type {HTMLElement} */ (b).dataset.tab === tab));
+  for (const b of $("#side-tabs").querySelectorAll(".tab")) b.setAttribute("aria-selected", String(/** @type {HTMLElement} */ (b).dataset.tab === tab));
+  $("#side-heading").textContent = t(SIDE_TABS[tab] ?? "contents");
   const body = $("#side-body");
   body.replaceChildren();
   ({ toc: renderToc, thumbs: renderThumbs, notes: renderNotes, search: renderFind, agent: renderInbox })[tab]?.(body);
@@ -761,7 +784,7 @@ async function renderToc(/** @type {HTMLElement} */ body) {
   const item = (title, level, chapter, go) => {
     const a = document.createElement("button");
     a.className = "toc-item";
-    a.style.paddingLeft = `${10 + level * 14}px`;
+    a.style.paddingLeft = `${26 + level * 14}px`;
     a.dataset.chapter = String(chapter);
     a.innerHTML = `<span class="name"></span>${engine instanceof PdfEngine ? `<span class="pg">${chapter + 1}</span>` : ""}`;
     a.querySelector(".name").textContent = title;
@@ -1129,9 +1152,14 @@ export function init(/** @type {{ goHome: () => void }} */ hooks) {
       style.setProperty("--tx", ((e.clientX - r.left) / r.width - 0.5).toFixed(3));
       style.setProperty("--ty", ((e.clientY - r.top) / r.height - 0.5).toFixed(3));
       particles.setPointer(e.clientX, e.clientY);
+      band.setPointer(e.clientX, e.clientY);
     });
   });
-  reader().addEventListener("pointerleave", () => particles.setPointer(null));
+  reader().addEventListener("pointerleave", () => {
+    particles.setPointer(null);
+    band.setPointer(null);
+  });
+  $("#band").addEventListener("click", (e) => band.ring(e.clientX, e.clientY));
   // A click on the desk, beside the book, scatters the particles.
   viewport().addEventListener("click", (e) => {
     if (!/** @type {Element} */ (e.target).closest(".frame, .pdf-page")) particles.burst(e.clientX, e.clientY);
@@ -1166,7 +1194,7 @@ export function init(/** @type {{ goHome: () => void }} */ hooks) {
     if (act === "agent") await sendToAgent("saved", sel.text, locator(sel.chapter, sel.start));
     if (act !== "note") getSelection()?.removeAllRanges();
   });
-  for (const b of $("#side-tabs").children) b.addEventListener("click", () => showTab(/** @type {HTMLElement} */ (b).dataset.tab));
+  for (const b of $("#side-tabs").querySelectorAll(".tab")) b.addEventListener("click", () => showTab(/** @type {HTMLElement} */ (b).dataset.tab));
   $("#toggle-side").addEventListener("click", () => toggleSide());
   $("#side-close").addEventListener("click", () => setSide(false));
   $("#back").addEventListener("click", () => goHome());
