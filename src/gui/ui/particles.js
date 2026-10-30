@@ -78,12 +78,12 @@ export function burst(/** @type {number} */ x, /** @type {number} */ y) {
   x -= cr.left;
   y -= cr.top;
   rings.push({ x, y, r: 4, life: 1 });
-  const reach = 260;
+  const reach = 180;
   for (const p of parts) {
     const dx = p.x - x, dy = p.y - y;
     const d = Math.hypot(dx, dy) || 1;
     if (d > reach) continue;
-    const f = (1 - d / reach) * 9 * (DRAG[kind] ?? 0.5) * (1.4 - p.z * 0.4);
+    const f = (1 - d / reach) * 4 * (DRAG[kind] ?? 0.5) * (1.4 - p.z * 0.4);
     p.vx += (dx / d) * f;
     p.vy += (dy / d) * f;
   }
@@ -173,7 +173,7 @@ function frame(t) {
   const pvx = (pointer.x - pointer.px) / dt, pvy = (pointer.y - pointer.py) / dt;
   pointer.px = pointer.x;
   pointer.py = pointer.y;
-  const reach = 120 * Math.min(1.5, 0.5 + strength / 2);
+  const reach = 70 * Math.min(1.5, 0.5 + strength / 2);
   const rain = kind === "rain" || kind === "downpour";
 
   for (let i = 0; i < parts.length; i++) {
@@ -184,7 +184,7 @@ function frame(t) {
     p.x += (p.vx + push) * speed * dt;
     p.y += p.vy * speed * dt;
     if (kind === "snow") p.x += Math.sin((t / 1200) + i) * 0.3 * p.z;
-    const ox = -pointer.sx * 36 * p.z, oy = -pointer.sy * 22 * p.z;
+    const ox = -pointer.sx * 12 * p.z, oy = -pointer.sy * 8 * p.z;
     const x = p.x + ox, y = p.y + oy;
     let glint = 0;
     if (pointer.on) {
@@ -192,15 +192,15 @@ function frame(t) {
       const d = Math.hypot(dx, dy) || 1;
       if (rain) {
         // The cursor is an umbrella: drops break on its top.
-        if (Math.abs(dx) < 34 && dy > -6 && dy < 6 && p.vy > 0) {
+        if (Math.abs(dx) < 22 && dy > -6 && dy < 6 && p.vy > 0) {
           splash(x, pointer.y - 4, p.a);
           parts[i] = spawn(w, h, false);
           continue;
         }
       } else if (d < reach) {
-        const f = (1 - d / reach) * 0.6 * dt;
-        p.vx += (dx / d) * f + pvx * 0.012 * f;
-        p.vy += (dy / d) * f + pvy * 0.012 * f;
+        const f = (1 - d / reach) * 0.25 * dt;
+        p.vx += (dx / d) * f + pvx * 0.005 * f;
+        p.vy += (dy / d) * f + pvy * 0.005 * f;
         glint = 1 - d / reach;
       }
     }
@@ -210,7 +210,7 @@ function frame(t) {
       parts[i] = spawn(w, h, kind === "dust" || kind === "bokeh");
       continue;
     }
-    const a = Math.min(1, p.a * (1 + glint * 2.2));
+    const a = Math.min(1, p.a * (1 + glint * 0.8));
     if (p.len) {
       ctx.strokeStyle = `rgba(${color},${a})`;
       ctx.lineWidth = p.r;
@@ -221,7 +221,7 @@ function frame(t) {
     } else {
       ctx.fillStyle = `rgba(${color},${a})`;
       ctx.beginPath();
-      ctx.arc(x, y, p.r * (1 + glint * 0.4), 0, Math.PI * 2);
+      ctx.arc(x, y, p.r * (1 + glint * 0.15), 0, Math.PI * 2);
       ctx.fill();
     }
   }

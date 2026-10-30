@@ -7,8 +7,8 @@
 /* The background moves a little against the cursor (--tx, --ty from -0.5 to 0.5), like a far wall. */
 .bg {
   z-index: 0; background-size: cover; background-position: center; opacity: min(1, var(--fx));
-  transform: translate3d(calc(var(--tx, 0) * -22px * var(--fx)), calc(var(--ty, 0) * -14px * var(--fx)), 0) scale(1.06);
-  transition: transform 900ms var(--ease);
+  transform: translate3d(calc(var(--tx, 0) * -8px * var(--fx)), calc(var(--ty, 0) * -5px * var(--fx)), 0) scale(1.03);
+  transition: transform 1600ms var(--ease);
 }
 #fx { z-index: 1; width: 100%; height: 100%; }
 .reader .reader-body { position: relative; z-index: 2; }
@@ -67,7 +67,7 @@
 /* A light that follows the cursor over the desk; it goes out while the reader reads. */
 .fx-overlay::before {
   content: ""; position: absolute; inset: 0;
-  background: radial-gradient(circle 440px at var(--px, -999px) var(--py, -999px), color-mix(in srgb, color-mix(in srgb, var(--accent) 45%, #fff) calc(17% * min(var(--fx), 1.6)), transparent), transparent 72%);
+  background: radial-gradient(circle 380px at var(--px, -999px) var(--py, -999px), color-mix(in srgb, color-mix(in srgb, var(--accent) 45%, #fff) calc(7% * min(var(--fx), 1.6)), transparent), transparent 72%);
   transition: opacity 1.2s var(--ease);
 }
 .reader[data-idle="true"] .fx-overlay::before { opacity: 0; }
