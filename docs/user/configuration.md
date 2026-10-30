@@ -5,11 +5,13 @@
 ## Settings
 
 Open the settings with **Settings** in the library toolbar, or press `Ctrl+,`.
-The settings page has these sections:
+The sections are numbered on the left. The search field above them finds a
+setting in any section: type a word and the page shows the matching rows, each
+under a link to its section. The settings page has these sections:
 
 | Section | What it holds |
 |---|---|
-| Appearance | Theme (Auto, Light, Dark), Language (Auto, English, Русский), Reduce motion, Window opacity (40 to 100 %). |
+| Appearance | Theme (Auto, Light, Dark, shown as small windows), Language (Auto, English, Русский), Reduce motion, Window opacity (40 to 100 %). |
 | Reading | Books layout, page turn (Leaf, Slide, None), hide controls while reading, font, size, line length, line spacing, justification, hyphenation, and a live preview. |
 | PDF | Layout (Spread, One page, Scroll), Page size (Whole page, Page width), Dark pages in dark mode. |
 | Library | Start in the mini library, Keep copies of added files, Group, Sort, and a list of shelves to rename, delete or create. |

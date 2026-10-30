@@ -1,20 +1,94 @@
-/* Settings page. */
+/* Settings: an index on the left (search, numbered sections) and the open section on the right,
+   under a large heading with the section's sign drawn faintly behind it. */
 
 .settings-body { flex: 1; min-height: 0; display: flex; }
-.settings-nav { width: 232px; flex: none; padding: 14px 10px; background: var(--paper-2); border-right: 1px solid var(--rule); overflow: auto; }
-.settings-content { flex: 1; overflow: auto; padding: 26px 40px 60px; }
-.settings-content > h2 { margin: 0 0 6px; font: 600 30px/1.15 var(--font-display); }
-.set-intro { margin: 0 0 24px; color: var(--muted); max-width: 60ch; }
-.settings-content > :not(h2, .set-intro) { animation: view-in var(--slow) var(--ease); }
-.settings-content > * { max-width: 760px; }
+.settings-nav {
+  width: 268px; flex: none; display: flex; flex-direction: column; gap: 14px; padding: 18px 14px 14px;
+  background: var(--paper-2); border-right: 1px solid color-mix(in srgb, var(--rule) 70%, transparent); overflow: auto;
+}
+.set-search { width: auto; margin: 0; height: 34px; }
+.set-index { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
+.set-tab {
+  position: relative; display: grid; grid-template-columns: 22px 18px 1fr; align-items: center; gap: 10px;
+  width: 100%; height: 38px; padding: 0 10px; border: 0; border-radius: var(--radius-m);
+  background: transparent; color: color-mix(in srgb, var(--ink) 80%, var(--muted)); text-align: left; cursor: pointer;
+  transition: background var(--fast), color var(--fast);
+}
+.set-tab .num, .set-hero .num, .set-found .num { font: 500 11px/1 var(--font-mono); color: var(--muted); letter-spacing: 0.04em; }
+.set-tab .icon { color: var(--muted); transition: color var(--fast); }
+.set-tab .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.set-tab:hover { background: var(--hover); color: var(--ink); }
+/* The open section: a violet bar grows at the edge and its number lights up. */
+.set-tab::before {
+  content: ""; position: absolute; left: 0; top: 9px; bottom: 9px; width: 3px; border-radius: 3px;
+  background: var(--accent); transform: scaleY(0); transition: transform var(--slow) var(--ease);
+}
+.set-tab[aria-current="true"] { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--ink); font-weight: 600; }
+.set-tab[aria-current="true"]::before { transform: none; }
+.set-tab[aria-current="true"] :is(.num, .icon) { color: var(--accent); }
+.set-foot { margin: auto 10px 0; color: var(--muted); font: 11px var(--font-mono); opacity: 0.7; }
+
+.settings-content { flex: 1; overflow: auto; padding: 0 48px 80px; }
+.settings-content > * { max-width: 800px; }
+.settings-content > :not(.set-hero) { animation: view-in var(--slow) var(--ease); }
+.set-hero { position: relative; padding: 42px 0 26px; margin-bottom: 8px; overflow: hidden; }
+.set-hero .num { color: var(--accent); }
+.set-hero h2 { margin: 10px 0 8px; font: 600 46px/1.05 var(--font-display); letter-spacing: -0.01em; }
+.set-intro { margin: 0; color: var(--muted); max-width: 52ch; font-size: 14.5px; }
+.set-mark { position: absolute; right: 0; top: 18px; color: var(--accent); opacity: 0.11; pointer-events: none; }
+.set-mark .icon { stroke-width: 0.55; }
 .set-group { margin-bottom: 26px; }
-.set-group h3 { margin: 0 0 8px 2px; font-size: 13px; font-weight: 600; color: var(--muted); }
-.set-box { border: 1px solid var(--rule); border-radius: var(--radius-l); background: var(--surface); overflow: hidden; }
-.set-row { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 13px 16px; }
-.set-row + .set-row, .set-box > * + .set-row { border-top: 1px solid var(--rule); }
+.set-group h3 { margin: 0 0 9px 4px; font: 600 11px/1 var(--font-ui); letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+.set-box {
+  border: 1px solid color-mix(in srgb, var(--rule) 85%, transparent); border-radius: 16px; overflow: hidden;
+  background: linear-gradient(180deg, var(--surface), color-mix(in srgb, var(--surface) 92%, var(--paper-2)));
+  box-shadow: 0 1px 0 color-mix(in srgb, #fff 5%, transparent) inset, 0 10px 30px -22px rgba(20, 10, 40, 0.45);
+}
+.set-row { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 14px 18px; transition: background var(--fast); }
+.set-row:hover { background: color-mix(in srgb, var(--ink) 2.5%, transparent); }
+.set-row + .set-row, .set-box > * + .set-row { border-top: 1px solid color-mix(in srgb, var(--rule) 80%, transparent); }
+.set-row:has(.set-control:empty) .set-text { padding: 2px 0; }
 .set-label { font-weight: 500; }
-.set-hint { margin-top: 2px; color: var(--muted); font-size: 12.5px; max-width: 46ch; }
+.set-label:empty { display: none; }
+.set-hint { margin-top: 3px; color: var(--muted); font-size: 12.5px; max-width: 50ch; }
 .set-control { flex: none; display: flex; align-items: center; }
+.set-control:empty { display: none; }
+
+/* Search results: each section that matched gets a link to itself. */
+.set-found {
+  display: flex; align-items: center; gap: 10px; width: 100%; margin: 30px 0 10px; padding: 0 4px;
+  border: 0; background: none; color: var(--ink); font: 600 20px/1.2 var(--font-display); cursor: pointer; text-align: left;
+}
+.set-found:first-child { margin-top: 34px; }
+.set-found .icon { color: var(--muted); transition: transform var(--fast); }
+.set-found:hover .icon { transform: translateX(3px); color: var(--accent); }
+.set-none { margin: 48px 4px; color: var(--muted); }
+
+/* Theme: three little windows of the app. */
+.theme-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 4px 18px 18px; }
+.theme-card {
+  display: grid; gap: 8px; justify-items: center; padding: 8px 8px 10px; border: 1px solid var(--rule); border-radius: 14px;
+  background: transparent; color: var(--muted); cursor: pointer; transition: border-color var(--fast), transform var(--fast) var(--ease), color var(--fast);
+}
+.theme-card:hover { transform: translateY(-2px); color: var(--ink); }
+.theme-card[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); color: var(--ink); font-weight: 600; }
+.theme-card .mock {
+  --bg: #f5f3fa; --pg: #ffffff; --ln: #d9d3e8; --ac: #6c4ee0;
+  position: relative; display: block; width: 100%; aspect-ratio: 16 / 10; border-radius: 9px; overflow: hidden; background: var(--bg);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+.theme-card[data-look="dark"] .mock { --bg: #131019; --pg: #1e1a29; --ln: #3a3350; --ac: #a68cff; }
+.theme-card[data-look="auto"] .mock { background: linear-gradient(115deg, #f5f3fa 50%, #131019 50%); }
+.theme-card .mock .bar { position: absolute; inset: 0 0 auto; height: 14%; background: color-mix(in srgb, var(--ln) 55%, transparent); }
+.theme-card .mock .sheet {
+  position: absolute; left: 30%; right: 30%; top: 24%; bottom: 0; border-radius: 3px 3px 0 0; background: var(--pg);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+  background-image: repeating-linear-gradient(transparent 0 7px, var(--ln) 7px 9px); background-size: 70% 100%; background-repeat: no-repeat; background-position: 50% 12px;
+}
+.theme-card[data-look="auto"] .mock .sheet { background-color: #fff; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35); }
+.theme-card .mock .spine { position: absolute; bottom: 0; width: 6%; height: 46%; border-radius: 2px 2px 0 0; background: var(--ac); left: 10%; }
+.theme-card .mock .spine + .spine { left: 17%; height: 36%; opacity: 0.6; }
+
 .slider { display: flex; align-items: center; gap: 10px; width: 260px; }
 .slider output { min-width: 52px; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
 .native-select { width: 240px; cursor: pointer; }

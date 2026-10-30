@@ -303,5 +303,8 @@
   "copyPrompt": "Copy a request for the agent",
   "promptCopied": "Copied. Paste it into your agent.",
   "agentPrompt": "Run `vibe-reader context` and answer what I sent you from the vibe-reader window for book {id}. Save each answer with `vibe-reader memory set --book {id} answer.<topic> \"...\"` so I see it in the reader.",
-  "agentConversation": "Conversation with the agent"
+  "agentConversation": "Conversation with the agent",
+  "searchSettings": "Find a setting",
+  "noSettingFound": "No setting matches. Try another word.",
+  "libraryGlobe": "Your library as a globe: books are the bright points. Drag to turn it, click a book to select it."
 }

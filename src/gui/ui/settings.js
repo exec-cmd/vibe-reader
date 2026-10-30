@@ -23,6 +23,8 @@ const SECTIONS = [
 ];
 
 let section = "appearance";
+/** Text in the settings search; when set, the page shows matching rows from every section. */
+let query = "";
 /** @type {"home" | "reader"} */
 let returnTo = "home";
 /** Set by app.js after a reading setting changes. @type {() => void} */
@@ -37,6 +39,7 @@ const SOUNDS = ["rain", "storm", "fire", "wind", "hum"];
 export function open(/** @type {string} */ to = section) {
   returnTo = state.view === "reader" ? "reader" : "home";
   section = to;
+  query = "";
   show("settings");
   render();
 }
@@ -140,6 +143,26 @@ function presetPreview(/** @type {PresetInfo} */ p) {
   return el;
 }
 
+/** Light, dark and auto as small windows of the app, so the choice is seen rather than read. */
+function themeCards(/** @type {string} */ value, /** @type {(v: string) => void} */ onChange) {
+  const el = document.createElement("div");
+  el.className = "theme-cards";
+  for (const [v, label] of [["auto", t("modeAuto")], ["light", t("modeLight")], ["dark", t("modeDark")]]) {
+    const b = document.createElement("button");
+    b.className = "theme-card";
+    b.dataset.look = v;
+    b.setAttribute("aria-pressed", String(v === value));
+    b.innerHTML = `<span class="mock"><i class="bar"></i><i class="sheet"></i><i class="spine"></i><i class="spine"></i></span><span class="name"></span>`;
+    b.querySelector(".name").textContent = label;
+    b.addEventListener("click", () => {
+      for (const other of el.children) other.setAttribute("aria-pressed", String(other === b));
+      onChange(v);
+    });
+    el.append(b);
+  }
+  return el;
+}
+
 function dropdown(/** @type {[string, string][]} */ options, /** @type {string} */ value, /** @type {(v: string) => void} */ onChange) {
   const el = document.createElement("select");
   el.className = "input native-select";
@@ -171,8 +194,11 @@ const build = {
   appearance() {
     const r = state.config.reader;
     return [
+      group(t("theme"), [
+        row("", t("themeHint"), ""),
+        themeCards(r.mode, (v) => ((r.mode = v), changed())),
+      ]),
       group("", [
-        row(t("theme"), t("themeHint"), segmented([["auto", t("modeAuto")], ["light", t("modeLight")], ["dark", t("modeDark")]], r.mode, (v) => ((r.mode = v), changed()))),
         row(t("language"), "", segmented([["auto", t("modeAuto")], ["en", "English"], ["ru", "Русский"]], r.locale, async (v) => {
           r.locale = v;
           saveConfig();
@@ -430,28 +456,98 @@ function render() {
   const view = $("#settings-view");
   view.innerHTML = `
     <header class="toolbar"><button class="icon-btn" id="settings-back" data-icon="back"></button><span class="brand">${t("settings")}</span></header>
-    <div class="settings-body"><nav class="settings-nav"></nav><div class="settings-content"><h2></h2></div></div>`;
+    <div class="settings-body">
+      <nav class="settings-nav">
+        <label class="search-box set-search"><span data-icon="search" data-size="16"></span><input type="search" autocomplete="off" spellcheck="false"></label>
+        <ol class="set-index"></ol>
+        <p class="set-foot"></p>
+      </nav>
+      <div class="settings-content"></div>
+    </div>`;
   view.querySelector("#settings-back").addEventListener("click", close);
-  const nav = view.querySelector(".settings-nav");
-  for (const [id, iconName] of SECTIONS) {
-    const b = document.createElement("button");
-    b.className = "side-item";
-    b.setAttribute("aria-current", String(id === section));
-    b.innerHTML = `${icon(/** @type {any} */ (iconName), 17)}<span class="name"></span>`;
-    b.querySelector(".name").textContent = t(`set_${id}`);
-    b.addEventListener("click", () => {
+  const search = /** @type {HTMLInputElement} */ (view.querySelector(".set-search input"));
+  search.placeholder = t("searchSettings");
+  search.value = query;
+  search.addEventListener("input", () => {
+    query = search.value;
+    renderContent();
+  });
+  search.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && query) {
+      e.stopPropagation();
+      search.value = query = "";
+      renderContent();
+    }
+  });
+  const index = view.querySelector(".set-index");
+  SECTIONS.forEach(([id, iconName], i) => {
+    const li = document.createElement("li");
+    li.innerHTML = `<button class="set-tab" data-id="${id}"><span class="num">${number(i)}</span>${icon(/** @type {any} */ (iconName), 17)}<span class="name"></span></button>`;
+    li.querySelector(".name").textContent = t(`set_${id}`);
+    li.firstElementChild.addEventListener("click", () => {
       section = id;
-      render();
+      search.value = query = "";
+      renderContent();
     });
-    nav.append(b);
+    index.append(li);
+  });
+  view.querySelector(".set-foot").textContent = `vibe-reader ${state.version}`;
+  renderContent();
+  paintIcons(view);
+}
+
+const number = (/** @type {number} */ i) => String(i + 1).padStart(2, "0");
+
+/** The chosen section, or with a search, the matching rows of every section. */
+function renderContent() {
+  const content = $("#settings-view .settings-content");
+  for (const tab of document.querySelectorAll("#settings-view .set-tab")) {
+    tab.setAttribute("aria-current", String(!query && /** @type {HTMLElement} */ (tab).dataset.id === section));
   }
-  const content = view.querySelector(".settings-content");
-  content.querySelector("h2").textContent = t(`set_${section}`);
-  content.querySelector("h2").insertAdjacentHTML("afterend", `<p class="set-intro">${escapeHtml(t(`intro_${section}`))}</p>`);
-  content.append(...build[section]());
+  content.replaceChildren();
+  if (query.trim()) {
+    const q = query.trim().toLowerCase();
+    SECTIONS.forEach(([id], i) => {
+      const title = t(`set_${id}`);
+      const groups = build[id]();
+      // A section whose name matches shows whole; otherwise only rows (or groups) that match.
+      if (!title.toLowerCase().includes(q)) {
+        for (const g of groups) {
+          const heading = g.querySelector("h3")?.textContent.toLowerCase() ?? "";
+          if (heading.includes(q)) continue;
+          for (const r of g.querySelectorAll(".set-row")) /** @type {HTMLElement} */ (r).hidden = !r.textContent.toLowerCase().includes(q);
+          g.hidden = !g.querySelector(".set-row:not([hidden])");
+        }
+      }
+      const shown = groups.filter((g) => !g.hidden);
+      if (!shown.length) return;
+      const head = document.createElement("button");
+      head.className = "set-found";
+      head.innerHTML = `<span class="num">${number(i)}</span><span></span>${icon("chevronRight", 15)}`;
+      head.children[1].textContent = title;
+      head.addEventListener("click", () => {
+        section = id;
+        query = "";
+        /** @type {HTMLInputElement} */ ($("#settings-view .set-search input")).value = "";
+        renderContent();
+      });
+      content.append(head, ...shown);
+    });
+    if (!content.children.length) content.innerHTML = `<p class="set-none">${escapeHtml(t("noSettingFound"))}</p>`;
+  } else {
+    const i = SECTIONS.findIndex(([id]) => id === section);
+    const hero = document.createElement("header");
+    hero.className = "set-hero";
+    hero.innerHTML = `<span class="num">${number(i)} / ${number(SECTIONS.length - 1)}</span><h2></h2><p class="set-intro"></p>
+      <span class="set-mark" aria-hidden="true">${icon(/** @type {any} */ (SECTIONS[i][1]), 150)}</span>`;
+    hero.querySelector("h2").textContent = t(`set_${section}`);
+    hero.querySelector(".set-intro").textContent = t(`intro_${section}`);
+    content.append(hero, ...build[section]());
+  }
   const custom = content.querySelector(".path-code:empty");
   if (custom) custom.textContent = `${state.paths.ui}/user.css`;
-  paintIcons(view);
+  content.scrollTop = 0;
+  paintIcons(content);
 }
 
 export async function init() {
