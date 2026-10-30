@@ -28,7 +28,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
    stays nearly solid so the text keeps its contrast. */
 html[data-glass="true"], html[data-glass="true"] body { background: transparent; }
 html[data-glass="true"] :is(.library, .settings-view, .toolbar, .lite-bar) { background-color: color-mix(in srgb, var(--paper) calc(var(--glass) * 100%), transparent); }
-html[data-glass="true"] :is(.sidebar, .details, .settings-nav) { background-color: color-mix(in srgb, var(--paper-2) calc(var(--glass) * 100%), transparent); }
+html[data-glass="true"] :is(.details, .settings-nav) { background-color: color-mix(in srgb, var(--paper-2) calc(var(--glass) * 100%), transparent); }
 html[data-glass="true"] .reader { background-color: color-mix(in srgb, var(--desk) calc(var(--glass) * 100%), transparent); }
 html[data-glass="true"] .viewport[data-engine="flow"] .frame { background-color: color-mix(in srgb, var(--page) calc(50% + var(--glass) * 50%), transparent); }
 

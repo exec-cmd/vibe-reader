@@ -1,5 +1,5 @@
-// Library: the catalog (filters and shelves), the desk with books being read, the bookcase of
-// spines, the catalog card of the selected book, book menus and dialogs, and the mini window.
+// Library: the desk with books being read, the filter strip (statuses, shelves, authors), the
+// bookcase of spines, the catalog card of the selected book, book menus and dialogs, and the mini window.
 
 import { $, call, commands, escapeHtml, fail, saveConfig, state } from "./core.js";
 import { t } from "./i18n.js";
@@ -19,7 +19,6 @@ let query = "";
 let filter = "all";
 /** @type {number | null} */
 let selected = null;
-let allAuthors = false;
 
 /** Set by app.js: opens a book in the reader. @type {(id: number) => void} */
 export let onOpen = () => {};
@@ -108,8 +107,8 @@ function visible() {
 // ---------- render ----------
 
 function render() {
-  renderSidebar();
   renderDesk();
+  renderFilters();
   renderStacks();
   renderDetails();
 }
@@ -202,40 +201,36 @@ async function renderLog(/** @type {HTMLElement} */ box) {
   box.hidden = false;
 }
 
-function sideItem(/** @type {string} */ key, /** @type {string} */ iconName, /** @type {string} */ label, /** @type {number} */ count) {
+function chip(/** @type {string} */ key, /** @type {string} */ iconName, /** @type {string} */ label, /** @type {number} */ count) {
   const b = document.createElement("button");
-  b.className = "side-item";
-  b.dataset.filter = key;
+  b.className = "filter";
   b.setAttribute("aria-current", String(filter === key));
-  b.innerHTML = `${icon(/** @type {any} */ (iconName), 17)}<span class="name"></span><span class="count">${count}</span>`;
+  b.innerHTML = `${icon(/** @type {any} */ (iconName), 15)}<span class="name"></span><span class="count">${count}</span>`;
   b.querySelector(".name").textContent = label;
   b.addEventListener("click", () => {
-    filter = key;
+    // A second click on the current filter goes back to all books.
+    filter = filter === key ? "all" : key;
     render();
   });
   return b;
 }
 
-function renderSidebar() {
-  const side = $("#sidebar");
-  side.replaceChildren();
+/** The filter strip over the shelves: statuses, shelves (drop targets too) and an authors menu. */
+function renderFilters() {
+  const bar = $("#filters");
+  bar.hidden = !books.length;
+  bar.replaceChildren();
   const count = (/** @type {(b: Book) => boolean} */ f) => books.filter(f).length;
-  side.insertAdjacentHTML("beforeend", `<div class="side-head">${t("library")}</div>`);
-  side.append(
-    sideItem("all", "books", t("allBooks"), books.length),
-    sideItem("reading", "bookOpen", t("reading"), count((b) => b.status === "reading")),
-    sideItem("unread", "circle", t("unread"), count((b) => b.status === "unread")),
-    sideItem("finished", "done", t("finished"), count((b) => b.status === "finished")),
-    sideItem("dropped", "drop", t("dropped"), count((b) => b.status === "dropped")),
-  );
+  bar.append(chip("all", "books", t("allBooks"), books.length));
+  for (const [status, iconName] of [["reading", "bookOpen"], ["unread", "circle"], ["finished", "done"], ["dropped", "drop"]]) {
+    const n = count((b) => b.status === status);
+    // Empty statuses only add noise; the current one stays so it can be cleared.
+    if (n || filter === status) bar.append(chip(status, iconName, t(status), n));
+  }
 
-  const head = document.createElement("div");
-  head.className = "side-head";
-  head.innerHTML = `<span>${t("shelves")}</span><button class="icon-btn" title="${escapeHtml(t("newShelf"))}">${icon("plus", 16)}</button>`;
-  head.querySelector("button").addEventListener("click", () => newShelf());
-  side.append(head);
+  bar.insertAdjacentHTML("beforeend", `<span class="filter-sep"></span>`);
   for (const shelf of shelves) {
-    const item = sideItem(`shelf:${shelf.name}`, "shelf", shelf.name, shelf.books);
+    const item = chip(`shelf:${shelf.name}`, "shelf", shelf.name, shelf.books);
     item.addEventListener("contextmenu", (e) => {
       e.preventDefault();
       menu({ x: e.clientX, y: e.clientY }, shelfMenu(shelf.name));
@@ -252,34 +247,31 @@ function renderSidebar() {
       const id = Number(e.dataTransfer.getData("text/x-book"));
       if (id) await shelve(id, shelf.name, true);
     });
-    side.append(item);
+    bar.append(item);
   }
-  if (!shelves.length) {
-    const hint = document.createElement("button");
-    hint.className = "side-more";
-    hint.textContent = t("createFirstShelf");
-    hint.addEventListener("click", () => newShelf());
-    side.append(hint);
-  }
+  const add = document.createElement("button");
+  add.className = "filter add";
+  add.innerHTML = `${icon("plus", 15)}<span class="name"></span>`;
+  add.querySelector(".name").textContent = shelves.length ? t("newShelf") : t("createFirstShelf");
+  add.addEventListener("click", () => newShelf());
+  bar.append(add);
 
   /** @type {Map<string, number>} */
   const authors = new Map();
   for (const b of books) for (const a of b.authors) authors.set(a, (authors.get(a) ?? 0) + 1);
-  if (authors.size) {
-    side.insertAdjacentHTML("beforeend", `<div class="side-head">${t("authors")}</div>`);
-    const list = [...authors].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-    for (const [name, n] of allAuthors ? list : list.slice(0, 10)) side.append(sideItem(`author:${name}`, "user", name, n));
-    if (list.length > 10) {
-      const more = document.createElement("button");
-      more.className = "side-more";
-      more.textContent = allAuthors ? t("showLess") : t("showAllAuthors", { n: list.length });
-      more.addEventListener("click", () => {
-        allAuthors = !allAuthors;
-        renderSidebar();
-      });
-      side.append(more);
-    }
-  }
+  if (!authors.size) return;
+  const current = filter.startsWith("author:") ? filter.slice(7) : null;
+  const pick = document.createElement("button");
+  pick.className = "filter authors";
+  pick.setAttribute("aria-current", String(!!current));
+  pick.innerHTML = `${icon("user", 15)}<span class="name"></span>${icon("chevronDown", 14)}`;
+  pick.querySelector(".name").textContent = current ?? t("authors");
+  const list = [...authors].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  pick.addEventListener("click", () => menu(pick, [
+    ...(current ? [{ label: t("allBooks"), icon: "books", run: () => ((filter = "all"), render()) }, { separator: true }] : []),
+    ...list.map(([name, n]) => ({ label: name, hint: String(n), checked: name === current, run: () => ((filter = `author:${name}`), render()) })),
+  ], { align: "end" }));
+  bar.append(pick);
 }
 
 function spine(/** @type {Book} */ book) {
@@ -734,10 +726,6 @@ export function init() {
   };
   bindSelects();
   $("#mini-toggle").addEventListener("click", toggleMini);
-  $("#toggle-sidebar").addEventListener("click", () => {
-    const off = home().dataset.sidebar === "off";
-    home().dataset.sidebar = off ? "on" : "off";
-  });
   new ResizeObserver(() => shelveRows()).observe($("#shelves"));
   // A soft light follows the cursor over the room.
   const room = $("#room");

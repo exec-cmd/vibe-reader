@@ -1,40 +1,13 @@
-/* Library: filters and shelves on the left, the desk and the shelves in the middle, the selected
-   book on the right. In mini mode only the toolbar and one shelf remain. */
+/* Library: the desk, a filter strip and the shelves in the middle, the selected book on the
+   right. In mini mode only the toolbar and one shelf remain. */
 
 .library-body { flex: 1; min-height: 0; display: flex; }
-
-/* Sidebar: a quiet list; the current filter is a violet pill. */
-.sidebar {
-  width: 228px; flex: none; overflow: auto;
-  padding: 14px 10px 20px; background: var(--paper);
-  border-right: 1px solid color-mix(in srgb, var(--rule) 70%, transparent);
-}
-.library[data-sidebar="off"] .sidebar { display: none; }
-.side-head { display: flex; align-items: center; justify-content: space-between; height: 26px; margin: 18px 8px 4px 10px; color: var(--muted); font-size: 12px; font-weight: 600; }
-.side-head:first-child { margin-top: 0; }
-.side-head .icon-btn { width: 24px; height: 24px; }
-.side-item {
-  display: grid; grid-template-columns: 18px 1fr auto; align-items: center; gap: 10px;
-  width: 100%; height: 34px; padding: 0 10px; margin-bottom: 1px;
-  border: 0; border-radius: var(--radius-m); background: transparent;
-  text-align: left; cursor: pointer; color: color-mix(in srgb, var(--ink) 86%, var(--muted));
-  transition: background var(--fast), color var(--fast);
-}
-.side-item:hover { background: var(--hover); color: var(--ink); }
-.side-item[aria-current="true"] { background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--ink); font-weight: 500; }
-.side-item .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.side-item .count { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
-.side-item .icon { color: var(--muted); }
-.side-item[aria-current="true"] :is(.icon, .count) { color: var(--accent); }
-.side-item.drop-target { outline: 2px dashed var(--accent); outline-offset: -2px; }
-.side-more { margin: 2px 10px; font-size: 12px; color: var(--muted); background: none; border: 0; cursor: pointer; padding: 4px 0; }
-.side-more:hover { color: var(--accent); }
 
 /* The room: the desk on top, then the shelves. A soft light follows the cursor (--mx, --my). */
 .room {
   flex: 1; min-width: 0; overflow: auto; outline: none; display: flex; flex-direction: column; position: relative;
   background:
-    radial-gradient(520px circle at var(--mx, 50%) var(--my, -200px), color-mix(in srgb, var(--accent) 11%, transparent), transparent 70%),
+    radial-gradient(520px circle at var(--mx, 50%) var(--my, -200px), color-mix(in srgb, var(--accent) 5%, transparent), transparent 70%),
     var(--case);
 }
 
@@ -78,6 +51,31 @@
 .week i.today { background: var(--accent); }
 .week i.none { background: var(--rule); }
 
+/* Filter strip: statuses, shelves and authors as pills; it stays on top while the shelves scroll. */
+.filters {
+  position: sticky; top: 0; z-index: 4;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 12px 28px;
+  background: color-mix(in srgb, var(--case) 88%, transparent); backdrop-filter: blur(10px);
+}
+.filter {
+  display: inline-flex; align-items: center; gap: 6px; height: 30px; max-width: 260px; padding: 0 12px 0 10px;
+  border: 1px solid color-mix(in srgb, var(--rule) 80%, transparent); border-radius: 30px;
+  background: color-mix(in srgb, var(--surface) 55%, transparent); color: color-mix(in srgb, var(--ink) 86%, var(--muted));
+  font-size: 13px; white-space: nowrap; cursor: pointer;
+  transition: background var(--fast), color var(--fast), border-color var(--fast);
+}
+.filter:hover { background: var(--hover); color: var(--ink); }
+.filter[aria-current="true"] { background: color-mix(in srgb, var(--accent) 18%, transparent); border-color: color-mix(in srgb, var(--accent) 55%, transparent); color: var(--ink); font-weight: 500; }
+.filter .name { overflow: hidden; text-overflow: ellipsis; }
+.filter .count { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.filter .icon { flex: none; color: var(--muted); }
+.filter[aria-current="true"] :is(.icon, .count) { color: var(--accent); }
+.filter.add { border-style: dashed; background: transparent; color: var(--muted); }
+.filter.add:hover { border-color: var(--accent); color: var(--accent); }
+.filter.authors { margin-left: auto; }
+.filter.drop-target { outline: 2px dashed var(--accent); outline-offset: 2px; }
+.filter-sep { width: 1px; height: 18px; margin: 0 4px; background: var(--rule); }
+
 /* A progress line with its percent. */
 .meter { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .meter .bar { flex: 1; height: 4px; border-radius: 4px; background: color-mix(in srgb, var(--ink) 10%, transparent); overflow: hidden; }
@@ -100,7 +98,7 @@
 .hero:hover .cover, .details .cover:hover { transform: translateY(-3px); }
 
 /* Shelves: books stand on a lit glass ledge; each group has a quiet heading. */
-.stacks { flex: 1; padding: 8px 28px 40px; outline: none; }
+.stacks { flex: 1; padding: 0 28px 40px; outline: none; }
 .stack { margin-top: 22px; }
 .stack-head { display: flex; align-items: baseline; gap: 10px; margin: 0 0 6px 2px; }
 .stack-head h3 { margin: 0; font: 600 15px/1.3 var(--font-ui); }
@@ -130,7 +128,7 @@
   color: var(--stamp);
   transform: translateY(var(--lift)) rotate(var(--lean));
   transform-origin: bottom left;
-  transition: transform var(--slow) cubic-bezier(0.3, 1.4, 0.5, 1), box-shadow var(--slow) var(--ease), filter var(--slow);
+  transition: transform var(--slow) var(--ease), box-shadow var(--slow) var(--ease), filter var(--slow);
 }
 /* The last book of a short row leans on its neighbour. */
 .spine.lean { --lean: -6deg; margin-left: calc(var(--h) * 0.11); }
@@ -148,7 +146,7 @@
 /* Progress runs up the foot of the spine. */
 .spine .read { position: absolute; left: 5px; right: 5px; bottom: 7px; height: 3px; border-radius: 3px; background: color-mix(in srgb, var(--stamp) 22%, transparent); overflow: hidden; }
 .spine .read i { display: block; height: 100%; background: var(--stamp); border-radius: inherit; }
-.spine:hover, .spine:focus-visible { --lift: -10px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 16px 26px -10px color-mix(in srgb, var(--cloth) 70%, #000); outline: none; }
+.spine:hover, .spine:focus-visible { --lift: -5px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 16px 26px -10px color-mix(in srgb, var(--cloth) 70%, #000); outline: none; }
 .spine[aria-selected="true"] { --lift: -14px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 0 0 2px var(--case), 0 0 0 4px var(--accent), 0 18px 28px -10px color-mix(in srgb, var(--accent) 60%, #000); }
 .spine.finished { filter: saturate(0.75) brightness(0.9); }
 .spine.dragging { opacity: 0.4; }
@@ -195,7 +193,6 @@
 
 /* Narrow windows: the selected book slides over the room only while one is selected. */
 @media (max-width: 1180px) {
-  .sidebar { width: 200px; }
   .library-body { position: relative; }
   .desk { grid-template-columns: 1fr; }
   .desk-side { width: auto; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
@@ -209,7 +206,7 @@
 }
 
 /* Mini mode: a small window with one shelf of recent books. */
-body[data-mini="1"] [data-hide-mini], body[data-mini="1"] .sidebar, body[data-mini="1"] .details { display: none !important; }
+body[data-mini="1"] [data-hide-mini], body[data-mini="1"] .details { display: none !important; }
 body[data-mini="1"] .stacks { padding: 4px 14px 0; display: flex; flex-direction: column; justify-content: flex-start; overflow: hidden; }
 body[data-mini="1"] .stack { display: none; margin: 0; }
 body[data-mini="1"] .stack.recent { display: block; padding-bottom: 18px; }

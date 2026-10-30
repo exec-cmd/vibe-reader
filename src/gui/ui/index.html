@@ -15,10 +15,9 @@
   <link rel="stylesheet" href="user.css">
 </head>
 <body>
-  <!-- Library: sidebar, shelves of spines, book details. In mini mode only the toolbar and one shelf remain. -->
+  <!-- Library: the desk, a filter strip, shelves of spines, book details. In mini mode only the toolbar and one shelf remain. -->
   <section class="view library" id="home" hidden>
     <header class="toolbar">
-      <button class="icon-btn" id="toggle-sidebar" data-icon="menu" data-i18n-title="toggleSidebar" data-hide-mini></button>
       <span class="brand">vibe-reader</span>
       <label class="search-box"><span data-icon="search" data-size="16"></span><input id="search" type="search" autocomplete="off" data-i18n-placeholder="search"></label>
       <span class="grow"></span>
@@ -29,9 +28,9 @@
       <button class="icon-btn" id="open-settings" data-icon="gear" data-i18n-title="settings" data-hide-mini></button>
     </header>
     <div class="library-body">
-      <nav class="sidebar" id="sidebar" aria-label="Library"></nav>
       <main class="room" id="room" tabindex="-1">
         <section class="desk" id="desk" data-hide-mini></section>
+        <nav class="filters" id="filters" aria-label="Library" data-hide-mini></nav>
         <div class="stacks" id="shelves"></div>
       </main>
       <aside class="details" id="card" aria-live="polite"></aside>

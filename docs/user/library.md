@@ -9,7 +9,6 @@ and shows the card of the book you select.
 
 | Control | What it does |
 |---|---|
-| Sidebar button | Shows or hides the catalog. |
 | Search field | Filters books by title or author. Press Enter to open the first match. |
 | Group | Groups books by shelf, author, format, status, or not at all. |
 | Sort | Sorts books by recently read, title, author, progress, or date added. |
@@ -17,16 +16,19 @@ and shows the card of the book you select.
 | Mini library (`M`) | Switches to the small window. See [Mini library](#mini-library). |
 | Settings (`Ctrl+,`) | Opens the settings. See [configuration](configuration.md). |
 
-## Catalog
+## Filters
 
-The left side is the catalog. Every filter (All books, Reading, Unread, Finished
-and Dropped), every shelf and every author is a drawer with a label holder. The
-selected drawer is pulled out.
+A strip of filters sits between the desk and the bookcase. It stays at the top
+while you scroll the shelves.
 
-- Click **+** to create a shelf.
-- Right-click a shelf drawer to rename or delete it. Deleting a shelf keeps its
-  books.
-- Drag a spine onto a shelf drawer to put the book there.
+- **All books** and the statuses (Reading, Unread, Finished, Dropped) come
+  first, each with its number of books. A status with no books is hidden.
+- Your shelves follow. Click **New shelf** to create one. Right-click a shelf to
+  rename or delete it. Deleting a shelf keeps its books. Drag a spine onto a
+  shelf to put the book there.
+- **Authors** opens a list of all authors. Pick one to see only their books.
+
+Click a filter to apply it. Click it again to go back to all books.
 
 ## The desk and the reading log
 
