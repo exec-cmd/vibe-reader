@@ -28,10 +28,10 @@ export const allBooks = () => books;
 
 const home = () => $("#home");
 
-/** The globe of the desk; one element kept across renders, so it does not gather again on each refresh. */
+/** The year of reading on the desk; one element kept across renders, so it does not wind up again on each refresh. */
 const globeBox = document.createElement("div");
 globeBox.className = "globe";
-globeBox.innerHTML = `<canvas role="img"></canvas>`;
+globeBox.innerHTML = `<canvas role="img"></canvas><span class="globe-caption"></span>`;
 
 export async function refresh() {
   ({ books, shelves } = await call("library"));
@@ -165,7 +165,6 @@ function renderDesk() {
     loadCover(book, /** @type {HTMLElement} */ (b.querySelector(".cover-slot")));
   }
   main.append(globeBox);
-  globe.setBooks(books);
   renderLog(/** @type {HTMLElement} */ (desk.querySelector(".log")));
 }
 
@@ -184,15 +183,35 @@ function bookContext(/** @type {HTMLElement} */ el, /** @type {Book} */ book) {
   });
 }
 
-/** Minutes read in the last seven days, and how many days in a row the reader has opened a book. */
+/**
+ * The year of reading on the globe; then minutes read in the last seven days, and how many days in
+ * a row the reader has opened a book.
+ */
 async function renderLog(/** @type {HTMLElement} */ box) {
-  const sessions = await call("sessions", { days: 60 }).catch(() => []);
-  if (!sessions.length) return;
+  const sessions = await call("sessions", { days: 366 }).catch(() => []);
   const day = (/** @type {number} */ s) => new Date(s * 1000).toDateString();
   /** @type {Map<string, number>} */
   const minutes = new Map();
-  for (const s of sessions) minutes.set(day(s.started_at), (minutes.get(day(s.started_at)) ?? 0) + (s.ended_at - s.started_at) / 60);
+  /** Minutes per book per day, to name the book of each day. @type {Map<string, Map<number, {title: string, minutes: number}>>} */
+  const byBook = new Map();
+  for (const s of sessions) {
+    const key = day(s.started_at);
+    const m = (s.ended_at - s.started_at) / 60;
+    minutes.set(key, (minutes.get(key) ?? 0) + m);
+    if (!byBook.has(key)) byBook.set(key, new Map());
+    const entry = byBook.get(key).get(s.book_id) ?? { title: s.title, minutes: 0 };
+    entry.minutes += m;
+    byBook.get(key).set(s.book_id, entry);
+  }
   const today = Date.now() / 1000;
+  const year = Array.from({ length: 365 }, (_, i) => {
+    const time = today - (364 - i) * 86400;
+    const top = [...(byBook.get(day(time)) ?? [])].sort((a, b) => b[1].minutes - a[1].minutes)[0];
+    return { time, minutes: minutes.get(day(time)) ?? 0, book: top ? { id: top[0], title: top[1].title } : null };
+  });
+  globe.setDays(year);
+  globeBox.lastElementChild.textContent = t("yearOfReading", { n: year.filter((d) => d.minutes > 0).length });
+  if (!sessions.length) return;
   const week = Array.from({ length: 7 }, (_, i) => minutes.get(day(today - (6 - i) * 86400)) ?? 0);
   let streak = 0;
   // A streak still counts when today has no reading yet.
@@ -317,7 +336,7 @@ function spine(/** @type {Book} */ book) {
 }
 
 let peekTimer = 0;
-/** Shows the cover of the spine under the cursor above the shelf. */
+/** A small card beside the spine under the cursor: cover, title, author and progress. */
 function peek(/** @type {Book | null} */ book, /** @type {HTMLElement} */ el) {
   let box = $("#room .peek");
   clearTimeout(peekTimer);
@@ -333,14 +352,22 @@ function peek(/** @type {Book | null} */ book, /** @type {HTMLElement} */ el) {
     const room = $("#room");
     const rr = room.getBoundingClientRect();
     const sr = el.getBoundingClientRect();
-    target.innerHTML = `<div class="cover-slot">${coverHtml(book)}</div><p></p>`;
-    target.querySelector("p").textContent = book.title;
+    target.innerHTML = `<div class="cover-slot">${coverHtml(book)}</div>
+      <div class="peek-text"><b></b><span class="by"></span>
+        <span class="meter"><span class="bar"><i style="width:${percent(book.progress)}"></i></span><span>${percent(book.progress)}</span></span></div>`;
+    target.querySelector("b").textContent = book.title;
+    target.querySelector(".by").textContent = book.authors.join(", ");
     loadCover(book, /** @type {HTMLElement} */ (target.querySelector(".cover-slot")));
-    const left = sr.left - rr.left + room.scrollLeft + sr.width / 2 - 66;
-    target.style.left = `${Math.max(8, Math.min(left, room.clientWidth - 140))}px`;
-    target.style.top = `${sr.top - rr.top + room.scrollTop - 250}px`;
+    // Beside the spine, on the right unless that runs out of the room; never under the filter strip.
+    const width = target.offsetWidth || 280;
+    const right = sr.right - rr.left + room.scrollLeft + 10;
+    const left = right + width < room.clientWidth - 8 ? right : sr.left - rr.left + room.scrollLeft - 10 - width;
+    const floor = room.scrollTop + ($("#filters")?.offsetHeight ?? 0) + 8;
+    target.dataset.side = left === right ? "right" : "left";
+    target.style.left = `${Math.max(8, left)}px`;
+    target.style.top = `${Math.max(floor, sr.top - rr.top + room.scrollTop + 12)}px`;
     target.classList.add("on");
-  }, 260);
+  }, 220);
 }
 
 function stack(/** @type {string} */ title, /** @type {Book[]} */ list, cls = "") {
@@ -458,27 +485,35 @@ function renderDetails() {
     return;
   }
   const pages = book.format === "pdf" ? t("pagesN", { n: book.chapter_chars.length }) : t("chaptersN", { n: book.chapter_chars.length });
+  // The head wears the cover's colors; below is a library catalog card with a status stamp.
   card.innerHTML = `
     <button class="icon-btn card-close" data-act="close" title="${escapeHtml(t("close"))}">${icon("close", 16)}</button>
-    <div class="cover-slot" style="--cloth:${book.color}">${coverHtml(book)}</div>
-    <h2></h2>
-    <div class="by"></div>
-    <div class="meter"><span class="bar"><i style="width:${percent(book.progress)}"></i></span><span>${percent(book.progress)}</span></div>
-    <div class="actions">
-      <button class="btn primary" data-act="open">${icon("bookOpen", 16)}${t(book.progress > 0 ? "continue" : "read")}</button>
-      <button class="btn" data-act="edit" title="${escapeHtml(t("editDetails"))}">${icon("edit", 16)}</button>
-      <button class="btn" data-act="more" title="${escapeHtml(t("more"))}">${icon("more", 16)}</button>
+    <div class="card-head">
+      <div class="glow"></div>
+      <div class="cover-slot" style="--cloth:${book.color}">${coverHtml(book)}</div>
+      <h2></h2>
+      <div class="by"></div>
+      <div class="meter"><span class="bar"><i style="width:${percent(book.progress)}"></i></span><span>${percent(book.progress)}</span></div>
+      <div class="actions">
+        <button class="btn primary" data-act="open">${icon("bookOpen", 16)}${t(book.progress > 0 ? "continue" : "read")}</button>
+        <button class="btn" data-act="edit" title="${escapeHtml(t("editDetails"))}">${icon("edit", 16)}</button>
+        <button class="btn" data-act="more" title="${escapeHtml(t("more"))}">${icon("more", 16)}</button>
+      </div>
     </div>
-    <dl class="facts">
-      <dt>${t("status")}</dt><dd><button class="select-btn boxed" data-act="status"><span class="select-value"></span>${icon("chevronDown", 14)}</button></dd>
-      <dt>${t("atmosphere")}</dt><dd><button class="select-btn boxed" data-act="look"><span class="select-value">…</span>${icon("chevronDown", 14)}</button></dd>
-      <dt>${t("shelves")}</dt><dd><div class="chips" data-act="chips"></div></dd>
-      <dt>${t("format")}</dt><dd>${book.format.toUpperCase()}, ${pages}</dd>
-      <dt>${t("length")}</dt><dd>${t("words", { n: book.words.toLocaleString() })}</dd>
-      <dt>${t("added")}</dt><dd>${date(book.added_at)}</dd>
-      <dt>${t("opened")}</dt><dd>${date(book.opened_at)}</dd>
-    </dl>
-    <div class="path"></div>`;
+    <article class="catalog">
+      <header><span class="call">№ ${String(book.id).padStart(5, "0")}</span>
+        <button class="stamp ${book.status}" data-act="status" title="${escapeHtml(t("status"))}"><span class="select-value"></span></button></header>
+      <dl class="facts">
+        <dt>${t("atmosphere")}</dt><dd><button class="select-btn boxed" data-act="look"><span class="select-value">…</span>${icon("chevronDown", 14)}</button></dd>
+        <dt>${t("shelves")}</dt><dd><div class="chips" data-act="chips"></div></dd>
+        <dt>${t("format")}</dt><dd>${book.format.toUpperCase()}, ${pages}</dd>
+        <dt>${t("length")}</dt><dd>${t("words", { n: book.words.toLocaleString() })}</dd>
+        <dt>${t("added")}</dt><dd>${date(book.added_at)}</dd>
+        <dt>${t("opened")}</dt><dd>${date(book.opened_at)}</dd>
+      </dl>
+      <div class="path"></div>
+      <i class="hole" aria-hidden="true"></i>
+    </article>`;
   card.querySelector("h2").textContent = book.title;
   card.querySelector(".by").textContent = book.authors.join(", ") || t("noAuthor");
   card.querySelector(".path").textContent = book.path;
@@ -512,7 +547,9 @@ function renderDetails() {
   add.addEventListener("click", () => menu(add, shelvesMenu(book)));
   chips.append(add);
 
-  loadCover(book, /** @type {HTMLElement} */ (card.querySelector(".cover-slot")));
+  loadCover(book, /** @type {HTMLElement} */ (card.querySelector(".cover-slot")), (src) => {
+    /** @type {HTMLElement} */ (card.querySelector(".glow")).style.background = `url("${src}") center / cover`;
+  });
 }
 
 /** Shows the cover image when there is one; PDFs get their first page drawn once. */
@@ -737,7 +774,15 @@ export function init() {
   new ResizeObserver(() => shelveRows()).observe($("#shelves"));
   const canvas = /** @type {HTMLCanvasElement} */ (globeBox.firstElementChild);
   canvas.setAttribute("aria-label", t("libraryGlobe"));
-  globe.mount(canvas, { pick: selectBook, open: (id) => onOpen(id) });
+  globe.mount(canvas, {
+    pick: selectBook,
+    open: (id) => onOpen(id),
+    label: (d) => {
+      const when = new Date(d.time * 1000).toLocaleDateString([], { day: "numeric", month: "short" });
+      if (!d.minutes) return `${when} · ${t("noReadingDay")}`;
+      return `${when} · ${t("minutesN", { n: Math.max(1, Math.round(d.minutes)) })}${d.book ? ` · ${d.book.title}` : ""}`;
+    },
+  });
   // A soft light follows the cursor over the room.
   const room = $("#room");
   let frame = 0;

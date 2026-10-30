@@ -15,9 +15,10 @@
 .desk { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; padding: 24px 28px 8px; }
 .desk-empty { color: var(--muted); max-width: 32em; margin: 0; }
 .desk-main { display: grid; grid-template-columns: minmax(0, 1fr) 250px; align-items: center; gap: 12px; }
-/* The globe of the library (globe.js): books as bright nodes on a sphere of glyphs. */
-.globe { width: 250px; height: 250px; margin: -14px 0; }
-.globe canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+/* The year of reading (globe.js): 365 days wound into a ball of glyphs. */
+.globe { display: grid; justify-items: center; width: 250px; margin: -14px 0; }
+.globe canvas { display: block; width: 250px; height: 230px; touch-action: none; }
+.globe-caption { margin-top: -6px; color: var(--muted); font-size: 12px; text-align: center; }
 @media (max-width: 960px) { .desk-main { grid-template-columns: minmax(0, 1fr); } .globe { display: none; } }
 .hero {
   position: relative; isolation: isolate; overflow: hidden;
@@ -100,7 +101,7 @@
 .cover small { font: 500 10px/1.3 var(--font-ui); opacity: 0.85; }
 .cover.image { padding: 0; background: var(--paper-2); }
 .cover.image img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.hero:hover .cover, .details .cover:hover { transform: translateY(-3px); }
+.hero:hover .cover { transform: translateY(-3px); }
 
 /* Shelves: books stand on a lit glass ledge; each group has a quiet heading. */
 .stacks { flex: 1; padding: 0 28px 40px; outline: none; }
@@ -156,36 +157,80 @@
 .spine.finished { filter: saturate(0.75) brightness(0.9); }
 .spine.dragging { opacity: 0.4; }
 
-/* The cover of the spine under the cursor floats above the shelf. */
+/* The card beside the spine under the cursor. */
 .peek {
-  position: absolute; z-index: 5; width: 132px; pointer-events: none;
-  opacity: 0; transform: translateY(8px) scale(0.96); transform-origin: bottom center;
-  transition: opacity var(--fast) var(--ease), transform var(--slow) var(--ease);
+  position: absolute; z-index: 5; width: 280px; pointer-events: none;
+  display: grid; grid-template-columns: 58px minmax(0, 1fr); gap: 12px; align-items: center; padding: 10px 12px 10px 10px;
+  border: 1px solid color-mix(in srgb, var(--rule) 80%, transparent); border-radius: 14px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(12px);
+  box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.6);
+  opacity: 0; transform: translateX(-6px); transition: opacity var(--fast) var(--ease), transform var(--slow) var(--ease);
 }
+.peek[data-side="left"] { transform: translateX(6px); }
 .peek.on { opacity: 1; transform: none; }
-.peek .cover { box-shadow: 0 24px 40px -16px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.06); }
-.peek p { margin: 8px 0 0; font-size: 12px; line-height: 1.3; color: var(--ink); text-align: center; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-shadow: 0 1px 6px var(--case); }
+.peek .cover { padding: 6px 4px; font-size: 8px; box-shadow: 0 6px 14px -6px rgba(0, 0, 0, 0.6); }
+.peek-text { display: grid; gap: 3px; min-width: 0; }
+.peek-text b { font: 600 14px/1.25 var(--font-body); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.peek-text .by { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.peek-text .meter { margin-top: 5px; }
 
-/* The selected book. */
+/* The selected book: a head in the cover's colors, then a library catalog card on ruled stock with
+   a call number, a rubber stamp for the status (click it to change) and a punched hole. */
 .details {
-  position: relative; width: 320px; flex: none; overflow: auto;
-  padding: 28px 22px 28px; background: var(--paper);
-  border-left: 1px solid color-mix(in srgb, var(--rule) 70%, transparent);
+  position: relative; width: 340px; flex: none; overflow: auto; padding: 0 0 26px;
+  background: var(--paper); border-left: 1px solid color-mix(in srgb, var(--rule) 70%, transparent);
 }
 .library[data-details="off"] .details { display: none; }
-.details .cover-slot { width: 150px; margin: 0 auto 22px; }
-.details .cover { box-shadow: 0 24px 40px -18px color-mix(in srgb, var(--cloth, var(--accent)) 70%, #000), 0 2px 6px rgba(0, 0, 0, 0.2); }
-.details h2 { margin: 0; font: 600 20px/1.25 var(--font-body); user-select: text; }
-.details .by { margin: 6px 0 16px; color: var(--muted); user-select: text; }
-.details .meter { margin-bottom: 16px; }
-.details .actions { display: flex; gap: 6px; margin-bottom: 20px; }
-.details .actions .btn.primary { flex: 1; justify-content: center; height: 36px; }
-.details .actions .btn:not(.primary) { width: 36px; height: 36px; padding: 0; justify-content: center; }
-.facts { display: grid; grid-template-columns: auto 1fr; gap: 2px 14px; margin: 0; padding-top: 14px; border-top: 1px solid var(--rule); font-size: 13px; line-height: 30px; }
-.facts dt { color: var(--muted); }
-.facts dd { margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
-.details .select-btn.boxed { width: auto; max-width: 100%; height: 28px; margin-left: auto; padding: 0 6px 0 10px; border: 0; background: var(--hover); font-size: 13px; }
-.details .facts dd:has(.select-btn) { display: flex; }
+.card-head { position: relative; isolation: isolate; overflow: hidden; padding: 30px 24px 20px; text-align: center; }
+.card-head .glow { position: absolute; inset: -60px -40px 30%; z-index: -1; filter: blur(50px) saturate(1.5); opacity: 0.4; }
+.card-head::after { content: ""; position: absolute; inset: auto 0 0; height: 60%; z-index: -1; background: linear-gradient(transparent, var(--paper)); }
+.details .cover-slot { width: 148px; margin: 0 auto 20px; perspective: 900px; }
+/* The cover stands turned a little, like a book pulled from the shelf; it faces you on hover. */
+.details .cover {
+  transform: rotateY(-14deg) rotateX(2deg); transform-origin: left center;
+  box-shadow: 18px 26px 40px -18px color-mix(in srgb, var(--cloth, var(--accent)) 60%, #000), 0 2px 6px rgba(0, 0, 0, 0.25), inset 4px 0 0 rgba(0, 0, 0, 0.2);
+}
+.details .cover-slot:hover .cover { transform: none; }
+.details h2 { margin: 0; font: 600 23px/1.2 var(--font-display); user-select: text; text-wrap: balance; }
+.details .by { margin: 6px 0 14px; color: var(--muted); user-select: text; }
+.details .meter { margin: 0 auto 16px; max-width: 240px; }
+.details .actions { display: flex; gap: 6px; }
+.details .actions .btn.primary { flex: 1; justify-content: center; height: 38px; border-radius: 12px; }
+.details .actions .btn:not(.primary) { width: 38px; height: 38px; padding: 0; justify-content: center; border-radius: 12px; }
+
+.catalog {
+  --stock: color-mix(in srgb, var(--surface) 82%, #f1dfae);
+  --ruling: color-mix(in srgb, #4d7cc9 20%, transparent);
+  position: relative; margin: 4px 18px 0; padding: 14px 16px 34px;
+  border-radius: 6px; background: var(--stock); color: var(--ink);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.4) inset, 0 14px 30px -18px rgba(0, 0, 0, 0.55), 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+:root[data-mode="dark"] .catalog { --stock: color-mix(in srgb, var(--surface) 88%, #f1dfae); --ruling: color-mix(in srgb, #7ea4e6 16%, transparent); }
+.catalog header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 8px; border-bottom: 2px solid color-mix(in srgb, #c8483e 55%, transparent); }
+.catalog .call { font: 600 12px var(--font-mono); letter-spacing: 0.08em; color: var(--muted); }
+.stamp {
+  --ink-stamp: var(--muted);
+  padding: 3px 10px; border: 2px solid var(--ink-stamp); border-radius: 5px; background: transparent; cursor: pointer;
+  color: var(--ink-stamp); font: 700 11px/1.2 var(--font-mono); letter-spacing: 0.14em; text-transform: uppercase;
+  transform: rotate(-5deg); opacity: 0.85; transition: transform var(--fast) var(--ease), opacity var(--fast);
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='40'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -2.2 2'/%3E%3C/filter%3E%3Crect width='90' height='40' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.stamp:hover { transform: rotate(-2deg) scale(1.05); opacity: 1; }
+.stamp.reading { --ink-stamp: var(--accent); }
+.stamp.finished { --ink-stamp: #3f8f5a; }
+.stamp.dropped { --ink-stamp: var(--danger); }
+.catalog .facts {
+  display: grid; grid-template-columns: auto 1fr; gap: 0 12px; margin: 0; padding: 0; border: 0;
+  font-size: 13px; line-height: 30px;
+  background: repeating-linear-gradient(transparent 0 29px, var(--ruling) 29px 30px);
+}
+.catalog .facts dt { color: var(--muted); font-size: 11.5px; letter-spacing: 0.04em; }
+.catalog .facts dd { margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; font-family: var(--font-mono); font-size: 12px; }
+.catalog .facts dd:has(.select-btn, .chips) { display: flex; justify-content: flex-end; font-family: var(--font-ui); }
+.details .select-btn.boxed { width: auto; max-width: 100%; height: 26px; margin: 2px 0 0 auto; padding: 0 6px 0 10px; border: 0; background: color-mix(in srgb, var(--ink) 7%, transparent); font-size: 12.5px; }
+.catalog .path { margin-top: 10px; font: 10.5px/1.45 var(--font-mono); color: var(--muted); word-break: break-all; user-select: text; opacity: 0.8; }
+/* The hole the catalog drawer's rod went through. */
+.catalog .hole { position: absolute; left: 50%; bottom: 10px; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: var(--paper); box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.35); }
 .chips { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; padding: 3px 0; line-height: normal; }
 .chip { display: inline-flex; align-items: center; gap: 2px; height: 24px; padding: 0 2px 0 9px; border-radius: 24px; background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--ink); font-size: 12px; }
 .chip button { display: grid; place-items: center; width: 20px; height: 20px; border: 0; padding: 0; border-radius: 50%; background: transparent; color: var(--muted); cursor: pointer; }
@@ -193,8 +238,7 @@
 .chip.add { padding: 0 10px; background: transparent; border: 1px dashed var(--rule); color: var(--muted); cursor: pointer; }
 .chip.add:hover { border-color: var(--accent); color: var(--accent); }
 .details-empty { color: var(--muted); text-align: center; margin-top: 40%; }
-.card-close { display: none; position: absolute; top: 10px; right: 10px; }
-.path { margin-top: 18px; font: 11px/1.45 var(--font-mono); color: var(--muted); word-break: break-all; user-select: text; opacity: 0.8; }
+.card-close { display: none; position: absolute; z-index: 1; top: 10px; right: 10px; }
 
 /* Narrow windows: the selected book slides over the room only while one is selected. */
 @media (max-width: 1180px) {

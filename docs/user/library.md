@@ -36,14 +36,16 @@ Above the bookcase, the desk holds up to four books with the status reading.
 They stand with their covers out and show the title, authors and progress. Click
 one to open it, or right-click it to open the book menu.
 
-Beside the book you are reading turns the globe of your library: a sphere of
-small glyphs where your most recent books are the bright diamonds, in their
-cover colors. Thin threads join books that share a shelf or an author.
+Beside the book you are reading turns your year of reading, wound like a ball
+of yarn. A spiral of 365 small glyphs runs from a year ago at the bottom to
+today at the top, where a ring beats. Days you read glow in the accent color,
+brighter for more minutes, and days read in a row are joined by a bright thread.
+The line under the ball counts the days with a book.
 
-- Point at a diamond to see the title. Click it to select the book,
-  double-click to open it.
-- Drag the globe to turn it. Click elsewhere on it to send a wave around.
-- With reduced motion the globe stands still until you drag it.
+- Point at a day to see its date, minutes and the book you read most that day.
+  Click it to select that book, double-click to open it.
+- Drag the ball to turn it. Click elsewhere on it to send a wave around.
+- With reduced motion the ball stands still until you drag it.
 
 Next to the desk, the reading log shows the minutes you read in the last seven
 days as seven small bars. Today's bar is highlighted. When you have read on two
@@ -64,6 +66,8 @@ the book. The last book of a short row leans on its neighbour.
 A gilt ribbon on a spine marks a book you are reading. The selected spine is
 pulled up and outlined in gilt.
 
+- Point at a spine to see a small card beside it: the cover, title, authors and
+  progress.
 - Click a spine to select it. Double-click it, or press Enter, to open the book.
 - Use the arrow keys to move between spines.
 - Press F2 to edit the selected book.
@@ -71,8 +75,9 @@ pulled up and outlined in gilt.
 
 ## Catalog card
 
-The right side shows the catalog card of the selected book. The cover sits at
-the top, and the details are on a ruled index card below it:
+The right side shows the selected book. The cover stands at the top, turned a
+little like a book pulled from the shelf, over a glow in its colors. The details
+are on a ruled catalog card below it, with a punched hole at the bottom:
 
 - **Cover.** EPUB and FB2 use their own cover. For PDF, the first page is drawn
   as the cover. You can choose any image.
@@ -80,7 +85,8 @@ the top, and the details are on a ruled index card below it:
 - **Title, authors and progress.** The progress bar shows the percentage read.
 - **Buttons.** **Continue** or **Read** opens the book. **Edit** changes the
   details. **More** (…) opens the book menu.
-- **Status.** Unread, reading, finished or dropped.
+- **Status.** A rubber stamp in the card's corner: unread, reading, finished or
+  dropped. Click the stamp to change it.
 - **Atmosphere.** A preset, or Default. See [atmosphere](atmosphere.md).
 - **Shelves.** Each shelf is a chip. Click × on a chip to take the book off that
   shelf. **Add to shelf** opens a menu with checkboxes and **New shelf**.

@@ -1,17 +1,19 @@
-// The globe on the desk: the library as a sphere of glyphs. Books are the bright nodes, in their
-// cloth colors, and threads join books that share a shelf or an author, with a spark running along
-// them. It turns slowly, follows a drag with inertia and wakes the glyphs under the cursor. A
-// click on a book selects it, a double click opens it, a click elsewhere sends a wave around.
+// The globe on the desk: a year of reading wound like a ball of yarn. A spiral of 365 days runs from
+// a year ago at the bottom pole to today at the top; days with reading glow in the accent, more
+// minutes brighter, and days read in a row are joined by a bright thread. The rest of the ball is
+// faint glyphs. It turns slowly, follows a drag with inertia and wakes the glyphs under the cursor.
+// Point at a day to see it; click a day to select the book read most that day, double-click to
+// open it; a click elsewhere sends a wave around.
 
 import { calm } from "./core.js";
 
-/** @typedef {import("./core.js").Book} Book */
+/** @typedef {{ time: number, minutes: number, book: {id: number, title: string} | null }} Day */
 
 const GLYPHS = ["·", "∙", ":", "+", "*"];
-const POINTS = 900;
-const MAX_BOOKS = 28;
+const BODY = 520;
+const DAYS = 365;
 /** Distance of the eye, in sphere radii: lower is a stronger perspective. */
-const EYE = 3.2;
+const EYE = 3.4;
 const GOLDEN = Math.PI * (3 - Math.sqrt(5));
 
 /** @type {HTMLCanvasElement | null} */
@@ -19,27 +21,42 @@ let canvas = null;
 /** @type {CanvasRenderingContext2D | null} */
 let ctx = null;
 let w = 0, h = 0;
-let hooks = { pick: (/** @type {number} */ _id) => {}, open: (/** @type {number} */ _id) => {} };
+let hooks = {
+  pick: (/** @type {number} */ _id) => {},
+  open: (/** @type {number} */ _id) => {},
+  label: (/** @type {Day} */ _day) => "",
+};
 
-/** Unit points on the sphere, spread evenly (a Fibonacci lattice), each with its own jitter. */
-const points = Array.from({ length: POINTS }, (_, i) => {
-  const y = 1 - (i / (POINTS - 1)) * 2;
+/** The body of the ball: faint points spread evenly (a Fibonacci lattice). */
+const body = Array.from({ length: BODY }, (_, i) => {
+  const y = 1 - (i / (BODY - 1)) * 2;
   const r = Math.sqrt(1 - y * y);
   return { x: Math.cos(GOLDEN * i) * r, y, z: Math.sin(GOLDEN * i) * r, j: Math.random() };
 });
-/** @type {{id: number, title: string, color: string, p: {x: number, y: number, z: number}}[]} */
-let nodes = [];
-/** Threads between books: points along the great circle, lifted a little off the surface. */
-let arcs = /** @type {{x: number, y: number, z: number}[][]} */ ([]);
+/** The year: a spiral from the bottom pole to the top with even steps (Saff and Kuijlaars). */
+const spiral = (() => {
+  let phi = 0;
+  return Array.from({ length: DAYS }, (_, k) => {
+    const y = -1 + (2 * k) / (DAYS - 1);
+    const r = Math.sqrt(1 - y * y);
+    if (k > 0 && k < DAYS - 1) phi = (phi + 3.6 / Math.sqrt(DAYS) / r) % (2 * Math.PI);
+    return { x: Math.cos(phi) * r * 1.02, y: y * 1.02, z: Math.sin(phi) * r * 1.02 };
+  });
+})();
+/** @type {Day[]} */
+let days = [];
+let most = 1;
+/** The day at spiral position `k`; the newest day is always at the top pole. */
+const dayAt = (/** @type {number} */ k) => days[k - (DAYS - days.length)];
 
-let yaw = 0.6, pitch = -0.25, spin = 0, tilt = 0;
+let yaw = 0.6, pitch = 0.5, spin = 0, tilt = 0;
 let born = 0;
 let frame = 0;
 let visible = false;
 const pointer = { x: 0, y: 0, on: false, down: false, moved: 0, lastX: 0, lastY: 0 };
 /** @type {{o: {x: number, y: number, z: number}, t: number}[]} */
 let waves = [];
-/** @type {number | null} */
+/** Index of the day under the cursor. @type {number | null} */
 let hover = null;
 
 export function mount(/** @type {HTMLCanvasElement} */ el, /** @type {typeof hooks} */ on) {
@@ -76,43 +93,27 @@ export function mount(/** @type {HTMLCanvasElement} */ el, /** @type {typeof hoo
     pointer.moved = 0;
     pointer.lastX = e.clientX;
     pointer.lastY = e.clientY;
-    el.classList.add("grabbing");
   });
   el.addEventListener("pointerup", () => {
     pointer.down = false;
-    el.classList.remove("grabbing");
     if (pointer.moved > 4) return;
-    if (hover !== null) return hooks.pick(hover);
+    const book = hover !== null ? dayAt(hover)?.book : null;
+    if (book) return hooks.pick(book.id);
     const at = nearest();
     if (at && !calm()) waves.push({ o: at, t: performance.now() / 1000 });
     wake();
   });
-  el.addEventListener("dblclick", () => hover !== null && hooks.open(hover));
-}
-
-/** Puts the books on the globe: the most recent ones become nodes, joined by shelf and author. */
-export function setBooks(/** @type {Book[]} */ books) {
-  const list = [...books].sort((a, b) => (b.opened_at ?? 0) - (a.opened_at ?? 0) || b.added_at - a.added_at).slice(0, MAX_BOOKS);
-  nodes = list.map((b, k) => ({ id: b.id, title: b.title, color: b.color, p: points[Math.floor(((k + 0.5) / list.length) * POINTS)] }));
-  arcs = [];
-  for (let a = 0; a < list.length && arcs.length < 40; a++) {
-    for (let b = a + 1; b < list.length && arcs.length < 40; b++) {
-      const kin = list[a].shelves.some((s) => list[b].shelves.includes(s)) || (list[a].authors[0] && list[a].authors[0] === list[b].authors[0]);
-      if (kin) arcs.push(slerp(nodes[a].p, nodes[b].p));
-    }
-  }
-  wake();
-}
-
-function slerp(/** @type {{x: number, y: number, z: number}} */ p, /** @type {{x: number, y: number, z: number}} */ q) {
-  const angle = Math.acos(Math.max(-1, Math.min(1, p.x * q.x + p.y * q.y + p.z * q.z)));
-  const s = Math.sin(angle) || 1e-6;
-  return Array.from({ length: 25 }, (_, i) => {
-    const f = i / 24;
-    const a = Math.sin((1 - f) * angle) / s, b = Math.sin(f * angle) / s;
-    const lift = 1 + 0.08 * Math.sin(Math.PI * f);
-    return { x: (p.x * a + q.x * b) * lift, y: (p.y * a + q.y * b) * lift, z: (p.z * a + q.z * b) * lift };
+  el.addEventListener("dblclick", () => {
+    const book = hover !== null ? dayAt(hover)?.book : null;
+    if (book) hooks.open(book.id);
   });
+}
+
+/** The last 365 days, oldest first. */
+export function setDays(/** @type {Day[]} */ list) {
+  days = list.slice(-DAYS);
+  most = Math.max(1, ...days.map((d) => d.minutes));
+  wake();
 }
 
 function resize() {
@@ -168,14 +169,29 @@ function project(/** @type {{x: number, y: number, z: number}} */ p, /** @type {
 
 /** The sphere point under the cursor, for the wave to start from. */
 function nearest() {
-  const radius = Math.min(w, h) * 0.36;
+  const radius = Math.min(w, h) * 0.38;
   let best = null, bestD = 400;
-  for (const p of points) {
+  for (const p of body) {
     const q = project(p, radius);
     const d = (q.x - pointer.x) ** 2 + (q.y - pointer.y) ** 2;
     if (q.z > 0 && d < bestD) (best = p), (bestD = d);
   }
   return best;
+}
+
+/** Brightening from the cursor and the waves at a point. */
+function stir(/** @type {{x: number, y: number, z: number}} */ p, /** @type {{x: number, y: number, z: number}} */ q, /** @type {number} */ t) {
+  let k = 0;
+  if (pointer.on && q.z > -0.2) {
+    const d = Math.hypot(q.x - pointer.x, q.y - pointer.y);
+    if (d < 60) k += 1 - d / 60;
+  }
+  for (const v of waves) {
+    const age = t - v.t;
+    const a = Math.acos(Math.max(-1, Math.min(1, (p.x * v.o.x + p.y * v.o.y + p.z * v.o.z) / 1.02))) - age * 2.2;
+    k += Math.exp(-(a * a) / 0.05) * Math.exp(-age * 1.3);
+  }
+  return k;
 }
 
 function draw(/** @type {number} */ t, /** @type {boolean} */ still) {
@@ -185,8 +201,8 @@ function draw(/** @type {number} */ t, /** @type {boolean} */ still) {
   const accent = style.getPropertyValue("--accent").trim() || "#a68cff";
   const surface = style.getPropertyValue("--surface").trim() || "#fff";
   ctx.clearRect(0, 0, w, h);
-  const radius = Math.min(w, h) * 0.36;
-  // The globe gathers from a loose cloud when the window opens.
+  const radius = Math.min(w, h) * 0.38;
+  // The ball winds itself up from a loose cloud when the window opens.
   const grow = still ? 1 : Math.min(1, (t - born) / 1.6);
   const ease = 1 - Math.pow(1 - grow, 3);
   waves = waves.filter((v) => t - v.t < 2.4);
@@ -194,102 +210,93 @@ function draw(/** @type {number} */ t, /** @type {boolean} */ still) {
   ctx.textBaseline = "middle";
 
   let font = "";
-  const drawn = points.map((p) => {
-    const spread = 1 + (1 - ease) * (0.6 + p.j);
-    return { p, q: project({ x: p.x * spread, y: p.y * spread, z: p.z * spread }, radius) };
-  });
-  drawn.sort((a, b) => a.q.z - b.q.z);
-  for (const { p, q } of drawn) {
-    const depth = (q.z + 1) / 2;
-    let alpha = q.z < -0.1 ? 0.06 : 0.1 + depth * 0.42;
-    let level = Math.floor(depth * (GLYPHS.length - 1) * 0.85 + p.j * 0.9);
-    let size = 8 + 4 * q.s;
-    if (pointer.on && q.z > -0.2) {
-      const d = Math.hypot(q.x - pointer.x, q.y - pointer.y);
-      if (d < 70) {
-        const k = 1 - d / 70;
-        alpha += k * 0.5;
-        level += Math.round(k * 2);
-        size *= 1 + 0.25 * k;
-      }
-    }
-    for (const v of waves) {
-      const age = t - v.t;
-      const a = Math.acos(Math.max(-1, Math.min(1, p.x * v.o.x + p.y * v.o.y + p.z * v.o.z))) - age * 2.2;
-      const k = Math.exp(-(a * a) / 0.05) * Math.exp(-age * 1.3);
-      alpha += k * 0.6;
-      level += Math.round(k * 2);
-    }
-    ctx.globalAlpha = Math.min(1, alpha) * ease;
-    ctx.fillStyle = ink;
+  const glyph = (/** @type {string} */ c, /** @type {number} */ x, /** @type {number} */ y, /** @type {number} */ size) => {
     // Whole pixel sizes, so the font is set a few times a frame rather than for every glyph.
     const next = `${Math.round(size)}px ui-monospace, "JetBrains Mono", monospace`;
     if (next !== font) ctx.font = font = next;
-    ctx.fillText(GLYPHS[Math.min(GLYPHS.length - 1, Math.max(0, level))], q.x, q.y);
+    ctx.fillText(c, x, y);
+  };
+
+  const spread = (/** @type {{x: number, y: number, z: number}} */ p, /** @type {number} */ j) => {
+    const f = 1 + (1 - ease) * (0.6 + j);
+    return { x: p.x * f, y: p.y * f, z: p.z * f };
+  };
+  const drawn = body.map((p) => ({ p, q: project(spread(p, p.j), radius) })).sort((a, b) => a.q.z - b.q.z);
+  ctx.fillStyle = ink;
+  for (const { p, q } of drawn) {
+    const k = stir(p, q, t);
+    const depth = (q.z + 1) / 2;
+    ctx.globalAlpha = Math.min(1, (q.z < -0.1 ? 0.04 : 0.06 + depth * 0.2) + k * 0.45) * ease;
+    glyph(GLYPHS[Math.min(GLYPHS.length - 1, Math.floor(depth * 1.6 + p.j * 0.8) + Math.round(k * 2))], q.x, q.y, 7 + 3 * q.s);
   }
 
-  // Threads, front halves only, with a spark running along each now and then.
-  ctx.lineWidth = 1;
-  ctx.strokeStyle = accent;
-  arcs.forEach((arc, i) => {
-    let prev = project(arc[0], radius);
-    for (let k = 1; k < arc.length; k++) {
-      const q = project(arc[k], radius);
-      if (prev.z > 0 && q.z > 0) {
-        ctx.globalAlpha = 0.22 * Math.min(1, Math.min(prev.z, q.z) * 3) * ease;
-        ctx.beginPath();
-        ctx.moveTo(prev.x, prev.y);
-        ctx.lineTo(q.x, q.y);
-        ctx.stroke();
-      }
-      prev = q;
-    }
-    if (still) return;
-    const phase = (t * 0.22 + i * 0.37) % 1.6;
-    if (phase > 1) return;
-    const spark = project(arc[Math.floor(phase * (arc.length - 1))], radius);
-    if (spark.z <= 0) return;
-    ctx.globalAlpha = 0.9 * ease;
-    ctx.fillStyle = accent;
+  // The year's thread: faint all along, bright where days were read in a row.
+  const placed = spiral.map((p) => project(spread(p, 0.5), radius));
+  for (let k = 1; k < DAYS; k++) {
+    const a = placed[k - 1], b = placed[k];
+    if (a.z <= 0 || b.z <= 0) continue;
+    const read = (dayAt(k - 1)?.minutes ?? 0) > 0 && (dayAt(k)?.minutes ?? 0) > 0;
+    ctx.globalAlpha = (read ? 0.75 : 0.1) * Math.min(1, Math.min(a.z, b.z) * 3) * ease;
+    ctx.strokeStyle = read ? accent : ink;
+    ctx.lineWidth = read ? 1.6 : 1;
     ctx.beginPath();
-    ctx.arc(spark.x, spark.y, 2, 0, Math.PI * 2);
-    ctx.fill();
-  });
-
-  // Books: a diamond in the cloth color with a thin ring, so dark cloth shows on a dark desk.
-  hover = null;
-  let label = null;
-  const placed = nodes.map((n) => ({ n, q: project(n.p, radius) })).sort((a, b) => a.q.z - b.q.z);
-  for (const { n, q } of placed) {
-    const front = q.z > -0.05;
-    const r = (front ? 4.2 : 2.6) * q.s;
-    if (front && pointer.on && !pointer.down && Math.hypot(q.x - pointer.x, q.y - pointer.y) < 12) {
-      hover = n.id;
-      label = { n, q };
-    }
-    ctx.globalAlpha = (front ? 1 : 0.22) * ease;
-    ctx.beginPath();
-    ctx.moveTo(q.x, q.y - r);
-    ctx.lineTo(q.x + r, q.y);
-    ctx.lineTo(q.x, q.y + r);
-    ctx.lineTo(q.x - r, q.y);
-    ctx.closePath();
-    ctx.fillStyle = n.color;
-    ctx.fill();
-    ctx.strokeStyle = hover === n.id ? accent : ink;
-    ctx.globalAlpha = (hover === n.id ? 1 : front ? 0.45 : 0.1) * ease;
-    ctx.lineWidth = hover === n.id ? 2 : 1;
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
     ctx.stroke();
   }
-  canvas.style.cursor = pointer.down ? "grabbing" : hover !== null ? "pointer" : "grab";
 
-  if (label) {
-    const text = label.n.title.length > 42 ? `${label.n.title.slice(0, 41)}…` : label.n.title;
-    ctx.font = `500 12px ${style.getPropertyValue("--font-ui") || "sans-serif"}`;
+  // The days: glyphs that grow with the minutes read, in the accent when there was reading.
+  hover = null;
+  let best = 81;
+  const order = placed.map((q, k) => k).sort((a, b) => placed[a].z - placed[b].z);
+  for (const k of order) {
+    const q = placed[k];
+    const day = dayAt(k);
+    const share = day ? day.minutes / most : 0;
+    const front = q.z > -0.05;
+    const k2 = stir(spiral[k], q, t);
+    if (front && pointer.on && !pointer.down && day) {
+      const d = (q.x - pointer.x) ** 2 + (q.y - pointer.y) ** 2;
+      if (d < best) (best = d), (hover = k);
+    }
+    if (share > 0) {
+      ctx.fillStyle = accent;
+      ctx.globalAlpha = (front ? 0.55 + 0.45 * share : 0.12) * ease;
+      glyph(GLYPHS[Math.min(GLYPHS.length - 1, 2 + Math.round(share * 2))], q.x, q.y, (9 + 7 * Math.sqrt(share)) * q.s);
+    } else {
+      ctx.fillStyle = ink;
+      ctx.globalAlpha = Math.min(1, (front ? 0.22 : 0.05) + k2 * 0.4) * ease;
+      glyph(GLYPHS[Math.min(GLYPHS.length - 1, 1 + Math.round(k2 * 2))], q.x, q.y, 8 * q.s);
+    }
+  }
+
+  // Today: a beating ring at the top of the ball.
+  const today = placed[DAYS - 1];
+  if (today.z > -0.2) {
+    const beat = still ? 0.5 : 0.5 + 0.5 * Math.sin(t * 2.4);
+    ctx.globalAlpha = ease;
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(today.x, today.y, 4 + beat * 3, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  if (hover !== null) {
+    const q = placed[hover];
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(q.x, q.y, 7, 0, Math.PI * 2);
+    ctx.stroke();
+    let text = hooks.label(dayAt(hover));
+    if (text.length > 48) text = `${text.slice(0, 47)}…`;
+    ctx.font = font = `500 12px ${style.getPropertyValue("--font-ui") || "sans-serif"}`;
     const tw = ctx.measureText(text).width;
-    const x = Math.max(tw / 2 + 12, Math.min(w - tw / 2 - 12, label.q.x));
-    const y = label.q.y - 22;
-    ctx.globalAlpha = 0.94;
+    const x = Math.max(tw / 2 + 10, Math.min(w - tw / 2 - 10, q.x));
+    const y = q.y < 30 ? q.y + 22 : q.y - 20;
+    ctx.globalAlpha = 0.95;
     ctx.fillStyle = surface;
     ctx.beginPath();
     ctx.roundRect(x - tw / 2 - 9, y - 12, tw + 18, 24, 12);
@@ -298,5 +305,6 @@ function draw(/** @type {number} */ t, /** @type {boolean} */ still) {
     ctx.fillStyle = ink;
     ctx.fillText(text, x, y + 0.5);
   }
+  canvas.style.cursor = pointer.down ? "grabbing" : hover !== null && dayAt(hover)?.book ? "pointer" : "grab";
   ctx.globalAlpha = 1;
 }
