@@ -8,7 +8,7 @@ import { $, calm, call, commands, debounce, escapeHtml, fail, isAgent, locator, 
 import { FlowEngine } from "./flow.js";
 import { t } from "./i18n.js";
 import * as particles from "./particles.js";
-import { PdfEngine } from "./pdfview.js";
+import { PdfEngine, releaseCanvases } from "./pdfview.js";
 import * as translator from "./translator.js";
 import { icon, menu, paintIcons, toast } from "./ui.js";
 
@@ -64,7 +64,7 @@ export async function open(/** @type {Opened} */ opened) {
   /** @type {HTMLElement} */ ($('[data-tab="agent"]')).hidden = !opened.book;
   if ((tab === "thumbs" && !pdf) || (tab === "agent" && !opened.book)) tab = "toc";
   translator.close();
-  $("#leaf").replaceChildren();
+  clearTurn();
 
   if (pdf) {
     atmosphere.apply(await lookAt(locator(0, 0)));
@@ -249,12 +249,14 @@ let turnTimer = 0;
 function cover(/** @type {Shot} */ old) {
   const box = $("#leaf");
   clearTimeout(turnTimer);
+  releaseCanvases(box);
   box.replaceChildren(piece(old, 0, old.w));
   box.hidden = false;
 }
 
 function clearTurn() {
   const box = $("#leaf");
+  releaseCanvases(box);
   box.replaceChildren();
   box.hidden = true;
 }
@@ -303,6 +305,8 @@ function animateTurn(/** @type {number} */ dir, /** @type {Shot} */ old) {
     if (dir < 0) parts.push(piece(old, hinge, half));
     parts.push(leaf);
   }
+  // The cover's copies are spent: the pieces above were copied from it already.
+  releaseCanvases(box);
   box.replaceChildren(...parts);
   box.hidden = false;
   turnTimer = setTimeout(clearTurn, ms + 40);

@@ -3,7 +3,8 @@
 // minutes brighter, and days read in a row are joined by a bright thread. The rest of the ball is
 // faint glyphs. It turns slowly, follows a drag with inertia and wakes the glyphs under the cursor.
 // Point at a day to see it; click a day to select the book read most that day, double-click to
-// open it; a click elsewhere sends a wave around.
+// open it; a click elsewhere sends a wave around. It turns only for a few seconds after the pointer
+// moves over the library.
 
 import { calm } from "./core.js";
 
@@ -74,6 +75,7 @@ export function mount(/** @type {HTMLCanvasElement} */ el, /** @type {typeof hoo
     pointer.x = e.clientX - r.left;
     pointer.y = e.clientY - r.top;
     pointer.on = true;
+    stirred = performance.now();
     if (pointer.down) {
       const dx = e.clientX - pointer.lastX, dy = e.clientY - pointer.lastY;
       pointer.moved += Math.abs(dx) + Math.abs(dy);
@@ -127,6 +129,17 @@ function resize() {
   wake();
 }
 
+/** When the pointer last moved over the library: the ball turns for a while after that and then
+ * rests, so an idle library costs no CPU. */
+let stirred = 0;
+const AWAKE = 4000;
+
+/** Called on pointer movement anywhere in the library. */
+export function nudge() {
+  stirred = performance.now();
+  wake();
+}
+
 /** Starts the loop if anything should move; with reduced motion only drags and changes redraw. */
 function wake() {
   if (!frame && visible && w) frame = requestAnimationFrame(tick);
@@ -151,7 +164,8 @@ function tick(/** @type {number} */ ms) {
     pitch = Math.max(-1.2, Math.min(1.2, pitch + tilt));
   }
   draw(t, still);
-  const moving = !still || pointer.down || Math.abs(spin) > 1e-4 || waves.length;
+  const awake = !still && (ms - stirred < AWAKE || t - born < 1.7);
+  const moving = awake || pointer.down || Math.abs(spin) > 1e-4 || waves.length;
   if (moving && visible && !document.hidden) frame = requestAnimationFrame(tick);
   else last = 0;
 }

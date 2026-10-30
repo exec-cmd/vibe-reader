@@ -15,8 +15,8 @@
    lies on top of it. */
 .band {
   position: absolute; inset: 0; z-index: 1; margin: 0; overflow: hidden; pointer-events: none;
-  font: 13px/15px var(--font-mono); letter-spacing: 0; white-space: pre; color: var(--accent);
-  opacity: calc(0.42 * min(var(--fx), 1.5));
+  font: 600 17px/20px var(--font-mono); letter-spacing: 0; white-space: pre; color: var(--accent);
+  opacity: calc(0.38 * min(var(--fx), 1.5));
 }
 .reader .reader-body { position: relative; z-index: 2; }
 .fx-overlay { z-index: 1; }

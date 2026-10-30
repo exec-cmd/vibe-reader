@@ -225,6 +225,7 @@ export function play(sound, level) {
   volume = kind ? level * (sound.volume ?? 0.6) * HEADROOM : 0;
   if (!kind) return fadeOut();
   const a = audio();
+  clearTimeout(sleepTimer);
   if (a.state === "suspended") a.resume();
   if (playing.kind !== kind) {
     const old = playing;
@@ -246,9 +247,13 @@ export function play(sound, level) {
   ramp(/** @type {GainNode} */ (master).gain, volume, 0.6);
 }
 
+let sleepTimer = 0;
 function fadeOut() {
   playing.stop();
   playing = { kind: "", stop: () => {} };
+  // A running context keeps its audio thread busy even in silence; it sleeps once the fade is over.
+  clearTimeout(sleepTimer);
+  sleepTimer = setTimeout(() => !playing.kind && ctx?.state === "running" && ctx.suspend(), 2000);
 }
 
 export function stop() {
@@ -286,8 +291,15 @@ export function thunder() {
   if (near) for (let i = 0; i < 3; i++) setTimeout(() => tick(/** @type {GainNode} */ (master), 1500 + Math.random() * 1500, 0.04, 0.15, "pink", 0.8), (t - a.currentTime) * 1000 + i * 30);
 }
 
-// Quiet while the window is hidden.
+// Quiet, and asleep, while the window is hidden.
 document.addEventListener("visibilitychange", () => {
   if (!ctx || !master) return;
-  ramp(master.gain, document.hidden ? 0 : volume, 0.5);
+  clearTimeout(sleepTimer);
+  if (document.hidden) {
+    ramp(master.gain, 0, 0.5);
+    sleepTimer = setTimeout(() => document.hidden && ctx?.suspend(), 700);
+  } else if (playing.kind) {
+    ctx.resume();
+    ramp(master.gain, volume, 0.5);
+  }
 });

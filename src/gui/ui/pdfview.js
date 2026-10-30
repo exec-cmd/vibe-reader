@@ -18,6 +18,14 @@ const MAX_PIXELS = 24e6;
 
 /** @typedef {{ start: number, end: number, kind: string, author: string, quote: string, id: number, body: string }} PageMark */
 
+/**
+ * Frees the pixels of every canvas under `root`. WebKit keeps a removed canvas's backing store until
+ * a garbage collection, and a page drawn at 2x is tens of megabytes, so turning pages piled them up.
+ */
+export function releaseCanvases(/** @type {Element} */ root) {
+  for (const c of root.querySelectorAll("canvas")) c.width = c.height = 0;
+}
+
 export class PdfEngine {
   /** @param {HTMLElement} container @param {HTMLElement} viewport @param {{layout: string, fit: string, invert: boolean, onPage: (i: number) => void, onPaint: (page: number, layer: HTMLElement) => void}} opts */
   constructor(container, viewport, opts) {
@@ -55,6 +63,7 @@ export class PdfEngine {
   }
 
   destroy() {
+    releaseCanvases(this.container);
     this.observer?.disconnect();
     this.doc?.destroy();
     this.doc = null;
@@ -108,6 +117,7 @@ export class PdfEngine {
   async render() {
     const token = ++this.renderToken;
     this.observer?.disconnect();
+    releaseCanvases(this.container);
     this.container.replaceChildren();
     this.container.dataset.layout = this.layout;
     if (this.layout === "scroll") return this.renderScroll(token);
@@ -196,6 +206,8 @@ export class PdfEngine {
     const text = await page.getTextContent();
     this.texts.set(i, pageText(text));
     await new this.pdfjs.TextLayer({ textContentSource: text, container: layer, viewport: vp }).render().catch(() => {});
+    // The drawing commands and fonts of a drawn page are not needed until it is drawn again.
+    page.cleanup();
     this.opts.onPaint(i, layer);
   }
 

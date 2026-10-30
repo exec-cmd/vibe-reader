@@ -13,17 +13,17 @@ the GUI crate (or drop the file into `<config>/ui/`), and reload.
 | `core.js` | `state`, `call()` for Tauri commands, `commands` registry for the palette, `applyConfig()` and `saveConfig()`. |
 | `ui.js` | Shared widgets: `icon`, `menu`, `select`, `dialog`, `ask`, `confirmAction`, `toast`, `progress`. |
 | `library.js` | The desk, the filter strip, the bookcase, the catalog card, book menu, mini mode, library keys. |
-| `globe.js` | The year of reading on the desk, a ball of 365 days: `mount(canvas, {pick, open, label})`, `setDays(days)`. Canvas 2D, about 900 glyphs at 30 fps, still with reduced motion. |
+| `globe.js` | The year of reading on the desk, a ball of 365 days: `mount(canvas, {pick, open, label})`, `setDays(days)`. Canvas 2D, about 900 glyphs at 30 fps; it turns only for 4 s after the pointer moves over the library (`nudge()`), so an idle library costs no CPU. |
 | `reader.js` | Reader shell: dock, running head, folio, page turns, idle state, side panel tabs, annotations, find. It creates one engine per open book. |
 | `flow.js` | `FlowEngine` for EPUB, FB2, Markdown, TXT and HTML. |
-| `pdfview.js` | `PdfEngine` for PDF, drawn with pdf.js. |
+| `pdfview.js` | `PdfEngine` for PDF, drawn with pdf.js at least at 2x. `releaseCanvases(root)` frees canvas pixels at once; call it before removing pages or page-turn copies, or WebKit holds tens of megabytes per page until a garbage collection. |
 | `pdfcover.js` | `loadPdfjs()` (lazy pdf.js loader) and PDF covers. |
 | `offsets.js` | DOM point ↔ offset (`offsetOf`, `rangeOf`, `pointAt`), and `normalize()` for PDF text pieces. |
 | `enhance.js` | Code highlighting, copy buttons, KaTeX, table wrappers, image zoom in chapter content. |
 | `atmosphere.js` | Apply an atmosphere look; `updateSound()` follows its sound. |
-| `band.js` | The full-desk ASCII field of the grid (Terminal) look: `toggle(on)`, `setPointer(x, y)`, `ring(x, y)`. Text in a `<pre>`, 30 fps while the cursor is over the reader, 10 otherwise. |
+| `band.js` | The full-desk ASCII field of the grid (Terminal) look: `toggle(on)`, `setPointer(x, y)`, `ring(x, y)`. Text in a `<pre>` at 25 fps for 3 s after the pointer moves, then it stands still: redrawing the field costs most of a CPU core. |
 | `particles.js` | Particles and light: `start(p, rgb, strength)`, `setEdge(rect)` (snow and rain meet the page), `blow(dir)` (page-turn gust), `setOnStrike(fn)` (lightning). |
-| `sound.js` | Ambient sound from Web Audio, no files: `play(sound, level)`, `stop()`, `thunder()`. |
+| `sound.js` | Ambient sound from Web Audio, no files: `play(sound, level)`, `stop()`, `thunder()`. The context is suspended when nothing plays or the window is hidden, since a running one keeps an audio thread busy. |
 | `translator.js` | The translator card: `init(visibleText)`, `open()`, `toggle()`, `target()`. |
 | `settings.js` | The settings page: a numbered index with search, sections built from `row`, `segmented`, `dropdown`, `toggle`, `slider`, `themeCards`. Search builds every section and hides rows that do not match. |
 | `palette.js` | Command palette (Ctrl+Shift+P) over the `commands` registry and the books. |

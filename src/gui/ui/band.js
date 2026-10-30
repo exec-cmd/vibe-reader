@@ -20,6 +20,12 @@ let cols = 0, rows = 0, cw = 6.6, ch = 12;
 const cursor = { x: 0, y: 0, tx: 0, ty: 0, on: 0, inside: false };
 /** @type {{x: number, y: number, t: number}[]} */
 let rings = [];
+/** When the pointer last moved. The field moves only for a while after that, and stands still
+ * while the reader reads: redrawing it costs a CPU core's worth of layout. */
+let stirred = 0;
+const AWAKE = 3000;
+/** The field's own clock, which stops while it stands still so it resumes where it froze. */
+let clock = 0;
 
 /** Shows or hides the field; the loop runs only while it is shown. */
 export function toggle(/** @type {boolean} */ on) {
@@ -30,7 +36,13 @@ export function toggle(/** @type {boolean} */ on) {
   frame = 0;
   if (!on) return void (el.textContent = "");
   measure();
-  calm() ? draw(performance.now() / 1000) : (frame = requestAnimationFrame(tick));
+  draw(clock);
+  wake();
+}
+
+function wake() {
+  stirred = performance.now();
+  if (!frame && el && !el.hidden && !calm()) (last = 0), (frame = requestAnimationFrame(tick));
 }
 
 function measure() {
@@ -53,24 +65,26 @@ export function setPointer(/** @type {number | null} */ x, y = 0) {
   cursor.ty = y - r.top;
   cursor.inside = true;
   if (cursor.on === 0) (cursor.x = cursor.tx), (cursor.y = cursor.ty);
+  wake();
 }
 
 export function ring(/** @type {number} */ x, /** @type {number} */ y) {
   if (!el || el.hidden || calm()) return;
   const r = el.getBoundingClientRect();
-  rings.push({ x: x - r.left, y: y - r.top, t: performance.now() / 1000 });
+  rings.push({ x: x - r.left, y: y - r.top, t: clock });
+  wake();
 }
 
 function tick(/** @type {number} */ ms) {
+  if (document.hidden || (ms - stirred > AWAKE && !rings.length)) return void (frame = 0);
   frame = requestAnimationFrame(tick);
-  // Thirty frames a second while something moves, ten when the field only breathes.
-  const busy = cursor.on > 0.01 || rings.length;
-  if (ms - last < (busy ? 33 : 100) || document.hidden) return;
+  if (ms - last < 40) return;
+  clock += last ? Math.min(0.1, (ms - last) / 1000) : 0;
   last = ms;
   cursor.on += ((cursor.inside ? 1 : 0) - cursor.on) * 0.15;
   cursor.x += (cursor.tx - cursor.x) * 0.3;
   cursor.y += (cursor.ty - cursor.y) * 0.3;
-  draw(ms / 1000);
+  draw(clock);
 }
 
 function draw(/** @type {number} */ t) {

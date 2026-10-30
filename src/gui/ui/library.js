@@ -787,6 +787,7 @@ export function init() {
   const room = $("#room");
   let frame = 0;
   room.addEventListener("pointermove", (e) => {
+    globe.nudge();
     if (frame) return;
     frame = requestAnimationFrame(() => {
       frame = 0;
