@@ -33,24 +33,25 @@ AppImage are attached to each [GitHub release](https://github.com/exec-cmd/vibe-
 
 ## Reading
 
-- **Shelf, library, reading.** One window: recent books as spines, the whole
-  library grouped by your shelves or by author, and an immersive page with a
-  thin progress line.
-- **Pages or scroll.** Prose opens in pages (a spread on wide windows),
-  technical books and Markdown in a scroll. Code is highlighted and copyable,
-  TeX and MathML formulas are typeset, wide tables scroll, images zoom.
-- **PDF.** Spread, one-page and scroll layouts, zoom, the PDF's own outline,
+- One window holds the library and the book. Recent books stand as spines,
+  the library groups by your shelves or by author, and the reading page has
+  only a thin progress line.
+- Prose opens in pages (a spread on wide windows), technical books and Markdown
+  in a scroll. Code is highlighted and copyable, TeX and MathML formulas are
+  typeset, wide tables scroll, images zoom.
+- PDF gets spread, one-page and scroll layouts, zoom, the file's own outline,
   page thumbnails, search, highlights and notes on selected text, and dark pages
   in dark mode.
-- **Notes.** Highlights, notes and bookmarks, exported to Markdown or JSON.
-  Notes by an agent are marked differently from yours.
-- **Typography.** Six bundled fonts with Cyrillic, size, line length and
-  spacing, justification and hyphenation, light and dark.
-- **Translator.** Translate a passage or the page with your own DeepL, Google
-  Cloud or OpenRouter key.
-- **Keyboard first.** `Ctrl+Shift+P` palette, single-key commands, optional Vim keys.
-- **Quick view.** `vibe-reader open notes.md --lite` opens one file without the
-  library; Markdown reloads when you save it.
+- Highlights, notes and bookmarks export to Markdown or JSON. Notes by an agent
+  are marked differently from yours.
+- Six bundled fonts with Cyrillic; you set size, line length and spacing,
+  justification and hyphenation, light or dark.
+- The translator handles a passage or the whole page with your own DeepL,
+  Google Cloud or OpenRouter key.
+- Everything works from the keyboard: the `Ctrl+Shift+P` palette, single-key
+  commands, optional Vim keys.
+- `vibe-reader open notes.md --lite` opens one file without the library;
+  Markdown reloads when you save it.
 
 More: [getting started](docs/user/getting-started.md),
 [library](docs/user/library.md), [reading](docs/user/reading.md),
@@ -107,7 +108,8 @@ See [configuration](docs/user/configuration.md).
 ## Contributing
 
 Start with [CONTRIBUTING.md](CONTRIBUTING.md) and
-[architecture](docs/dev/architecture.md).
+[architecture](docs/dev/architecture.md). Planned work is in the
+[roadmap](docs/dev/roadmap.md).
 
 ## Built with
 

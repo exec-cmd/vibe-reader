@@ -26,8 +26,8 @@ library, the catalog card and the book menu have an Atmosphere setting too.
 
 Each preset's desk field moves for a few seconds after you move the pointer and
 then stands still, so a resting reader costs no CPU. A click beside the page
-sends a ring through it. The Effects strength in Settings scales it, and it is
-off in lite mode and with reduced motion it stands still.
+sends a ring through it. The Effects strength in Settings scales it. Lite mode
+has no field, and with reduced motion it does not move.
 
 Presets that exist in one mode only (rain, storm) stay dark even when the rest of
 the app is light.
@@ -138,8 +138,7 @@ volume = 0.4
 
 `kind` is `none`, `rain`, `storm`, `fire`, `wind` or `hum`. `volume` runs from 0
 to 1 and is relative to the volume set in Settings → Sound. An unknown kind, or a
-volume outside 0 to 1, fails validation. Before 0.2.0 the `sound` section was
-reserved and ignored.
+volume outside 0 to 1, fails validation.
 
 The bundled presets have sounds: study has fire, terminal has hum, noir and rain
 have rain, soft and mountain have wind, and storm has a storm. Turning the sound
@@ -147,8 +146,8 @@ on is described in [sound](sound.md).
 
 ## Motion
 
-Particles run at up to 30 frames per second on one canvas and stop when the
-window is hidden. Lightning flashes at most once in 6 seconds.
+Particles run at 12 to 24 frames per second on one canvas, depending on the
+kind, and stop when the window is hidden. Lightning flashes at most once in 6 seconds.
 
 Lite mode has no atmosphere and no animations. Turn on **Reduce motion** in
 Settings → Appearance to stop particles and page-turn animations. Motion also

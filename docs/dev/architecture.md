@@ -107,5 +107,6 @@ CSS multi-column layout with `column-fill: auto` paginates correctly in
 WebKitGTK, including `hyphens: auto` for Russian. The CSS Custom Highlight API
 works, so annotations never touch the DOM.
 
-CI checks the install size when it runs (it is paused and starts only by hand for now). Startup time is not checked in CI,
-because CI runners have no display; run `--measure` before a release.
+CI checks the install size when it runs (for now it is paused and starts only
+by hand). Startup time is not checked in CI, because CI runners have no
+display; run `--measure` before a release.

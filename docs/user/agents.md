@@ -2,8 +2,8 @@
 
 # Using vibe-reader with AI agents
 
-vibe-reader has no AI inside. Any agent that can run shell commands — Claude
-Code, Codex, opencode and others — works with your library through the
+vibe-reader has no AI inside. Any agent that can run shell commands (Claude
+Code, Codex, opencode and others) works with your library through the
 `vibe-reader` command and the bundled Skills.
 
 ## Set up
@@ -50,14 +50,16 @@ Example requests:
 
 ## What agents can and cannot do
 
-- **Read** everything in the library: book text, your position, notes, shelves.
-  For PDF books, agents get the text that the core extracts.
-- **Write** notes, highlights, bookmarks, memory, illustrations and atmosphere.
-  Each write records the agent's name, shows up marked in the reader window,
-  and `vibe-reader undo --author NAME` reverts it step by step.
-- **Not remove** books or shelves: those commands run only at an interactive
-  terminal, where you confirm them.
-- **Not change your records**: an agent edits and deletes only what it wrote.
+Agents read everything in the library: book text, your position, notes,
+shelves. For PDF books they get the text that the core extracts.
+
+They write notes, highlights, bookmarks, memory, illustrations and atmosphere.
+Each write records the agent's name and shows up marked in the reader window,
+and `vibe-reader undo --author NAME` reverts it step by step.
+
+They cannot remove books or shelves, because those commands run only at an
+interactive terminal where you confirm them. An agent edits and deletes only
+what it wrote, never your records.
 
 ## The live window
 
@@ -97,8 +99,8 @@ Finished books have no limit.
 
 Reading sessions, speed and habits are private until you share them under
 `[agent.consent]` in `config.toml` or in Settings → AI agents
-([configuration](configuration.md)). The app gives agents numbers; conclusions such as "you read faster in the evening" are
-the agent's.
+([configuration](configuration.md)). The app gives agents numbers; conclusions
+such as "you read faster in the evening" are the agent's.
 
 ## Prompt injection
 

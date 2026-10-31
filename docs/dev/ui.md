@@ -78,8 +78,9 @@ methods, so `reader.js` drives either one the same way:
 clear it. The side panel `#side` opens with `data-open="true"` or `"false"`, not
 `hidden`. `#book` holds `#frame` and `#leaf`, which holds the copy of the old
 sheet during `turn()`: Leaf animates its `clip-path` from one edge with a shadow
-strip (`.turn-edge`) on the moving edge, Slide moves and fades it. `turn()` copies the sheet before it navigates and keeps the
-copy over the live sheet until the next page is drawn, so nothing flashes.
+strip (`.turn-edge`) on the moving edge, Slide moves and fades it. `turn()`
+copies the sheet before it navigates and keeps the copy over the live sheet
+until the next page is drawn, so nothing flashes.
 
 Values that follow the pointer never go on an element that holds a page or the
 shelves: a custom property inherits, so changing it restyles every descendant (a
